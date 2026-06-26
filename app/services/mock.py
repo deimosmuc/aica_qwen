@@ -121,3 +121,48 @@ def mock_run(requirements_text: str) -> RunResponse:
         trace=trace,
         needs_approval=True,
     )
+
+
+def mock_run_rework(requirements_text: str) -> RunResponse:
+    """Scripted two-round example for rework-enabled profiles, so the demo shows
+    self-correction without an API key. Round 1 omits the Debug/LED block and the
+    Critic flags it; round 2 adds it and the Critic is clean. The returned
+    architecture/critique are the final (round-2) state."""
+    base = mock_run(requirements_text)
+
+    # Round-1 architecture: the same design minus the Debug block (the gap).
+    round1_arch = base.architecture.model_copy(
+        update={"blocks": [b for b in base.architecture.blocks if b.name != "Debug"]}
+    )
+    # Round-2: the full architecture, Critic now clean.
+    round2_critique = Critique(
+        warnings=base.critique.warnings,
+        risks=base.critique.risks,
+        missing_blocks=[],
+        recommendations=base.critique.recommendations,
+    )
+
+    trace = [
+        TraceStep(agent="Requirements Agent", role="Senior Systems Engineer", status="ok", round=1,
+                  summary="Structured 5 requirements, raised 2 clarification questions."),
+        TraceStep(agent="System Architect", role="Principal Hardware Architect", status="ok", round=1,
+                  summary=f"Proposed {len(round1_arch.blocks)} functional blocks across hierarchical sheets."),
+        TraceStep(agent="Design Critic", role="Senior Hardware Reviewer", status="warning", round=1,
+                  summary="Flagged 1 missing block (Debug/SWD + status LEDs)."),
+        TraceStep(agent="System Architect", role="Principal Hardware Architect", status="ok", round=2,
+                  summary=f"Revised: added the Debug block — now {len(base.architecture.blocks)} blocks."),
+        TraceStep(agent="Design Critic", role="Senior Hardware Reviewer", status="ok", round=2,
+                  summary="Re-reviewed: no missing blocks remain."),
+        TraceStep(agent="Arbitration", role="Chief Engineer", status="ok", round=2,
+                  summary="Approved architecture; logged 2 TODOs and 2 human-review items."),
+    ]
+
+    return RunResponse(
+        mode="mock",
+        requirements=base.requirements,
+        architecture=base.architecture,   # final = full design
+        critique=round2_critique,
+        arbitration=base.arbitration,
+        trace=trace,
+        needs_approval=True,
+    )

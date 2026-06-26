@@ -21,6 +21,7 @@ class RunRequest(BaseModel):
     model: str | None = Field(
         default=None, description="Optional Qwen model override; ignored unless allow-listed."
     )
+    profile: str | None = Field(default=None, description="Named run profile; overrides `model` when set.")
 
 
 # --- Requirements Agent ------------------------------------------------------
@@ -92,6 +93,8 @@ class TraceStep(BaseModel):
     summary: str
     # Wall-clock time the agent took (live mode only; None in Mock Mode).
     duration_ms: int | None = None
+    # Review round this step belongs to (1 = initial; >1 = rework round).
+    round: int = 1
 
 
 # --- Full pipeline response --------------------------------------------------
@@ -212,6 +215,7 @@ class StepRequest(BaseModel):
     requirements_text: str
     guidance: list[str] = []
     model: str | None = None
+    profile: str | None = None
     requirements: Requirements | None = None
     architecture: Architecture | None = None
     critique: Critique | None = None
