@@ -17,7 +17,7 @@ from app.agents.requirements import RequirementsAgent
 from app.models.schemas import Architecture, Critique, Requirements, RunResponse, TraceStep
 from app.services.config import Settings
 from app.services.guard import GuardBlocked
-from app.services.mock import mock_run
+from app.services.mock import mock_run, mock_run_rework
 from app.services.profiles import RunProfile, default_profile
 from app.services.qwen_client import QwenClient, QwenError, QwenTruncatedError
 
@@ -106,7 +106,7 @@ class Orchestrator:
 
     def run(self, requirements_text: str, guidance: list[str] | None = None) -> RunResponse:
         if self.settings.mock_mode:
-            return mock_run(requirements_text)
+            return mock_run_rework(requirements_text) if self.profile.rework else mock_run(requirements_text)
         guidance = guidance or []
         try:
             t = perf_counter()

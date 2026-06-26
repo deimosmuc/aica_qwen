@@ -79,3 +79,18 @@ def test_no_rework_when_profile_disables_it(monkeypatch):
     out = orch_mod.Orchestrator(Settings(qwen_api_key="sk-test"), profile=profile).run("board")
     assert calls["arch"] == 1 and calls["crit"] == 1     # single pass despite missing blocks
     assert all(s.round == 1 for s in out.trace)
+
+
+def test_mock_mode_rework_profile_shows_two_rounds():
+    out = orch_mod.Orchestrator(Settings(qwen_api_key=""), profile=_rework_profile()).run("a 24V board")
+    assert out.mode == "mock"
+    assert sorted({s.round for s in out.trace}) == [1, 2]
+    round1_critic = [s for s in out.trace if s.agent == "Design Critic" and s.round == 1][0]
+    assert round1_critic.status == "warning"
+    assert out.critique.missing_blocks == []
+
+
+def test_mock_mode_non_rework_profile_is_single_pass():
+    out = orch_mod.Orchestrator(Settings(qwen_api_key=""), profile=PROFILES["Uniform qwen-plus"]).run("board")
+    assert len(out.trace) == 4
+    assert all(s.round == 1 for s in out.trace)
