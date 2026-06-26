@@ -60,8 +60,32 @@ def _flatten_baseline(b: BaselineResult) -> str:
     )
 
 
-def run_comparison(requirements_text: str, settings: Settings) -> Comparison:
-    multi = Orchestrator(settings).run(requirements_text)
+def _multi_stats(r: RunResponse) -> tuple[int, int, int]:
+    """blocks, review findings, honesty markers — from the multi-agent output."""
+    blocks = len(r.architecture.blocks)
+    findings = len(r.critique.warnings) + len(r.critique.risks) + len(r.critique.missing_blocks)
+    honesty = len(r.arbitration.todo) + len(r.arbitration.human_review) + len(r.arbitration.accepted_assumptions)
+    return blocks, findings, honesty
+
+
+def _single_stats(b: BaselineResult) -> tuple[int, int, int]:
+    """blocks, review findings, honesty markers — from the single-agent output."""
+    blocks = len(b.architecture)
+    findings = len(b.concerns)
+    honesty = len(b.todos) + len(b.human_review) + len(b.assumptions)
+    return blocks, findings, honesty
+
+
+def run_comparison(
+    requirements_text: str,
+    settings: Settings,
+    multi_model: str | None = None,
+    single_model: str | None = None,
+) -> Comparison:
+    multi_name = settings.resolve_model(multi_model)
+    single_name = settings.resolve_model(single_model)
+
+    multi = Orchestrator(settings.model_copy(update={"qwen_model": multi_name})).run(requirements_text)
     notice = multi.notice
 
     if settings.mock_mode:
@@ -70,12 +94,15 @@ def run_comparison(requirements_text: str, settings: Settings) -> Comparison:
         notice = notice or _MOCK_NOTICE
     else:
         try:
-            baseline = SingleAgentBaseline().run(QwenClient(settings), requirements_text)
+            single_settings = settings.model_copy(update={"qwen_model": single_name})
+            baseline = SingleAgentBaseline().run(QwenClient(single_settings), requirements_text)
             single_calls = 1
         except (GuardBlocked, QwenError) as e:
             baseline = mock_baseline()
             single_calls = 0
-            notice = (f"{notice} " if notice else "") + f"Baseline fell back to example data ({e})."
+            notice = (f"{notice} " if notice else "") + (
+                f"Single-agent side ({single_name}) fell back to example data ({e})."
+            )
 
     multi_scores = score(_flatten_multi(multi))
     single_scores = score(_flatten_baseline(baseline))
@@ -90,6 +117,8 @@ def run_comparison(requirements_text: str, settings: Settings) -> Comparison:
     ]
     multi_score = sum(multi_scores.values())
     single_score = sum(single_scores.values())
+    mb, mf, mh = _multi_stats(multi)
+    sb, sf, sh = _single_stats(baseline)
 
     return Comparison(
         requirements_text=requirements_text,
@@ -104,4 +133,12 @@ def run_comparison(requirements_text: str, settings: Settings) -> Comparison:
         multi_output=multi,
         single_output=baseline,
         notice=notice,
+        multi_model=multi_name,
+        single_model=single_name,
+        multi_blocks=mb,
+        single_blocks=sb,
+        multi_findings=mf,
+        single_findings=sf,
+        multi_honesty=mh,
+        single_honesty=sh,
     )

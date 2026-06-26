@@ -188,6 +188,15 @@ class Comparison(BaseModel):
     multi_output: RunResponse
     single_output: BaselineResult
     notice: str | None = None
+    # Per-side model + simple metrics (additive — existing fields unchanged).
+    multi_model: str = "qwen-plus"
+    single_model: str = "qwen-plus"
+    multi_blocks: int = 0
+    single_blocks: int = 0
+    multi_findings: int = 0
+    single_findings: int = 0
+    multi_honesty: int = 0
+    single_honesty: int = 0
 
 
 # --- Stepwise pipeline (one agent at a time, human sign-off between steps) ----
