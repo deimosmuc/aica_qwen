@@ -92,6 +92,8 @@ class TraceStep(BaseModel):
     summary: str
     # Wall-clock time the agent took (live mode only; None in Mock Mode).
     duration_ms: int | None = None
+    # Review round this step belongs to (1 = initial; >1 = rework round).
+    round: int = 1
 
 
 # --- Full pipeline response --------------------------------------------------
