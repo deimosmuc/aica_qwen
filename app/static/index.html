@@ -162,6 +162,9 @@
         <button @click="compareRun({ single_model: 'qwen-max' })" :disabled="comparing || !input.trim()"
           :title="'Multi-agent @ qwen-plus vs single-agent @ qwen-max'"
           x-text="comparing ? 'Comparing…' : '🏆 Architecture beats tier'"></button>
+        <button @click="benchRun()" :disabled="benching || !input.trim()"
+          :title="'Run the curated preset trio and compare cost + quality'"
+          x-text="benching ? 'Benching…' : '📊 Preset Bench'"></button>
         <button @click="loadExample()" :disabled="loading || comparing">Load example</button>
         <label class="model-pick">Profile:
           <select x-model="selectedProfile" :disabled="loading || stepBusy || comparing">
@@ -204,6 +207,45 @@
                 <td x-text="c.label"></td>
                 <td class="c" x-text="c.covered_multi ? '✅' : '—'"></td>
                 <td class="c" x-text="c.covered_single ? '✅' : '—'"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </section>
+    </template>
+
+    <p class="muted" x-show="benchError" style="margin-top:10px; color: var(--warn)" x-text="benchError"></p>
+
+    <template x-if="bench">
+      <section class="panel" style="margin-top:18px">
+        <h2>📊 Preset Bench</h2>
+        <div class="notice" x-show="bench.notice" x-text="'⚠️ ' + (bench.notice || '')" style="margin-bottom:12px"></div>
+        <p x-show="bench.takeaway" x-text="bench.takeaway" style="font-weight:600; margin-bottom:6px"></p>
+        <p class="muted" x-show="bench.illustrative" style="font-size:12px; margin-bottom:10px">
+          Illustrative numbers (Mock Mode) — run with a live Qwen key for real figures.</p>
+        <table class="bench-table" style="width:100%; border-collapse:collapse; font-size:13px">
+          <thead>
+            <tr style="text-align:right; opacity:.7; font-size:11px; text-transform:uppercase">
+              <th style="text-align:left; padding:6px 8px">Preset</th>
+              <th style="padding:6px 8px">Rounds</th><th style="padding:6px 8px">Calls</th>
+              <th style="padding:6px 8px">Tokens</th><th style="padding:6px 8px">Cost</th>
+              <th style="padding:6px 8px">Quality</th><th style="padding:6px 8px">Quality/¢</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="r in bench.rows" :key="r.preset">
+              <tr style="text-align:right; border-top:1px solid var(--border)"
+                  :style="r.best_quality ? 'background: rgba(60,186,122,.12)' : ''">
+                <td style="text-align:left; padding:6px 8px">
+                  <span x-text="r.preset"></span>
+                  <span x-show="r.best_quality" class="muted" style="color:#3cba7a; font-weight:700"> · best</span>
+                </td>
+                <td style="padding:6px 8px" x-text="r.rounds"></td>
+                <td style="padding:6px 8px" x-text="r.usage.calls"></td>
+                <td style="padding:6px 8px" x-text="(r.usage.input_tokens + r.usage.output_tokens).toLocaleString()"></td>
+                <td style="padding:6px 8px" x-text="'$' + r.usage.cost_usd.toFixed(3)"></td>
+                <td style="padding:6px 8px" x-text="r.quality + ' / 12'"></td>
+                <td style="padding:6px 8px" x-text="r.quality_per_cent.toFixed(2)"></td>
               </tr>
             </template>
           </tbody>
@@ -543,6 +585,7 @@
         input: "", loading: false, result: null, approved: false, mode: "mock", guard: null,
         generating: false, gen: null, genError: "",
         comparing: false, cmp: null, cmpError: "",
+        benching: false, bench: null, benchError: "",
         auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration"],
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
         diagramSvg: null, constraintsText: "", correctText: "",
@@ -697,6 +740,20 @@
           } catch (e) {
             this.cmpError = "⚠️ " + e.message;
           } finally { this.comparing = false; }
+        },
+        async benchRun() {
+          this.benching = true; this.bench = null; this.benchError = "";
+          try {
+            const res = await fetch("/api/bench", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ requirements_text: this.input })
+            });
+            if (!res.ok) throw new Error("Bench failed (" + res.status + ")");
+            this.bench = await res.json();
+            await this.fetchGuard();
+          } catch (e) {
+            this.benchError = "⚠️ " + e.message;
+          } finally { this.benching = false; }
         },
         fmtMs(ms) {
           if (ms == null) return "";
