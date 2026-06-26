@@ -63,6 +63,7 @@ def run(req: RunRequest) -> RunResponse:
     is generated yet — that happens only after explicit human approval.
     """
     settings = get_settings()
+    settings = settings.model_copy(update={"qwen_model": settings.resolve_model(req.model)})
     return Orchestrator(settings).run(req.requirements_text, req.guidance)
 
 
@@ -137,7 +138,9 @@ def step(req: StepRequest) -> StepResponse:
     The client passes back the already-approved prior results so each stage has
     what it needs. Auto mode uses /run instead.
     """
+    settings = get_settings()
+    settings = settings.model_copy(update={"qwen_model": settings.resolve_model(req.model)})
     try:
-        return run_stage(req, get_settings())
+        return run_stage(req, settings)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
