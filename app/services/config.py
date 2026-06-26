@@ -25,8 +25,17 @@ class Settings(BaseSettings):
     guard_enabled: bool = True
     guard_budget_usd: float = 5.0           # hard total spend cap; then block
     guard_min_input_chars: int = 8          # reject empty / junk input
-    guard_max_input_chars: int = 8000       # reject oversized prompts
-    guard_max_output_tokens: int = 1200     # cap answer length per call
+    # Anti-junk cap on a single call's user prompt. Must comfortably exceed the
+    # inter-agent prompts (later agents embed earlier agents' full JSON output,
+    # ~10k chars), otherwise the live pipeline degrades to Mock mid-run. Real cost
+    # is bounded by guard_budget_usd, not this, so a generous value is safe.
+    guard_max_input_chars: int = 32000      # reject oversized prompts
+    # Cap answer length per call. Must fit a complex Architect JSON (7+ blocks
+    # with connections) or the response truncates → invalid JSON → Mock fallback.
+    # 1200 was too tight for hard designs; even 4000 truncated the most block-rich
+    # Architect output (e.g. an industrial gateway), so use 6000. Real cost is
+    # bounded by the $ budget, not this cap.
+    guard_max_output_tokens: int = 6000     # cap answer length per call
     guard_rate_per_minute: int = 15         # runaway-loop backstop
     guard_rate_per_day: int = 250
     guard_max_calls_per_run: int = 8        # one /run must never exceed this

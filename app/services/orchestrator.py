@@ -22,7 +22,7 @@ from app.models.schemas import RunResponse, TraceStep
 from app.services.config import Settings
 from app.services.guard import GuardBlocked
 from app.services.mock import mock_run
-from app.services.qwen_client import QwenClient, QwenError
+from app.services.qwen_client import QwenClient, QwenError, QwenTruncatedError
 
 
 class Orchestrator:
@@ -57,6 +57,12 @@ class Orchestrator:
             return self._guarded_fallback(
                 requirements_text,
                 f"API limit reached ({e.reason}). Showing example data instead — no charge.",
+            )
+        except QwenTruncatedError as e:
+            return self._guarded_fallback(
+                requirements_text,
+                f"Qwen's answer was cut off ({e}). Showing example data instead — "
+                "try a simpler request or raise GUARD_MAX_OUTPUT_TOKENS.",
             )
         except QwenError as e:
             return self._guarded_fallback(

@@ -21,6 +21,12 @@ class QwenError(RuntimeError):
     """Raised when the Qwen API call fails or returns something unusable."""
 
 
+class QwenTruncatedError(QwenError):
+    """Raised when the model hit the output-token cap and the answer was cut off
+    mid-stream (finish_reason == "length"). Distinct from being unreachable: the
+    API was reached and answered — the answer was just too long for the cap."""
+
+
 class QwenClient:
     def __init__(self, settings: Settings, guard: ApiGuard | None = None, timeout: float = 60.0):
         self._api_key = settings.qwen_api_key
@@ -71,9 +77,18 @@ class QwenClient:
 
         data = resp.json()
         try:
-            content = data["choices"][0]["message"]["content"]
+            choice = data["choices"][0]
+            content = choice["message"]["content"]
         except (KeyError, IndexError, TypeError) as e:
             raise QwenError(f"Unexpected Qwen response shape: {str(data)[:300]}") from e
+
+        # The API answered, but if it hit the output-token cap the JSON is cut off
+        # mid-stream — flag that distinctly so callers don't report it as "unreachable".
+        if choice.get("finish_reason") == "length":
+            raise QwenTruncatedError(
+                f"answer exceeded the {self._guard.max_output_tokens}-token output cap "
+                "and was cut off"
+            )
 
         result = _parse_json_object(content)
 
