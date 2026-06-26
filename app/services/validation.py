@@ -220,7 +220,9 @@ def validate_project(
             encoding="utf-8",
         )
         if not png_ok:
-            notes.append("Schematic PNG could not be rendered; VERIFICATION.md is text-only.")
+            validation.notes.append(
+                "Schematic PNG could not be rendered; VERIFICATION.md is text-only."
+            )
 
     # --- Report ---------------------------------------------------------------
     (project_dir / "validation_report.md").write_text(
