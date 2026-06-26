@@ -219,7 +219,7 @@
     <template x-if="bench">
       <section class="panel" style="margin-top:18px">
         <h2>📊 Preset Bench</h2>
-        <div class="notice" x-show="bench.notice" x-text="'⚠️ ' + (bench.notice || '')" style="margin-bottom:12px"></div>
+        <div class="notice" x-show="bench.notice && !bench.illustrative" x-text="'⚠️ ' + (bench.notice || '')" style="margin-bottom:12px"></div>
         <p x-show="bench.takeaway" x-text="bench.takeaway" style="font-weight:600; margin-bottom:6px"></p>
         <p class="muted" x-show="bench.illustrative" style="font-size:12px; margin-bottom:10px">
           Illustrative numbers (Mock Mode) — run with a live Qwen key for real figures.</p>
