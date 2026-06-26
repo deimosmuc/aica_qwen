@@ -33,3 +33,18 @@ def test_requirements_keeps_explicit_questions():
         clarifications=[ClarifyingQuestion(id="p", text="Which supply?")],
     )
     assert r.questions == ["explicit one"]  # explicit questions are NOT overwritten
+
+
+def test_mock_requirements_has_clarifications():
+    from app.services.mock import mock_run
+
+    r = mock_run("").requirements
+    assert len(r.clarifications) >= 2
+    # at least one single and one multi, so the demo exercises both UIs
+    assert any(c.select == "single" for c in r.clarifications)
+    assert any(c.select == "multi" for c in r.clarifications)
+    # every clarification offers concrete options and a fallback assumption
+    assert all(c.options for c in r.clarifications)
+    assert all(c.assumption for c in r.clarifications)
+    # questions are backfilled so the legacy "Open questions" chip still counts
+    assert len(r.questions) == len(r.clarifications)

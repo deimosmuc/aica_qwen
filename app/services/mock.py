@@ -10,6 +10,8 @@ from app.models.schemas import (
     Arbitration,
     Architecture,
     Block,
+    ClarifyOption,
+    ClarifyingQuestion,
     Connection,
     Critique,
     Requirements,
@@ -31,9 +33,30 @@ def mock_run(requirements_text: str) -> RunResponse:
             "Industrial environment (ESD / surge exposure on the 24 V rail)",
             "Single-board design",
         ],
-        questions=[
-            "Is galvanic isolation required on the RS485 interface?",
-            "What is the maximum current budget on the 5 V rail?",
+        clarifications=[
+            ClarifyingQuestion(
+                id="rs485-isolation",
+                text="Is galvanic isolation required on the RS485 interface?",
+                select="single",
+                options=[
+                    ClarifyOption(label="Isolated transceiver + isolated DC-DC",
+                                  detail="robust on a noisy fieldbus, more parts/cost"),
+                    ClarifyOption(label="Non-isolated transceiver",
+                                  detail="cheaper and smaller, fine for short quiet links"),
+                ],
+                assumption="Non-isolated RS485",
+            ),
+            ClarifyingQuestion(
+                id="status-indicators",
+                text="Which status indications should the board expose?",
+                select="multi",
+                options=[
+                    ClarifyOption(label="Power LED", detail="supply present"),
+                    ClarifyOption(label="Fault LED", detail="error / brown-out"),
+                    ClarifyOption(label="Bus-activity LED", detail="RS485 traffic"),
+                ],
+                assumption="A single status LED",
+            ),
         ],
         assumptions=[
             "ASSUMPTION: 24 V -> 5 V -> 3V3 cascaded power architecture",
