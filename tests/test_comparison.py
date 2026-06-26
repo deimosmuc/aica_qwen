@@ -36,6 +36,24 @@ def test_mock_comparison_is_labelled_illustrative():
     assert cmp.single_calls == 0
 
 
+def test_comparison_records_side_models():
+    cmp = run_comparison(TEXT, _mock_settings(), single_model="qwen-max")
+    assert cmp.multi_model == "qwen-plus"   # default
+    assert cmp.single_model == "qwen-max"   # allow-listed, recorded for display
+
+
+def test_comparison_unknown_side_model_falls_back_to_default():
+    cmp = run_comparison(TEXT, _mock_settings(), single_model="gpt-4")
+    assert cmp.single_model == "qwen-plus"
+
+
+def test_comparison_simple_metrics_present():
+    cmp = run_comparison(TEXT, _mock_settings())
+    # findings & honesty are symmetric, comparable categories on both sides.
+    assert cmp.multi_findings >= cmp.single_findings
+    assert cmp.multi_honesty >= 0 and cmp.single_honesty >= 0
+
+
 def test_guard_blocked_baseline_falls_back_with_notice(monkeypatch):
     # Live mode (key set), but stub the pipeline so no real Qwen call happens, and
     # force the baseline call to be blocked by the guard. It must fall back to the

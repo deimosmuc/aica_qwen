@@ -18,6 +18,9 @@ class RunRequest(BaseModel):
     guidance: list[str] = Field(
         default=[], description="Hard user constraints (e.g. mandated parts) every agent must honor."
     )
+    model: str | None = Field(
+        default=None, description="Optional Qwen model override; ignored unless allow-listed."
+    )
 
 
 # --- Requirements Agent ------------------------------------------------------
@@ -170,6 +173,8 @@ class ConcernResult(BaseModel):
 
 class CompareRequest(BaseModel):
     requirements_text: str = Field(..., description="The natural-language hardware request.")
+    multi_model: str | None = None
+    single_model: str | None = None
 
 
 class Comparison(BaseModel):
@@ -185,6 +190,13 @@ class Comparison(BaseModel):
     multi_output: RunResponse
     single_output: BaselineResult
     notice: str | None = None
+    # Per-side model + simple metrics (additive — existing fields unchanged).
+    multi_model: str = "qwen-plus"
+    single_model: str = "qwen-plus"
+    multi_findings: int = 0
+    single_findings: int = 0
+    multi_honesty: int = 0
+    single_honesty: int = 0
 
 
 # --- Stepwise pipeline (one agent at a time, human sign-off between steps) ----
@@ -199,6 +211,7 @@ class StepRequest(BaseModel):
     stage: Stage
     requirements_text: str
     guidance: list[str] = []
+    model: str | None = None
     requirements: Requirements | None = None
     architecture: Architecture | None = None
     critique: Critique | None = None
