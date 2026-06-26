@@ -22,3 +22,5 @@ kicad_test/render/
 .DS_Store
 .idea/
 .vscode/
+
+.superpowers/
