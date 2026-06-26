@@ -9,7 +9,7 @@ without an API key.
 from __future__ import annotations
 
 from app.models.schemas import BenchResult, BenchRow, RunResponse, RunUsage
-from app.services.comparison import _flatten_multi
+from app.services.comparison import flatten_multi
 from app.services.config import Settings
 from app.services.guard import ApiGuard
 from app.services.orchestrator import Orchestrator
@@ -72,6 +72,8 @@ def _mock_result(requirements_text: str) -> BenchResult:
 
 
 def run_bench(requirements_text: str, settings: Settings, guard: ApiGuard | None = None) -> BenchResult:
+    # `guard` is a test-injection hook (mirrors Orchestrator); the live endpoint
+    # passes none, so a fresh shared ApiGuard is built per bench run.
     if settings.mock_mode:
         return _mock_result(requirements_text)
 
@@ -84,7 +86,7 @@ def run_bench(requirements_text: str, settings: Settings, guard: ApiGuard | None
         if resp.notice:
             notice = resp.notice  # surface the last guard/fallback notice, if any
         usage = resp.usage or RunUsage()
-        quality = coverage(_flatten_multi(resp))
+        quality = coverage(flatten_multi(resp))
         rows.append(BenchRow(
             preset=name, rounds=_rounds(resp), usage=usage, quality=quality,
             quality_per_cent=_quality_per_cent(quality, usage),
