@@ -39,8 +39,10 @@ def test_budget_cap_blocks(tmp_path):
     g = make_guard(tmp_path, lambda: 1000.0, guard_budget_usd=0.01,
                    guard_price_in_per_1k=1.0, guard_price_out_per_1k=1.0)
     # A normal request already exceeds the tiny 0.01 budget on estimate.
+    # Use an UNLISTED model so the flat guard_price_*_per_1k=1.0 overrides apply
+    # (a listed model would take the per-model price map and ignore the override).
     with pytest.raises(GuardBlocked) as e:
-        g.precheck("sys", "A 24V board with an STM32 and RS485", "qwen-plus")
+        g.precheck("sys", "A 24V board with an STM32 and RS485", "test-model-unlisted")
     assert "budget" in str(e.value).lower()
 
 
