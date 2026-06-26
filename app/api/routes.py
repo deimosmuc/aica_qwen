@@ -15,11 +15,14 @@ from fastapi.responses import FileResponse
 
 from app.generators.kicad import generate_scaffold
 from app.models.schemas import (
+    CompareRequest,
+    Comparison,
     GenerateRequest,
     GenerateResponse,
     RunRequest,
     RunResponse,
 )
+from app.services.comparison import run_comparison
 from app.services.config import get_settings
 from app.services.guard import ApiGuard
 from app.services.kicad_cli import KiCadCli, KiCadCliError
@@ -115,3 +118,10 @@ def download(project_id: str) -> FileResponse:
         media_type="application/zip",
         filename=f"ai-circuit-architect-{project_id}.zip",
     )
+
+
+@router.post("/compare", response_model=Comparison)
+def compare(req: CompareRequest) -> Comparison:
+    """Run the same requirement through the multi-agent pipeline and a single-agent
+    baseline, and score both with the deterministic rubric."""
+    return run_comparison(req.requirements_text, get_settings())

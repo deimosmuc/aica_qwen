@@ -129,3 +129,43 @@ class GenerateResponse(BaseModel):
     preview_svg_url: str | None = None
     download_url: str | None = None
     files: list[str] = []
+
+
+# --- Single-agent baseline + comparison --------------------------------------
+
+
+class BaselineResult(BaseModel):
+    """One-shot single-agent output, kept at the same high level as the pipeline."""
+
+    architecture: list[str] = []
+    concerns: list[str] = []
+    todos: list[str] = []
+    human_review: list[str] = []
+    assumptions: list[str] = []
+    notes: list[str] = []
+
+
+class ConcernResult(BaseModel):
+    id: str
+    label: str
+    covered_multi: bool
+    covered_single: bool
+
+
+class CompareRequest(BaseModel):
+    requirements_text: str = Field(..., description="The natural-language hardware request.")
+
+
+class Comparison(BaseModel):
+    requirements_text: str
+    mode: Literal["mock", "qwen"]
+    concerns: list[ConcernResult]
+    multi_score: int
+    single_score: int
+    total: int
+    delta: int
+    multi_calls: int
+    single_calls: int
+    multi_output: RunResponse
+    single_output: BaselineResult
+    notice: str | None = None

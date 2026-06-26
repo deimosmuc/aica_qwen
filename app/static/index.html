@@ -77,6 +77,15 @@
     .preview { margin-top: 8px; background: #fff; border: 1px solid var(--line);
       border-radius: 8px; padding: 8px; overflow: auto; max-height: 520px; }
     .preview img { width: 100%; height: auto; display: block; }
+    .cmp-scores { display: flex; gap: 22px; flex-wrap: wrap; align-items: center; }
+    .cmp-score { font-size: 28px; font-weight: 700; }
+    .cmp-score .of { color: var(--muted); font-size: 16px; font-weight: 400; }
+    .cmp-delta { padding: 6px 12px; border-radius: 999px; font-weight: 600;
+      background: rgba(63,185,80,.15); color: var(--ok); border: 1px solid var(--ok); }
+    .cmp-delta.neutral { background: var(--panel-2); color: var(--muted); border-color: var(--line); }
+    table.cmp { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+    table.cmp th, table.cmp td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+    table.cmp th.c, table.cmp td.c { text-align: center; width: 90px; }
   </style>
 </head>
 <body x-data="architect()" x-init="init()">
@@ -101,10 +110,42 @@
       <div class="row">
         <button class="primary" @click="run()" :disabled="loading || !input.trim()"
           x-text="loading ? 'Agents working…' : 'Run agents'"></button>
-        <button @click="loadExample()" :disabled="loading">Load example</button>
+        <button @click="compareRun()" :disabled="comparing || !input.trim()"
+          x-text="comparing ? 'Comparing…' : 'Compare: multi vs single agent'"></button>
+        <button @click="loadExample()" :disabled="loading || comparing">Load example</button>
       </div>
+      <p class="muted" x-show="cmpError" style="margin-top:10px; color: var(--warn)" x-text="cmpError"></p>
       <p class="spinner" x-show="loading">The agent team is analysing, designing, reviewing and arbitrating…</p>
     </section>
+
+    <template x-if="cmp">
+      <section class="panel">
+        <h2>Multi-agent vs single-agent</h2>
+        <div class="notice" x-show="cmp.notice" x-text="'⚠️ ' + (cmp.notice || '')" style="margin-bottom:14px"></div>
+        <div class="cmp-scores">
+          <div><div class="muted">Multi-agent</div>
+            <div class="cmp-score" x-text="cmp.multi_score"></div><span class="of" x-text="'/ ' + cmp.total"></span></div>
+          <div><div class="muted">Single-agent</div>
+            <div class="cmp-score" x-text="cmp.single_score"></div><span class="of" x-text="'/ ' + cmp.total"></span></div>
+          <span class="cmp-delta" :class="cmp.delta > 0 ? '' : 'neutral'"
+            x-text="cmp.delta > 0 ? ('Multi-agent surfaces +' + cmp.delta + ' more') : (cmp.delta === 0 ? 'Tie on coverage' : ('Single-agent ahead by ' + (-cmp.delta)))"></span>
+        </div>
+        <p class="muted" style="margin-top:8px"
+          x-text="cmp.multi_calls + ' agent calls vs ' + cmp.single_calls + ' — more engineering value per extra call. Coverage = concern surfaced as engineering work, not a placed component.'"></p>
+        <table class="cmp">
+          <thead><tr><th>Engineering concern</th><th class="c">Multi</th><th class="c">Single</th></tr></thead>
+          <tbody>
+            <template x-for="c in cmp.concerns" :key="c.id">
+              <tr>
+                <td x-text="c.label"></td>
+                <td class="c" x-text="c.covered_multi ? '✅' : '—'"></td>
+                <td class="c" x-text="c.covered_single ? '✅' : '—'"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </section>
+    </template>
 
     <template x-if="result">
       <div style="display:grid; gap:22px;">
@@ -235,6 +276,7 @@
       return {
         input: "", loading: false, result: null, approved: false, mode: "mock", guard: null,
         generating: false, gen: null, genError: "",
+        comparing: false, cmp: null, cmpError: "",
         async init() {
           try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
           await this.fetchGuard();
@@ -271,6 +313,20 @@
           } catch (e) {
             this.genError = "⚠️ " + e.message;
           } finally { this.generating = false; }
+        },
+        async compareRun() {
+          this.comparing = true; this.cmp = null; this.cmpError = "";
+          try {
+            const res = await fetch("/api/compare", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ requirements_text: this.input })
+            });
+            if (!res.ok) throw new Error("Compare failed (" + res.status + ")");
+            this.cmp = await res.json();
+            await this.fetchGuard();
+          } catch (e) {
+            this.cmpError = "⚠️ " + e.message;
+          } finally { this.comparing = false; }
         }
       };
     }
