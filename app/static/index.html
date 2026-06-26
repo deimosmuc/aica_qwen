@@ -255,7 +255,7 @@
                             <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px">
                               <template x-for="o in q.options" :key="o.label">
                                 <label style="display:flex; gap:8px; align-items:flex-start; cursor:pointer">
-                                  <input :type="q.select==='multi' ? 'checkbox' : 'radio'"
+                                  <input :type="q.select==='multi' ? 'checkbox' : 'radio'" :name="q.id"
                                          :checked="clarifyAnswers[q.id] && clarifyAnswers[q.id].picked.includes(o.label)"
                                          @change="clarifyToggle(q, o.label)">
                                   <span><b x-text="o.label"></b><span class="muted" x-show="o.detail" x-text="' — ' + o.detail"></span></span>

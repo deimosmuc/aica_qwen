@@ -6,6 +6,13 @@
       "runtimeExecutable": ".venv\\Scripts\\python.exe",
       "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--port", "8000"],
       "port": 8000
+    },
+    {
+      "name": "app-mock",
+      "runtimeExecutable": ".venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--port", "8011"],
+      "port": 8011,
+      "env": { "QWEN_API_KEY": "" }
     }
   ]
 }
