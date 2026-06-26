@@ -32,10 +32,10 @@ def _to_markdown(cmp) -> str:
         "",
         f"**Multi-agent @ {cmp.multi_model}: {cmp.multi_score}/{cmp.total} concerns surfaced "
         f"({cmp.multi_calls} agent call{'s' if cmp.multi_calls != 1 else ''}; "
-        f"{cmp.multi_blocks} blocks, {cmp.multi_findings} findings, {cmp.multi_honesty} honesty markers).**",
+        f"{cmp.multi_findings} findings, {cmp.multi_honesty} honesty markers).**",
         f"**Single-agent @ {cmp.single_model}: {cmp.single_score}/{cmp.total} concerns surfaced "
         f"({cmp.single_calls} call{'s' if cmp.single_calls != 1 else ''}; "
-        f"{cmp.single_blocks} blocks, {cmp.single_findings} findings, {cmp.single_honesty} honesty markers).**",
+        f"{cmp.single_findings} findings, {cmp.single_honesty} honesty markers).**",
         f"**Difference: {'+' if cmp.delta >= 0 else ''}{cmp.delta} concerns "
         f"({'multi-agent ahead' if cmp.delta > 0 else 'tie' if cmp.delta == 0 else 'single-agent ahead'}).**",
         "",

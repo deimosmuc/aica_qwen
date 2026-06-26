@@ -193,8 +193,6 @@ class Comparison(BaseModel):
     # Per-side model + simple metrics (additive — existing fields unchanged).
     multi_model: str = "qwen-plus"
     single_model: str = "qwen-plus"
-    multi_blocks: int = 0
-    single_blocks: int = 0
     multi_findings: int = 0
     single_findings: int = 0
     multi_honesty: int = 0

@@ -60,20 +60,18 @@ def _flatten_baseline(b: BaselineResult) -> str:
     )
 
 
-def _multi_stats(r: RunResponse) -> tuple[int, int, int]:
-    """blocks, review findings, honesty markers — from the multi-agent output."""
-    blocks = len(r.architecture.blocks)
+def _multi_stats(r: RunResponse) -> tuple[int, int]:
+    """review findings, honesty markers — from the multi-agent output."""
     findings = len(r.critique.warnings) + len(r.critique.risks) + len(r.critique.missing_blocks)
     honesty = len(r.arbitration.todo) + len(r.arbitration.human_review) + len(r.arbitration.accepted_assumptions)
-    return blocks, findings, honesty
+    return findings, honesty
 
 
-def _single_stats(b: BaselineResult) -> tuple[int, int, int]:
-    """blocks, review findings, honesty markers — from the single-agent output."""
-    blocks = len(b.architecture)
+def _single_stats(b: BaselineResult) -> tuple[int, int]:
+    """review findings, honesty markers — from the single-agent output."""
     findings = len(b.concerns)
     honesty = len(b.todos) + len(b.human_review) + len(b.assumptions)
-    return blocks, findings, honesty
+    return findings, honesty
 
 
 def run_comparison(
@@ -117,8 +115,8 @@ def run_comparison(
     ]
     multi_score = sum(multi_scores.values())
     single_score = sum(single_scores.values())
-    mb, mf, mh = _multi_stats(multi)
-    sb, sf, sh = _single_stats(baseline)
+    mf, mh = _multi_stats(multi)
+    sf, sh = _single_stats(baseline)
 
     return Comparison(
         requirements_text=requirements_text,
@@ -135,8 +133,6 @@ def run_comparison(
         notice=notice,
         multi_model=multi_name,
         single_model=single_name,
-        multi_blocks=mb,
-        single_blocks=sb,
         multi_findings=mf,
         single_findings=sf,
         multi_honesty=mh,

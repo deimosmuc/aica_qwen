@@ -49,7 +49,7 @@ def test_comparison_unknown_side_model_falls_back_to_default():
 
 def test_comparison_simple_metrics_present():
     cmp = run_comparison(TEXT, _mock_settings())
-    assert cmp.multi_blocks > 0 and cmp.single_blocks > 0
+    # findings & honesty are symmetric, comparable categories on both sides.
     assert cmp.multi_findings >= cmp.single_findings
     assert cmp.multi_honesty >= 0 and cmp.single_honesty >= 0
 
