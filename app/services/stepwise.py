@@ -63,7 +63,7 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
     try:
         if req.stage == "requirements":
             t = perf_counter()
-            out: Requirements = RequirementsAgent().run(client, req.requirements_text)
+            out: Requirements = RequirementsAgent().run(client, req.requirements_text, req.guidance)
             ms = int((perf_counter() - t) * 1000)
             step = _trace(
                 RequirementsAgent,
@@ -78,7 +78,7 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
             if req.requirements is None:
                 raise ValueError("The architecture stage needs the approved requirements.")
             t = perf_counter()
-            arch: Architecture = SystemArchitectAgent().run(client, req.requirements)
+            arch: Architecture = SystemArchitectAgent().run(client, req.requirements, req.guidance)
             ms = int((perf_counter() - t) * 1000)
             step = _trace(
                 SystemArchitectAgent,
@@ -93,7 +93,9 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
             if req.requirements is None or req.architecture is None:
                 raise ValueError("The critique stage needs the approved requirements and architecture.")
             t = perf_counter()
-            crit: Critique = DesignCriticAgent().run(client, req.requirements, req.architecture)
+            crit: Critique = DesignCriticAgent().run(
+                client, req.requirements, req.architecture, req.guidance
+            )
             ms = int((perf_counter() - t) * 1000)
             n = len(crit.warnings) + len(crit.risks) + len(crit.missing_blocks)
             step = _trace(
@@ -112,7 +114,7 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
                 )
             t = perf_counter()
             arb: Arbitration = ArbitrationAgent().run(
-                client, req.requirements, req.architecture, req.critique
+                client, req.requirements, req.architecture, req.critique, req.guidance
             )
             ms = int((perf_counter() - t) * 1000)
             step = _trace(

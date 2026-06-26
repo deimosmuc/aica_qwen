@@ -11,7 +11,7 @@ structure the KiCad generator depends on in later milestones.
 """
 from __future__ import annotations
 
-from app.agents.base import ChatClient
+from app.agents.base import ChatClient, guidance_block
 from app.models.schemas import Arbitration, Architecture, Critique, Requirements
 
 NAME = "Arbitration"
@@ -57,6 +57,7 @@ class ArbitrationAgent:
         requirements: Requirements,
         architecture: Architecture,
         critique: Critique,
+        guidance: list[str] | None = None,
     ) -> Arbitration:
         user = (
             "Arbitrate this design. Decide TODOs, human-review items and "
@@ -67,6 +68,7 @@ class ArbitrationAgent:
             + architecture.model_dump_json(indent=2)
             + "\n\nCRITIC FINDINGS:\n"
             + critique.model_dump_json(indent=2)
+            + guidance_block(guidance)
         )
         data = client.chat_json(SYSTEM_PROMPT, user)
         # The arbitrator triages findings; it does not redesign. We attach the

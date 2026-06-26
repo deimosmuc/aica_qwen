@@ -118,6 +118,13 @@
       font-size: 12px; font-weight: 600; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
     .status-chip .live { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
     .status-chip .live.mock { background: var(--warn); }
+    details.constraints { margin-top: 12px; }
+    details.constraints > summary { cursor: pointer; color: var(--accent); font-size: 13px; user-select: none; }
+    details.constraints textarea { margin-top: 8px; min-height: 0; }
+    .active-cons { margin-top: 10px; font-size: 13px; }
+    .active-cons b { font-size: 12px; text-transform: uppercase; letter-spacing: .3px; color: var(--warn); }
+    .active-cons ul { margin-top: 4px; }
+    textarea.correct { width: 100%; margin-top: 8px; min-height: 0; }
   </style>
 </head>
 <body x-data="architect()" x-init="init()">
@@ -148,6 +155,12 @@
         <button @click="loadExample()" :disabled="loading || comparing">Load example</button>
       </div>
       <label class="auto-toggle"><input type="checkbox" x-model="auto" /> Auto mode (run all steps at once)</label>
+      <details class="constraints">
+        <summary>Hard constraints / mandated parts (optional)</summary>
+        <textarea x-model="constraintsText" rows="3"
+          placeholder="One per line — every agent must honor these. E.g.&#10;Must use STM32H743 (company standard)&#10;RS485 transceiver must be galvanically isolated (safety regulation)"></textarea>
+        <p class="muted">Handed to the whole agent pipeline as non-negotiable requirements.</p>
+      </details>
       <p class="muted" x-show="cmpError" style="margin-top:10px; color: var(--warn)" x-text="cmpError"></p>
       <p class="spinner" x-show="loading">The agent team is analysing, designing, reviewing and arbitrating…</p>
     </section>
@@ -240,9 +253,15 @@
                   </div>
                 </template>
               </div>
+              <div x-show="acc.guidance.length" class="active-cons">
+                <b>Active constraints (honored by every agent)</b>
+                <ul><template x-for="g in acc.guidance" :key="g"><li x-text="g"></li></template></ul>
+              </div>
+              <textarea class="correct" x-model="correctText" rows="2"
+                placeholder="Course-correct (optional): e.g. 'Wrong track — we must use part XYZ by company policy.' Then Re-run."></textarea>
               <div class="row" style="margin-top:12px">
                 <button class="approve" @click="approveStep()">Freigeben &amp; weiter</button>
-                <button @click="redoStep()">Schritt wiederholen</button>
+                <button @click="redoStep()" x-text="correctText.trim() ? 'Re-run with my correction' : 'Schritt wiederholen'"></button>
                 <button @click="stopStep()">Stopp</button>
               </div>
             </div>
@@ -468,7 +487,7 @@
         comparing: false, cmp: null, cmpError: "",
         auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration"],
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
-        diagramSvg: null,
+        diagramSvg: null, constraintsText: "", correctText: "",
         async init() {
           try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
           await this.fetchGuard();
@@ -490,7 +509,7 @@
           try {
             const res = await fetch("/api/run", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ requirements_text: this.input })
+              body: JSON.stringify({ requirements_text: this.input, guidance: this.parseConstraints() })
             });
             this.result = await res.json();
             this.mode = this.result.mode;
@@ -501,7 +520,7 @@
         async runStep() {
           this._resetRun();
           this.acc = { mode: "mock", requirements: null, architecture: null,
-            critique: null, arbitration: null, trace: [] };
+            critique: null, arbitration: null, trace: [], guidance: this.parseConstraints() };
           await this.loadStage(0);
         },
         async loadStage(i) {
@@ -512,6 +531,7 @@
               body: JSON.stringify({
                 stage: this.STAGES[i],
                 requirements_text: this.input,
+                guidance: this.acc.guidance,
                 requirements: this.acc.requirements,
                 architecture: this.acc.architecture,
                 critique: this.acc.critique
@@ -543,7 +563,12 @@
           this.mode = this.acc.mode; this.acc = null; this.stepIdx = -1;
           this.diagramSvg = this.buildDiagram(this.result.architecture);
         },
-        redoStep() { if (this.stepIdx >= 0 && !this.stepBusy) this.loadStage(this.stepIdx); },
+        redoStep() {
+          if (this.stepIdx < 0 || this.stepBusy) return;
+          const note = this.correctText.trim();
+          if (note) { this.acc.guidance.push(note); this.correctText = ""; }
+          this.loadStage(this.stepIdx);
+        },
         stopStep() { this.acc = null; this.pending = null; this.stepIdx = -1; this.stepStopped = true; },
         approve() { this.approved = true; },
         async generate() {
@@ -576,6 +601,9 @@
         fmtMs(ms) {
           if (ms == null) return "";
           return ms < 1000 ? ms + " ms" : (ms / 1000).toFixed(1) + " s";
+        },
+        parseConstraints() {
+          return this.constraintsText.split("\n").map(s => s.trim()).filter(Boolean);
         },
         buildDiagram(arch) {
           const blocks = (arch && arch.blocks) || [];

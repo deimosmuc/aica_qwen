@@ -30,7 +30,7 @@ class Orchestrator:
         self.settings = settings
         self._client = client
 
-    def run(self, requirements_text: str) -> RunResponse:
+    def run(self, requirements_text: str, guidance: list[str] | None = None) -> RunResponse:
         # No API key -> Mock Mode: the whole demo works with example data.
         if self.settings.mock_mode:
             return mock_run(requirements_text)
@@ -42,16 +42,16 @@ class Orchestrator:
         # surprises and the demo keeps working.
         try:
             t = perf_counter()
-            requirements = RequirementsAgent().run(client, requirements_text)
+            requirements = RequirementsAgent().run(client, requirements_text, guidance)
             req_ms = int((perf_counter() - t) * 1000)
             t = perf_counter()
-            architecture = SystemArchitectAgent().run(client, requirements)
+            architecture = SystemArchitectAgent().run(client, requirements, guidance)
             arch_ms = int((perf_counter() - t) * 1000)
             t = perf_counter()
-            critique = DesignCriticAgent().run(client, requirements, architecture)
+            critique = DesignCriticAgent().run(client, requirements, architecture, guidance)
             crit_ms = int((perf_counter() - t) * 1000)
             t = perf_counter()
-            arbitration = ArbitrationAgent().run(client, requirements, architecture, critique)
+            arbitration = ArbitrationAgent().run(client, requirements, architecture, critique, guidance)
             arb_ms = int((perf_counter() - t) * 1000)
         except GuardBlocked as e:
             return self._guarded_fallback(

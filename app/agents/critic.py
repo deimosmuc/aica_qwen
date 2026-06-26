@@ -6,7 +6,7 @@ architecture — it only reports findings for the Arbitration agent to weigh.
 """
 from __future__ import annotations
 
-from app.agents.base import ChatClient
+from app.agents.base import ChatClient, guidance_block
 from app.models.schemas import Architecture, Critique, Requirements
 
 NAME = "Design Critic"
@@ -44,7 +44,11 @@ class DesignCriticAgent:
     role = ROLE
 
     def run(
-        self, client: ChatClient, requirements: Requirements, architecture: Architecture
+        self,
+        client: ChatClient,
+        requirements: Requirements,
+        architecture: Architecture,
+        guidance: list[str] | None = None,
     ) -> Critique:
         user = (
             "Review this proposed architecture against its requirements.\n\n"
@@ -52,6 +56,7 @@ class DesignCriticAgent:
             + requirements.model_dump_json(indent=2)
             + "\n\nARCHITECTURE:\n"
             + architecture.model_dump_json(indent=2)
+            + guidance_block(guidance)
         )
         data = client.chat_json(SYSTEM_PROMPT, user)
         return Critique.model_validate(data)

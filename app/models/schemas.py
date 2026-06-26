@@ -15,6 +15,9 @@ from pydantic import BaseModel, Field
 
 class RunRequest(BaseModel):
     requirements_text: str = Field(..., description="Natural-language hardware requirements from the user.")
+    guidance: list[str] = Field(
+        default=[], description="Hard user constraints (e.g. mandated parts) every agent must honor."
+    )
 
 
 # --- Requirements Agent ------------------------------------------------------
@@ -194,6 +197,7 @@ class StepRequest(BaseModel):
 
     stage: Stage
     requirements_text: str
+    guidance: list[str] = []
     requirements: Requirements | None = None
     architecture: Architecture | None = None
     critique: Critique | None = None

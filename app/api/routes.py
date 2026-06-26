@@ -63,7 +63,7 @@ def run(req: RunRequest) -> RunResponse:
     is generated yet — that happens only after explicit human approval.
     """
     settings = get_settings()
-    return Orchestrator(settings).run(req.requirements_text)
+    return Orchestrator(settings).run(req.requirements_text, req.guidance)
 
 
 @router.post("/generate", response_model=GenerateResponse)

@@ -75,6 +75,22 @@ def test_agent_parses_valid_json_into_requirements():
     assert "STM32" in client.calls[0]["user"]
 
 
+def test_agent_appends_hard_constraints_to_prompt():
+    client = FakeClient(VALID)
+    RequirementsAgent().run(
+        client, "A 24V board", guidance=["Must use the XYZ123 MCU (company policy)"]
+    )
+    sent = client.calls[0]["user"]
+    assert "XYZ123" in sent
+    assert "MANDATORY USER CONSTRAINTS" in sent
+
+
+def test_agent_without_guidance_adds_no_constraint_block():
+    client = FakeClient(VALID)
+    RequirementsAgent().run(client, "A 24V board")
+    assert "MANDATORY USER CONSTRAINTS" not in client.calls[0]["user"]
+
+
 def test_agent_rejects_non_dict_payload():
     client = FakeClient(QwenError("bad json"))
     with pytest.raises(QwenError):
