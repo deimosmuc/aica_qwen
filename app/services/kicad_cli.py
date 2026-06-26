@@ -25,6 +25,9 @@ class KiCadCliError(RuntimeError):
     """Raised when a kicad-cli invocation fails or times out."""
 
 
+_UNSET = object()
+
+
 # Known install locations to try when no explicit path is configured and the
 # tool is not on PATH. Linux first (the deployment target), then local Windows.
 _KNOWN_PATHS = (
@@ -39,6 +42,7 @@ class KiCadCli:
     def __init__(self, settings: Settings):
         self.timeout = settings.kicad_timeout_s
         self._path = self._resolve(settings) if settings.kicad_enabled else None
+        self._version_cache = _UNSET  # lazily filled by version()
 
     @staticmethod
     def _resolve(settings: Settings) -> str | None:
@@ -62,6 +66,26 @@ class KiCadCli:
     @property
     def path(self) -> str | None:
         return self._path
+
+    def version(self) -> str | None:
+        """Return the kicad-cli version string, or None if unavailable.
+
+        Cached after the first call. A failed/zero-output query caches as None
+        so the badge can still say "Verified in KiCad" without a number.
+        """
+        if self._version_cache is not _UNSET:
+            return self._version_cache
+        if not self._path:
+            self._version_cache = None
+            return None
+        try:
+            proc = self._run(["version"])
+        except KiCadCliError:
+            self._version_cache = None
+            return None
+        out = proc.stdout.strip() if proc.returncode == 0 else ""
+        self._version_cache = out or None
+        return self._version_cache
 
     def _run(self, args: list[str]) -> subprocess.CompletedProcess:
         if not self._path:

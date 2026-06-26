@@ -71,6 +71,10 @@
       border: 1px solid var(--line); }
     .valbadge.ok { background: rgba(63,185,80,.15); color: var(--ok); border-color: var(--ok); }
     .valbadge.fail { background: rgba(210,153,34,.15); color: var(--warn); border-color: var(--warn); }
+    .valbadge.warn { background: rgba(210,153,34,.15); color: var(--warn); border-color: var(--warn); }
+    .valbadge.verified { background: rgba(63,185,80,.15); color: var(--ok); border-color: var(--ok); }
+    .verifycard { margin-top: 8px; font-size: 13px; color: var(--muted); }
+    .verifycard b { color: var(--ok); }
     .dl { margin-left: auto; text-decoration: none; }
     .checks { list-style: none; padding-left: 0; }
     .checks li { margin: 6px 0; font-size: 14px; }
@@ -443,8 +447,13 @@
           <section class="panel">
             <h2>6 · KiCad scaffold</h2>
             <div class="valhead">
-              <span class="valbadge" :class="gen.validation.ok ? 'ok' : 'fail'"
-                x-text="gen.validation.ok ? '✓ Validation passed' : '✗ Validation failed'"></span>
+              <span class="valbadge"
+                :class="!gen.validation.kicad_cli_available ? 'warn' : (gen.validation.kicad_opens ? 'verified' : 'fail')"
+                x-text="!gen.validation.kicad_cli_available
+                  ? '⚠ Structural checks only — KiCad not available'
+                  : (gen.validation.kicad_opens
+                      ? ('✅ Verified in ' + (gen.validation.kicad_version || 'KiCad'))
+                      : '❌ KiCad verification failed')"></span>
               <a class="dl" :href="gen.download_url"><button class="approve">⬇ Download ZIP</button></a>
             </div>
             <div class="grid2" style="margin-top:16px">
@@ -458,8 +467,13 @@
                     </li>
                   </template>
                 </ul>
-                <p class="muted" x-show="gen.validation.kicad_cli_available" style="margin-top:8px"
-                  x-text="'ERC violations: ' + (gen.validation.erc_violations === null ? 'n/a' : gen.validation.erc_violations)"></p>
+                <p class="muted" style="margin-top:8px"
+                  x-text="'Structural checks: ' + (gen.validation.ok ? '✅ all passed' : '⚠️ see report')"></p>
+                <div class="verifycard" x-show="gen.validation.kicad_cli_available">
+                  <span x-text="'KiCad: ' + (gen.validation.kicad_version || 'available')"></span>
+                  · <span x-text="gen.validation.kicad_opens ? 'opens & exports ✓' : 'open/export ✗'"></span>
+                  · <span x-text="'ERC ran — ' + (gen.validation.erc_violations === null ? 'n/a' : gen.validation.erc_violations) + ' violations'"></span>
+                </div>
                 <p class="muted" x-show="!gen.validation.kicad_cli_available" style="margin-top:8px">
                   kicad-cli not available here — structural checks only; preview disabled.
                 </p>

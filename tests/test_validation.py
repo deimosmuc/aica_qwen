@@ -19,6 +19,9 @@ class FakeKiCad:
         self._erc = erc if erc is not None else {"sheets": []}
         self._fail_erc = fail_erc
 
+    def version(self):
+        return "KiCad 9.0.1" if self._available else None
+
     @property
     def available(self):
         return self._available
@@ -95,6 +98,29 @@ def test_kicad_open_failure_fails_validation(tmp_path):
     assert v.kicad_opens is False
 
 
+def test_verification_artifacts_written_when_opens(tmp_path):
+    out = _scaffold(tmp_path)
+    v = validate_project(out, mock_run(REQ_TEXT), FakeKiCad(available=True, opens=True))
+    assert v.kicad_version == "KiCad 9.0.1"
+    assert (out / "schematic.pdf").is_file()        # the open-check export, persisted
+    assert (out / "VERIFICATION.md").is_file()       # summary travels with the artifact
+    text = (out / "VERIFICATION.md").read_text(encoding="utf-8")
+    assert "KiCad 9.0.1" in text
+
+
+def test_no_verification_artifacts_when_unavailable(tmp_path):
+    out = _scaffold(tmp_path)
+    validate_project(out, mock_run(REQ_TEXT), FakeKiCad(available=False))
+    assert not (out / "VERIFICATION.md").exists()
+    assert not (out / "schematic.pdf").exists()
+
+
+def test_no_verification_artifacts_when_open_fails(tmp_path):
+    out = _scaffold(tmp_path)
+    validate_project(out, mock_run(REQ_TEXT), FakeKiCad(available=True, opens=False))
+    assert not (out / "VERIFICATION.md").exists()
+
+
 @pytest.mark.skipif(
     not KiCadCli(Settings()).available, reason="kicad-cli not installed in this environment"
 )
@@ -104,3 +130,15 @@ def test_real_kicad_cli_end_to_end(tmp_path):
     assert v.kicad_cli_available is True
     assert v.kicad_opens is True  # the generated scaffold really opens in KiCad
     assert v.ok is True
+
+
+@pytest.mark.skipif(
+    not KiCadCli(Settings()).available, reason="kicad-cli not installed in this environment"
+)
+def test_real_kicad_produces_png_and_verification(tmp_path):
+    out = _scaffold(tmp_path)
+    validate_project(out, mock_run(REQ_TEXT), KiCadCli(Settings()))
+    assert (out / "schematic.pdf").is_file()
+    assert (out / "schematic_preview.png").is_file()   # real PDF renders to PNG
+    text = (out / "VERIFICATION.md").read_text(encoding="utf-8")
+    assert "schematic_preview.png" in text             # PNG is embedded in the summary
