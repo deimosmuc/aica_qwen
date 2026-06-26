@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # --- Request -----------------------------------------------------------------
@@ -27,12 +27,39 @@ class RunRequest(BaseModel):
 # --- Requirements Agent ------------------------------------------------------
 
 
+class ClarifyOption(BaseModel):
+    """One proposed, selectable answer to a clarifying question."""
+
+    label: str            # short, e.g. "USB-C, 5V"
+    detail: str = ""      # one-line rationale shown under the label
+
+
+class ClarifyingQuestion(BaseModel):
+    """An ambiguity the Requirements Agent surfaces with concrete options.
+    The user picks an option / types their own / skips (keeping `assumption`)."""
+
+    id: str
+    text: str
+    options: list[ClarifyOption] = []
+    select: Literal["single", "multi"] = "single"
+    assumption: str = ""  # what the agent assumes if the user skips
+
+
 class Requirements(BaseModel):
     requirements: list[str] = []
     constraints: list[str] = []
     questions: list[str] = []
     assumptions: list[str] = []
     confidence: float = 0.0
+    clarifications: list[ClarifyingQuestion] = []
+
+    @model_validator(mode="after")
+    def _backfill_questions(self):
+        # Keep the legacy plain-text "Open questions" list working when only the
+        # new structured clarifications are provided.
+        if self.clarifications and not self.questions:
+            self.questions = [c.text for c in self.clarifications]
+        return self
 
 
 # --- System Architect Agent --------------------------------------------------
