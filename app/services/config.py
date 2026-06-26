@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     qwen_api_key: str = ""
     qwen_base_url: str = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
     qwen_model: str = "qwen-plus"
+    # Curated, json_object-capable models the UI may select. "thinking" models
+    # are excluded — they don't support json_object output, which the pipeline needs.
+    qwen_models: list[str] = ["qwen-plus", "qwen-max", "qwen-turbo"]
 
     app_name: str = "AI Circuit Architect"
     app_version: str = "0.1.0"
@@ -56,6 +59,11 @@ class Settings(BaseSettings):
 
     # Where generated KiCad project scaffolds are written and served from.
     output_dir: str = "outputs/projects"
+
+    def resolve_model(self, requested: str | None) -> str:
+        """Return the requested model if it is allow-listed, else the default.
+        Unknown / empty / None all degrade silently to qwen_model (no error)."""
+        return requested if requested in self.qwen_models else self.qwen_model
 
     @property
     def mock_mode(self) -> bool:
