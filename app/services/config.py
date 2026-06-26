@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     guard_max_output_tokens: int = 6000     # cap answer length per call
     guard_rate_per_minute: int = 15         # runaway-loop backstop
     guard_rate_per_day: int = 250
-    guard_max_calls_per_run: int = 8        # one /run must never exceed this
+    guard_max_calls_per_run: int = 12       # headroom for the rework loop; $ budget is the real cap
 
     # Conservative price ESTIMATES (USD per 1K tokens). Deliberately set a bit
     # high so the budget guard errs on the safe side. Confirm against the
