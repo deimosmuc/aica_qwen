@@ -122,6 +122,7 @@ class Validation(BaseModel):
     # Real KiCad checks (None when kicad-cli is not available).
     kicad_cli_available: bool = False
     kicad_opens: bool | None = None
+    kicad_version: str | None = None
     erc_violations: int | None = None
     erc_by_severity: dict[str, int] = {}
     notes: list[str] = []

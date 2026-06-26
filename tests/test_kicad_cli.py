@@ -16,3 +16,8 @@ def test_bogus_path_degrades_gracefully():
     assert cli.available in (True, False)
     if not cli.available:
         assert cli.path is None
+
+
+def test_version_none_when_unavailable():
+    cli = KiCadCli(Settings(kicad_enabled=False))
+    assert cli.version() is None
