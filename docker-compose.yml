@@ -1,5 +1,7 @@
 services:
   app:
+    # Builds the KiCad-enabled image (see Dockerfile) — ~1.3 GB, first build
+    # downloads KiCad 9, so allow a few minutes.
     build: .
     ports:
       - "8000:8000"

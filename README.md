@@ -12,9 +12,11 @@ Built for the **Qwen Cloud Global AI Hackathon 2026** — track: *Agent Society*
 
 ## Status
 
-Milestone 1 — scaffold: FastAPI backend, Mock Mode, and a web UI showing the full
-flow (requirements → agent collaboration → human approval → download). The real
-Qwen-backed agents and KiCad generation arrive in later milestones.
+End-to-end working: FastAPI backend, four collaborating agents (Requirements →
+Architect → Critic → Arbitration), human approval, KiCad scaffold generation, real
+KiCad validation (open/export + ERC via `kicad-cli`), server-side SVG preview, and ZIP
+download. Runs fully in **Mock Mode** without a Qwen key, and degrades gracefully when
+`kicad-cli` is absent.
 
 ## Quick start (local)
 
@@ -31,9 +33,16 @@ and the full demo works with prepared example data.
 
 ## Run with Docker
 
+The image bundles KiCad 9 (`kicad-cli`) so real validation and the SVG preview work
+out of the box. It is ~1.3 GB and the first build downloads KiCad, so allow a few
+minutes.
+
 ```bash
 docker compose up --build
 ```
+
+Then open http://localhost:8000. KiCad is GPL-3.0 and bundled as a separate tool — see
+[NOTICE.md](NOTICE.md).
 
 ## Tests
 
