@@ -130,3 +130,15 @@ def test_real_kicad_cli_end_to_end(tmp_path):
     assert v.kicad_cli_available is True
     assert v.kicad_opens is True  # the generated scaffold really opens in KiCad
     assert v.ok is True
+
+
+@pytest.mark.skipif(
+    not KiCadCli(Settings()).available, reason="kicad-cli not installed in this environment"
+)
+def test_real_kicad_produces_png_and_verification(tmp_path):
+    out = _scaffold(tmp_path)
+    validate_project(out, mock_run(REQ_TEXT), KiCadCli(Settings()))
+    assert (out / "schematic.pdf").is_file()
+    assert (out / "schematic_preview.png").is_file()   # real PDF renders to PNG
+    text = (out / "VERIFICATION.md").read_text(encoding="utf-8")
+    assert "schematic_preview.png" in text             # PNG is embedded in the summary
