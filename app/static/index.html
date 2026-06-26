@@ -158,6 +158,11 @@
         <button @click="compareRun()" :disabled="comparing || !input.trim()"
           x-text="comparing ? 'Comparing…' : 'Compare: multi vs single agent'"></button>
         <button @click="loadExample()" :disabled="loading || comparing">Load example</button>
+        <label class="model-pick">Model:
+          <select x-model="selectedModel" :disabled="loading || stepBusy || comparing">
+            <template x-for="m in MODELS" :key="m"><option :value="m" x-text="m"></option></template>
+          </select>
+        </label>
       </div>
       <label class="auto-toggle"><input type="checkbox" x-model="auto" /> Auto mode (run all steps at once)</label>
       <details class="constraints">
@@ -503,6 +508,7 @@
         auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration"],
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
         diagramSvg: null, constraintsText: "", correctText: "",
+        MODELS: ["qwen-plus", "qwen-max", "qwen-turbo"], selectedModel: "qwen-plus",
         async init() {
           try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
           await this.fetchGuard();
@@ -524,7 +530,7 @@
           try {
             const res = await fetch("/api/run", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ requirements_text: this.input, guidance: this.parseConstraints() })
+              body: JSON.stringify({ requirements_text: this.input, guidance: this.parseConstraints(), model: this.selectedModel })
             });
             this.result = await res.json();
             this.mode = this.result.mode;
@@ -549,7 +555,8 @@
                 guidance: this.acc.guidance,
                 requirements: this.acc.requirements,
                 architecture: this.acc.architecture,
-                critique: this.acc.critique
+                critique: this.acc.critique,
+                model: this.selectedModel
               })
             });
             if (!res.ok) throw new Error("Step failed (" + res.status + ")");
