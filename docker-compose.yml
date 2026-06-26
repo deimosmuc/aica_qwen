@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Leave QWEN_API_KEY empty to run in Mock Mode (demo always works).
+      - QWEN_API_KEY=${QWEN_API_KEY:-}
+      - QWEN_MODEL=${QWEN_MODEL:-qwen-plus}
+    volumes:
+      - ./outputs:/app/outputs

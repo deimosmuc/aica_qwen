@@ -1,0 +1,44 @@
+(kicad_sch
+	(version 20250114)
+	(generator "ai_circuit_architect")
+	(generator_version "9.0")
+	(uuid "{{ root_uuid }}")
+	(paper "A4")
+	(lib_symbols)
+	(text "{{ title }}\n{{ subtitle }}"
+		(at 25.4 20 0)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left bottom)
+		)
+		(uuid "{{ title_uuid }}")
+	)
+{% for s in sheets %}	(sheet
+		(at {{ s.x }} {{ s.y }})
+		(size 40 30)
+		(fields_autoplaced yes)
+		(stroke (width 0.1524) (type solid))
+		(fill (color 0 0 0 0.0000))
+		(uuid "{{ s.block_uuid }}")
+		(property "Sheetname" "{{ s.name }}"
+			(at {{ s.x }} {{ s.y_name }} 0)
+			(effects (font (size 1.27 1.27)) (justify left bottom))
+		)
+		(property "Sheetfile" "{{ s.file }}"
+			(at {{ s.x }} {{ s.y_file }} 0)
+			(effects (font (size 1.27 1.27)) (justify left top))
+		)
+		(instances
+			(project "{{ project_name }}"
+				(path "/{{ root_uuid }}"
+					(page "{{ s.page }}")
+				)
+			)
+		)
+	)
+{% endfor %}	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+)

@@ -1,0 +1,21 @@
+(kicad_sch
+	(version 20250114)
+	(generator "ai_circuit_architect")
+	(generator_version "9.0")
+	(uuid "00000000-0000-0000-0000-000000000002")
+	(paper "A4")
+	(lib_symbols)
+	(text "Power domain (placeholder)\nDUMMY_POWER_STAGE\nNets: VIN_24V, +5V, +3V3, GND\nTODO: NEEDS HUMAN REVIEW"
+		(at 25.4 25.4 0)
+		(effects
+			(font (size 1.27 1.27))
+			(justify left bottom)
+		)
+		(uuid "00000000-0000-0000-0000-000000000020")
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+)

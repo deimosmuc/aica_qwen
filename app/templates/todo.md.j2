@@ -1,0 +1,18 @@
+# Engineering TODO
+
+*Resolved by the Arbitration agent from the Design Critic's findings. Work through
+these before treating the project as design-ready.*
+
+## TODO
+
+{% for t in todo %}- [ ] {{ t }}
+{% endfor %}{% if not todo %}_No open TODOs._
+{% endif %}
+
+## Needs human review
+
+These are engineering decisions only a human can make.
+
+{% for h in human_review %}- [ ] {{ h }}
+{% endfor %}{% if not human_review %}_No items flagged for human review._
+{% endif %}

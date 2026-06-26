@@ -1,0 +1,29 @@
+# Validation Report
+
+*Automated consistency checks on the generated scaffold. This verifies the
+project is internally consistent and honestly labelled — it does **not** certify
+the design as correct or production-ready. A human engineer remains responsible.*
+
+**Overall: {{ "PASS" if validation.ok else "FAIL" }}**
+
+## Checks
+
+| Check | Result | Detail |
+| ----- | ------ | ------ |
+{% for c in validation.checks %}| {{ c.name }} | {{ "✅ pass" if c.passed else "❌ fail" }} | {{ c.detail }} |
+{% endfor %}
+
+## Real KiCad validation
+
+{% if validation.kicad_cli_available %}- kicad-cli: **available**
+- Project opens / exports in KiCad: {{ "✅ yes" if validation.kicad_opens else "❌ no" }}
+{% if validation.erc_violations is not none %}- ERC violations: **{{ validation.erc_violations }}**{% if validation.erc_by_severity %} ({% for sev, n in validation.erc_by_severity.items() %}{{ sev }}: {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}){% endif %}
+{% endif %}{% else %}- kicad-cli: **not available** — real KiCad checks were skipped. The structural
+  checks above still apply. Install KiCad (or deploy the KiCad-enabled image) to
+  enable open/export verification and ERC.
+{% endif %}
+
+{% if validation.notes %}## Notes
+
+{% for n in validation.notes %}- {{ n }}
+{% endfor %}{% endif %}

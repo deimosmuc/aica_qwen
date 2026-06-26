@@ -1,0 +1,16 @@
+# Design Assumptions
+
+*The AI never fabricates certainty. Every assumption below was made explicit and
+accepted by the Arbitration agent. Verify each one before relying on it.*
+
+## Accepted assumptions
+
+{% for a in accepted_assumptions %}- {{ a }}
+{% endfor %}{% if not accepted_assumptions %}_No assumptions were accepted._
+{% endif %}
+
+## Open clarification questions
+
+{% for q in questions %}- {{ q }}
+{% endfor %}{% if not questions %}_No open questions._
+{% endif %}

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Circuit Architect</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419; --panel: #1a212b; --panel-2: #222c38; --line: #2d3a48;
+      --text: #e6edf3; --muted: #8b98a5; --accent: #4f9cf9; --ok: #3fb950;
+      --warn: #d29922; --review: #f778ba; --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.5; }
+    header { padding: 20px 28px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 14px; }
+    header h1 { font-size: 19px; margin: 0; font-weight: 600; }
+    header .sub { color: var(--muted); font-size: 13px; }
+    .badge { margin-left: auto; padding: 5px 12px; border-radius: 999px;
+      font-size: 12px; font-weight: 600; border: 1px solid var(--line); }
+    .badge.mock { background: rgba(210,153,34,.15); color: var(--warn); border-color: var(--warn); }
+    .badge.qwen { background: rgba(63,185,80,.15); color: var(--ok); border-color: var(--ok); }
+    .guard { margin-left: auto; display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--muted); }
+    .guard-bar { width: 64px; height: 6px; border-radius: 3px; background: var(--panel-2);
+      overflow: hidden; }
+    .guard-fill { display: block; height: 100%; background: var(--ok); transition: width .3s; }
+    .guard + .badge { margin-left: 14px; }
+    .notice { background: rgba(210,153,34,.12); border: 1px solid var(--warn);
+      color: var(--warn); border-radius: var(--radius); padding: 14px 18px; font-size: 14px; }
+    main { max-width: 1100px; margin: 0 auto; padding: 28px; display: grid; gap: 22px; }
+    .panel { background: var(--panel); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 20px; }
+    .panel h2 { margin: 0 0 14px; font-size: 14px; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--muted); }
+    textarea { width: 100%; min-height: 110px; background: var(--bg); color: var(--text);
+      border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 14px;
+      font-family: inherit; resize: vertical; }
+    .row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    button { font: inherit; font-weight: 600; border-radius: 8px; padding: 10px 18px;
+      border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #06101f; }
+    button.approve { background: var(--ok); border-color: var(--ok); color: #06101f; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .trace { display: grid; gap: 10px; }
+    .step { display: flex; gap: 14px; align-items: flex-start; padding: 14px;
+      background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+      border-left: 3px solid var(--accent); }
+    .step.warning { border-left-color: var(--warn); }
+    .step .agent { font-weight: 600; }
+    .step .role { color: var(--muted); font-size: 12px; }
+    .step .summary { margin-top: 4px; font-size: 14px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 7px; background: var(--ok); flex: none; }
+    .dot.warning { background: var(--warn); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+    ul { margin: 0; padding-left: 18px; }
+    li { margin: 4px 0; font-size: 14px; }
+    .tag { font-family: ui-monospace, monospace; font-size: 12px; padding: 2px 7px;
+      border-radius: 5px; background: var(--bg); border: 1px solid var(--line); margin: 3px 3px 0 0;
+      display: inline-block; }
+    .todo li { color: var(--warn); }
+    .review li { color: var(--review); }
+    .muted { color: var(--muted); font-size: 13px; }
+    .spinner { color: var(--muted); font-size: 14px; }
+    .valhead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .valbadge { padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+      border: 1px solid var(--line); }
+    .valbadge.ok { background: rgba(63,185,80,.15); color: var(--ok); border-color: var(--ok); }
+    .valbadge.fail { background: rgba(210,153,34,.15); color: var(--warn); border-color: var(--warn); }
+    .dl { margin-left: auto; text-decoration: none; }
+    .checks { list-style: none; padding-left: 0; }
+    .checks li { margin: 6px 0; font-size: 14px; }
+    .checks li.fail { color: var(--warn); }
+    .preview { margin-top: 8px; background: #fff; border: 1px solid var(--line);
+      border-radius: 8px; padding: 8px; overflow: auto; max-height: 520px; }
+    .preview img { width: 100%; height: auto; display: block; }
+  </style>
+</head>
+<body x-data="architect()" x-init="init()">
+  <header>
+    <div>
+      <h1>🛠️ AI Circuit Architect</h1>
+      <div class="sub">Multi-agent hardware architecture assistant for KiCad</div>
+    </div>
+    <div class="guard" x-show="guard" title="API spend guard">
+      <span>💰</span>
+      <span x-text="'$' + (guard ? guard.spent_usd.toFixed(4) : '0') + ' / $' + (guard ? guard.budget_usd.toFixed(2) : '0')"></span>
+      <span class="guard-bar"><span class="guard-fill" :style="`width:${guard ? Math.min(100, 100*guard.spent_usd/guard.budget_usd) : 0}%`"></span></span>
+    </div>
+    <span class="badge" :class="mode" x-text="mode === 'mock' ? 'MOCK MODE' : 'QWEN'"></span>
+  </header>
+
+  <main>
+    <!-- Input -->
+    <section class="panel">
+      <h2>1 · Describe your hardware</h2>
+      <textarea x-model="input" placeholder="e.g. A 24V industrial sensor board with an STM32, USB-C for configuration and an RS485 fieldbus interface."></textarea>
+      <div class="row">
+        <button class="primary" @click="run()" :disabled="loading || !input.trim()"
+          x-text="loading ? 'Agents working…' : 'Run agents'"></button>
+        <button @click="loadExample()" :disabled="loading">Load example</button>
+      </div>
+      <p class="spinner" x-show="loading">The agent team is analysing, designing, reviewing and arbitrating…</p>
+    </section>
+
+    <template x-if="result">
+      <div style="display:grid; gap:22px;">
+        <!-- Guard notice (e.g. budget hit -> fell back to example data) -->
+        <div class="notice" x-show="result.notice" x-text="'⚠️ ' + (result.notice || '')"></div>
+
+        <!-- Agent trace -->
+        <section class="panel">
+          <h2>2 · Agent collaboration</h2>
+          <div class="trace">
+            <template x-for="s in result.trace" :key="s.agent">
+              <div class="step" :class="s.status">
+                <div class="dot" :class="s.status"></div>
+                <div>
+                  <span class="agent" x-text="s.agent"></span>
+                  <span class="role" x-text="'· ' + s.role"></span>
+                  <div class="summary" x-text="s.summary"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <!-- Architecture -->
+        <section class="panel">
+          <h2>3 · Proposed architecture</h2>
+          <div class="grid2">
+            <div>
+              <strong>Functional blocks</strong>
+              <ul>
+                <template x-for="b in result.architecture.blocks" :key="b.name">
+                  <li><strong x-text="b.name"></strong> — <span x-text="b.purpose"></span>
+                    <span class="muted" x-text="'(' + b.sheet + ')'"></span></li>
+                </template>
+              </ul>
+            </div>
+            <div>
+              <strong>Power domains</strong><br />
+              <template x-for="p in result.architecture.power" :key="p"><span class="tag" x-text="p"></span></template>
+              <div style="margin-top:12px"><strong>Interfaces</strong><br />
+                <template x-for="i in result.architecture.interfaces" :key="i"><span class="tag" x-text="i"></span></template>
+              </div>
+              <div style="margin-top:12px"><strong>Placeholders</strong><br />
+                <template x-for="c in result.architecture.placeholder_components" :key="c"><span class="tag" x-text="c"></span></template>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Critique + open items -->
+        <section class="panel">
+          <h2>4 · Review &amp; open items</h2>
+          <div class="grid2">
+            <div>
+              <strong>TODO</strong>
+              <ul class="todo">
+                <template x-for="t in result.arbitration.todo" :key="t"><li x-text="t"></li></template>
+              </ul>
+            </div>
+            <div>
+              <strong>Needs human review</strong>
+              <ul class="review">
+                <template x-for="h in result.arbitration.human_review" :key="h"><li x-text="h"></li></template>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Approval -->
+        <section class="panel">
+          <h2>5 · Human approval</h2>
+          <p class="muted">No KiCad project is generated until you approve. The engineer stays in control.</p>
+          <div class="row">
+            <button class="approve" @click="approve()" :disabled="approved" x-text="approved ? 'Approved ✓' : 'Approve architecture'"></button>
+            <button class="primary" @click="generate()" :disabled="!approved || generating"
+              x-text="generating ? 'Generating…' : 'Generate KiCad project'"></button>
+          </div>
+          <p class="spinner" x-show="generating" style="margin-top:10px">
+            Generating scaffold, validating in KiCad and rendering the preview…
+          </p>
+          <p class="muted" x-show="genError" style="margin-top:10px; color: var(--warn)" x-text="genError"></p>
+        </section>
+
+        <!-- Generated scaffold: validation + preview + download -->
+        <template x-if="gen">
+          <section class="panel">
+            <h2>6 · KiCad scaffold</h2>
+            <div class="valhead">
+              <span class="valbadge" :class="gen.validation.ok ? 'ok' : 'fail'"
+                x-text="gen.validation.ok ? '✓ Validation passed' : '✗ Validation failed'"></span>
+              <a class="dl" :href="gen.download_url"><button class="approve">⬇ Download ZIP</button></a>
+            </div>
+            <div class="grid2" style="margin-top:16px">
+              <div>
+                <strong>Validation checks</strong>
+                <ul class="checks">
+                  <template x-for="c in gen.validation.checks" :key="c.name">
+                    <li :class="c.passed ? 'pass' : 'fail'">
+                      <span x-text="(c.passed ? '✅ ' : '❌ ') + c.name"></span>
+                      <span class="muted" x-show="c.detail" x-text="' — ' + c.detail"></span>
+                    </li>
+                  </template>
+                </ul>
+                <p class="muted" x-show="gen.validation.kicad_cli_available" style="margin-top:8px"
+                  x-text="'ERC violations: ' + (gen.validation.erc_violations === null ? 'n/a' : gen.validation.erc_violations)"></p>
+                <p class="muted" x-show="!gen.validation.kicad_cli_available" style="margin-top:8px">
+                  kicad-cli not available here — structural checks only; preview disabled.
+                </p>
+              </div>
+              <div>
+                <strong>Schematic preview</strong>
+                <div class="preview" x-show="gen.preview_svg_url">
+                  <img :src="gen.preview_svg_url" alt="Schematic preview" />
+                </div>
+                <p class="muted" x-show="!gen.preview_svg_url" style="margin-top:8px">
+                  Preview unavailable (kicad-cli not installed in this environment).
+                </p>
+              </div>
+            </div>
+          </section>
+        </template>
+      </div>
+    </template>
+  </main>
+
+  <script>
+    function architect() {
+      return {
+        input: "", loading: false, result: null, approved: false, mode: "mock", guard: null,
+        generating: false, gen: null, genError: "",
+        async init() {
+          try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
+          await this.fetchGuard();
+        },
+        async fetchGuard() {
+          try { this.guard = await (await fetch("/api/guard")).json(); } catch (e) {}
+        },
+        loadExample() {
+          this.input = "A 24V industrial sensor board with an STM32 microcontroller, USB-C for configuration, an RS485 fieldbus interface and status LEDs.";
+        },
+        async run() {
+          this.loading = true; this.result = null; this.approved = false;
+          this.gen = null; this.genError = "";
+          try {
+            const res = await fetch("/api/run", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ requirements_text: this.input })
+            });
+            this.result = await res.json();
+            this.mode = this.result.mode;
+            await this.fetchGuard();
+          } finally { this.loading = false; }
+        },
+        approve() { this.approved = true; },
+        async generate() {
+          this.generating = true; this.gen = null; this.genError = "";
+          try {
+            const res = await fetch("/api/generate", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ requirements_text: this.input, result: this.result })
+            });
+            if (!res.ok) throw new Error("Generation failed (" + res.status + ")");
+            this.gen = await res.json();
+          } catch (e) {
+            this.genError = "⚠️ " + e.message;
+          } finally { this.generating = false; }
+        }
+      };
+    }
+  </script>
+</body>
+</html>
