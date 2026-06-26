@@ -52,6 +52,15 @@ class Settings(BaseSettings):
     guard_price_in_per_1k: float = 0.001
     guard_price_out_per_1k: float = 0.002
 
+    # Per-model price ESTIMATES (USD per 1K tokens). Unknown models fall back to
+    # the flat guard_price_*_per_1k above. Confirm against the live Qwen price
+    # page before relying on exact figures.
+    guard_prices_per_1k: dict[str, dict[str, float]] = {
+        "qwen-turbo": {"in": 0.0003, "out": 0.0006},
+        "qwen-plus": {"in": 0.001, "out": 0.002},
+        "qwen-max": {"in": 0.004, "out": 0.012},
+    }
+
     # --- KiCad CLI: real validation + schematic preview ---------------------
     # kicad-cli is used as a tool (separate subprocess). When it is not present
     # the app degrades gracefully: structural validation still runs and the

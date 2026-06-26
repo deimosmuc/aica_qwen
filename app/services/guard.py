@@ -80,12 +80,18 @@ class ApiGuard:
         per_day = sum(1 for t in ts if t > now - 86_400)
         return per_min, per_day
 
-    def _estimate_cost(self, system: str, user: str) -> float:
+    def _price(self, model: str) -> tuple[float, float]:
+        """(in_per_1k, out_per_1k) for a model, falling back to the flat price."""
+        p = self.s.guard_prices_per_1k.get(model)
+        if p is None:
+            return self.s.guard_price_in_per_1k, self.s.guard_price_out_per_1k
+        return p["in"], p["out"]
+
+    def _estimate_cost(self, system: str, user: str, model: str) -> float:
         in_tok = _estimate_tokens(system) + _estimate_tokens(user)
         out_tok = self.s.guard_max_output_tokens
-        return (in_tok / 1000) * self.s.guard_price_in_per_1k + (
-            out_tok / 1000
-        ) * self.s.guard_price_out_per_1k
+        price_in, price_out = self._price(model)
+        return (in_tok / 1000) * price_in + (out_tok / 1000) * price_out
 
     # --- public API --------------------------------------------------------
 
@@ -118,7 +124,7 @@ class ApiGuard:
             if per_day >= self.s.guard_rate_per_day:
                 raise GuardBlocked(f"daily limit: {per_day} calls today")
 
-            estimate = self._estimate_cost(system, user)
+            estimate = self._estimate_cost(system, user, model)
             if self._ledger["spent_usd"] + estimate > self.s.guard_budget_usd:
                 raise GuardBlocked(
                     f"budget cap reached (${self._ledger['spent_usd']:.4f} spent, "
@@ -136,9 +142,8 @@ class ApiGuard:
         response: dict,
     ) -> float:
         """Record actual usage after a successful call and cache the response."""
-        cost = (input_tokens / 1000) * self.s.guard_price_in_per_1k + (
-            output_tokens / 1000
-        ) * self.s.guard_price_out_per_1k
+        price_in, price_out = self._price(model)
+        cost = (input_tokens / 1000) * price_in + (output_tokens / 1000) * price_out
         with self._lock:
             self._ledger["spent_usd"] = round(self._ledger["spent_usd"] + cost, 6)
             self._ledger["timestamps"].append(self._now())
