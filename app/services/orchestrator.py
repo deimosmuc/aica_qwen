@@ -16,7 +16,7 @@ from app.agents.critic import DesignCriticAgent
 from app.agents.requirements import RequirementsAgent
 from app.models.schemas import Architecture, Critique, Requirements, RunResponse, TraceStep
 from app.services.config import Settings
-from app.services.guard import GuardBlocked
+from app.services.guard import ApiGuard, GuardBlocked
 from app.services.metering import RunMeter
 from app.services.mock import mock_run, mock_run_rework
 from app.services.profiles import RunProfile, default_profile
@@ -29,7 +29,7 @@ class Orchestrator:
         settings: Settings,
         profile: RunProfile | None = None,
         client: ChatClient | None = None,
-        guard=None,
+        guard: ApiGuard | None = None,
     ):
         self.settings = settings
         self.profile = profile or default_profile(settings)
@@ -113,6 +113,8 @@ class Orchestrator:
         return architecture, critique, steps
 
     def run(self, requirements_text: str, guidance: list[str] | None = None) -> RunResponse:
+        # Fresh meter per run() so usage never leaks if an instance is reused.
+        self._meter = RunMeter()
         if self.settings.mock_mode:
             return mock_run_rework(requirements_text) if self.profile.rework else mock_run(requirements_text)
         guidance = guidance or []
