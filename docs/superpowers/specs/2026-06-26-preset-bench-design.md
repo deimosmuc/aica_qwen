@@ -103,8 +103,8 @@ class BenchRow(BaseModel):
     rounds: int            # review rounds actually used (from the trace)
     usage: RunUsage
     quality: int           # 0..12
-    quality_per_cent: float  # quality / (cost_usd * 100), 0 when cost is 0
-    best_value: bool = False
+    quality_per_cent: float  # quality / (cost_usd * 100), 0 when cost is 0 — informational column
+    best_quality: bool = False  # highest quality; tie-break lowest cost
 
 class BenchResult(BaseModel):
     requirements_text: str
@@ -121,8 +121,11 @@ class BenchResult(BaseModel):
 - **Mock mode:** no real calls happen, and all presets would otherwise yield identical mock
   output — so return **fixed, hand-crafted illustrative rows** (clearly labelled) that tell
   the intended story. `illustrative=True`.
-- Compute `quality_per_cent` per row; mark the row with the highest value `best_value=True`;
-  build the `takeaway` string from the winner.
+- Compute `quality_per_cent` per row (informational); mark the **highest-quality** row
+  `best_quality=True` (tie-break: lowest cost) and build the `takeaway` from it. Note:
+  the highlighted winner is best *quality*, not best quality-per-cent — pure
+  quality-per-cent would crown Budget Turbo (cheapest) and undercut the "team beats
+  tier" story; `quality_per_cent` stays as an honest side column.
 
 ### 5. Endpoint
 
@@ -136,7 +139,7 @@ runs `/api/bench` on the current input and renders the combined table:
 
 | Preset | Rounds | Calls | Tokens | Cost | Quality | Quality/Cent |
 
-- Highlight the `best_value` row.
+- Highlight the `best_quality` row.
 - Show the `takeaway` line above the table.
 - Show an "illustrative numbers — run with a live key for real figures" note when
   `illustrative` is true (consistent with the existing mock-comparison labelling).
