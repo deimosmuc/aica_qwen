@@ -15,6 +15,7 @@ import httpx
 
 from app.services.config import Settings
 from app.services.guard import ApiGuard
+from app.services.metering import RunMeter
 
 
 class QwenError(RuntimeError):
@@ -28,12 +29,19 @@ class QwenTruncatedError(QwenError):
 
 
 class QwenClient:
-    def __init__(self, settings: Settings, guard: ApiGuard | None = None, timeout: float = 60.0):
+    def __init__(
+        self,
+        settings: Settings,
+        guard: ApiGuard | None = None,
+        timeout: float = 60.0,
+        meter: "RunMeter | None" = None,
+    ):
         self._api_key = settings.qwen_api_key
         self._base_url = settings.qwen_base_url.rstrip("/")
         self._model = settings.qwen_model
         self._timeout = timeout
         self._guard = guard or ApiGuard(settings)
+        self._meter = meter
 
     def chat_json(self, system: str, user: str, model: str | None = None) -> dict:
         """Send a system+user prompt and return the parsed JSON object.
@@ -97,7 +105,9 @@ class QwenClient:
         usage = data.get("usage") or {}
         input_tokens = usage.get("prompt_tokens") or (len(system) + len(user)) // 4
         output_tokens = usage.get("completion_tokens") or len(content) // 4
-        self._guard.record(model, system, user, input_tokens, output_tokens, result)
+        cost = self._guard.record(model, system, user, input_tokens, output_tokens, result)
+        if self._meter is not None:
+            self._meter.add(input_tokens, output_tokens, cost)
 
         return result
 
