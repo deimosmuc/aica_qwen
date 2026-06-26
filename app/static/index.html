@@ -245,6 +245,35 @@
                     <div class="out-grp" x-show="pending.requirements.constraints.length"><b>Constraints</b><ul><template x-for="x in pending.requirements.constraints" :key="x"><li x-text="x"></li></template></ul></div>
                     <div class="out-grp" x-show="pending.requirements.questions.length"><b>Clarification questions</b><ul><template x-for="x in pending.requirements.questions" :key="x"><li x-text="x"></li></template></ul></div>
                     <div class="out-grp" x-show="pending.requirements.assumptions.length"><b>Assumptions</b><ul><template x-for="x in pending.requirements.assumptions" :key="x"><li x-text="x"></li></template></ul></div>
+                    <template x-if="pending.requirements.clarifications && pending.requirements.clarifications.length">
+                      <div class="clarify" style="margin-top:12px">
+                        <b>Help the agents decide</b>
+                        <template x-for="q in pending.requirements.clarifications" :key="q.id">
+                          <div class="q-card" style="border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-top:8px">
+                            <div x-text="q.text" style="font-weight:600"></div>
+                            <div class="muted" x-show="q.select==='multi'" style="font-size:12px">Pick one or more</div>
+                            <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px">
+                              <template x-for="o in q.options" :key="o.label">
+                                <label style="display:flex; gap:8px; align-items:flex-start; cursor:pointer">
+                                  <input :type="q.select==='multi' ? 'checkbox' : 'radio'"
+                                         :checked="clarifyAnswers[q.id] && clarifyAnswers[q.id].picked.includes(o.label)"
+                                         @change="clarifyToggle(q, o.label)">
+                                  <span><b x-text="o.label"></b><span class="muted" x-show="o.detail" x-text="' — ' + o.detail"></span></span>
+                                </label>
+                              </template>
+                            </div>
+                            <input class="correct" style="margin-top:6px; width:100%"
+                                   x-model="clarifyAnswers[q.id].text"
+                                   placeholder="✏︎ own answer (optional)">
+                            <div class="muted" style="font-size:12px; margin-top:4px"
+                                 x-show="!(clarifyAnswers[q.id].picked.length || clarifyAnswers[q.id].text.trim())"
+                                 x-text="'If skipped: ' + q.assumption"></div>
+                          </div>
+                        </template>
+                        <div class="muted" style="margin-top:8px"
+                             x-text="clarifyAnswered() + ' of ' + pending.requirements.clarifications.length + ' answered'"></div>
+                      </div>
+                    </template>
                   </div>
                 </template>
                 <template x-if="pending.architecture">
@@ -277,7 +306,8 @@
               <textarea class="correct" x-model="correctText" rows="2"
                 placeholder="Course-correct (optional): e.g. 'Wrong track — we must use part XYZ by company policy.' Then Re-run."></textarea>
               <div class="row" style="margin-top:12px">
-                <button class="approve" @click="approveStep()">Approve &amp; continue</button>
+                <button class="approve" @click="approveStep()"
+                  x-text="(pending.requirements && pending.requirements.clarifications && pending.requirements.clarifications.length) ? 'Continue with my answers →' : 'Approve & continue'"></button>
                 <button @click="redoStep()" x-text="correctText.trim() ? 'Re-run with my correction' : 'Re-run step'"></button>
                 <button @click="stopStep()">Stop</button>
               </div>
@@ -516,6 +546,7 @@
         auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration"],
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
         diagramSvg: null, constraintsText: "", correctText: "",
+        clarifyAnswers: {},   // { [questionId]: { picked: [labels], text: "" } }
         PROFILES: ["Uniform qwen-plus", "Uniform qwen-max", "Budget Turbo", "Senior Review Team"], selectedProfile: "Uniform qwen-plus",
         async init() {
           try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
@@ -570,15 +601,54 @@
             if (!res.ok) throw new Error("Step failed (" + res.status + ")");
             const data = await res.json();
             this.stepIdx = i; this.pending = data;
+            if (data.requirements && data.requirements.clarifications && data.requirements.clarifications.length) {
+              this.clarifyInit(data.requirements.clarifications);
+            }
             this.stepNotice = data.notice || ""; this.acc.mode = data.mode;
             await this.fetchGuard();
           } catch (e) {
             this.stepNotice = "⚠️ " + e.message;
           } finally { this.stepBusy = false; }
         },
+        clarifyInit(qs) {
+          // start every question unanswered (skipped by default)
+          this.clarifyAnswers = {};
+          (qs || []).forEach(q => { this.clarifyAnswers[q.id] = { picked: [], text: "" }; });
+        },
+        clarifyToggle(q, label) {
+          const a = this.clarifyAnswers[q.id];
+          if (q.select === "multi") {
+            const i = a.picked.indexOf(label);
+            if (i >= 0) a.picked.splice(i, 1); else a.picked.push(label);
+          } else {
+            a.picked = (a.picked[0] === label) ? [] : [label];   // single: toggle/replace
+          }
+        },
+        clarifyAnswered() {
+          return Object.values(this.clarifyAnswers)
+            .filter(a => a.picked.length || a.text.trim()).length;
+        },
+        clarifyToGuidance(qs) {
+          // build one guidance string per answered question; skipped ones add nothing
+          const out = [];
+          (qs || []).forEach(q => {
+            const a = this.clarifyAnswers[q.id];
+            const txt = a.text.trim();
+            const parts = a.picked.slice();
+            if (txt) parts.push(txt);
+            if (parts.length) out.push("GEKLÄRT: " + q.text + " → " + parts.join(", "));
+          });
+          return out;
+        },
         approveStep() {
           if (!this.pending) return;
           const stage = this.STAGES[this.stepIdx];
+          if (stage === "requirements" && this.pending.requirements &&
+              this.pending.requirements.clarifications &&
+              this.pending.requirements.clarifications.length) {
+            this.clarifyToGuidance(this.pending.requirements.clarifications)
+                .forEach(g => this.acc.guidance.push(g));
+          }
           this.acc[stage] = this.pending[stage];
           this.acc.trace.push(this.pending.trace_step);
           const next = this.stepIdx + 1;
