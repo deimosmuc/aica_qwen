@@ -71,7 +71,14 @@ class Orchestrator:
     def _design_and_review(
         self, requirements: Requirements, guidance: list[str]
     ) -> tuple[Architecture, Critique, list[TraceStep]]:
-        """One design + review pass (round 1). The rework loop is added in a later task."""
+        """Design + review, with an optional Critic->Architect rework loop.
+
+        Round 1 is the initial design + review. While rework is enabled and the
+        Critic still reports missing blocks, the findings are fed back to the
+        Architect (via the existing guidance mechanism) and re-reviewed, up to
+        max_rounds total rounds. missing_blocks is the trigger (warnings/risks
+        are softer and would never converge).
+        """
         steps: list[TraceStep] = []
         t = perf_counter()
         architecture = SystemArchitectAgent().run(self._client_for("architecture"), requirements, guidance)
@@ -79,6 +86,22 @@ class Orchestrator:
         t = perf_counter()
         critique = DesignCriticAgent().run(self._client_for("critique"), requirements, architecture, guidance)
         steps.append(self._critic_step(critique, 1, int((perf_counter() - t) * 1000)))
+
+        round_no = 1
+        while self.profile.rework and critique.missing_blocks and round_no < self.profile.max_rounds:
+            round_no += 1
+            rework_guidance = guidance + [
+                "Revise the architecture to address these review findings:",
+                *critique.missing_blocks,
+                *critique.recommendations,
+            ]
+            t = perf_counter()
+            architecture = SystemArchitectAgent().run(self._client_for("architecture"), requirements, rework_guidance)
+            steps.append(self._arch_step(architecture, round_no, int((perf_counter() - t) * 1000)))
+            t = perf_counter()
+            critique = DesignCriticAgent().run(self._client_for("critique"), requirements, architecture, rework_guidance)
+            steps.append(self._critic_step(critique, round_no, int((perf_counter() - t) * 1000)))
+
         return architecture, critique, steps
 
     def run(self, requirements_text: str, guidance: list[str] | None = None) -> RunResponse:
