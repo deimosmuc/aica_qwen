@@ -269,3 +269,28 @@ class StepResponse(BaseModel):
     architecture: Architecture | None = None
     critique: Critique | None = None
     arbitration: Arbitration | None = None
+
+
+# --- Preset Bench (cost + quality across presets) ----------------------------
+
+
+class BenchRow(BaseModel):
+    preset: str
+    rounds: int            # review rounds actually used (1 = no rework)
+    usage: RunUsage
+    quality: int           # rubric coverage, 0..12
+    quality_per_cent: float  # quality points per USD-cent spent (0 when cost is 0)
+    best_quality: bool = False  # highest quality (tie-break: lowest cost)
+
+
+class BenchRequest(BaseModel):
+    requirements_text: str
+
+
+class BenchResult(BaseModel):
+    requirements_text: str
+    mode: Literal["mock", "qwen"]
+    rows: list[BenchRow]
+    takeaway: str          # one-line headline built from the best-quality row
+    illustrative: bool     # True in Mock Mode (numbers are not real)
+    notice: str | None = None
