@@ -127,6 +127,15 @@ class TraceStep(BaseModel):
 # --- Full pipeline response --------------------------------------------------
 
 
+class RunUsage(BaseModel):
+    """Real token/cost totals for one pipeline run (live mode only)."""
+
+    calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost_usd: float = 0.0
+
+
 class RunResponse(BaseModel):
     mode: Literal["mock", "qwen"]
     requirements: Requirements
@@ -138,6 +147,8 @@ class RunResponse(BaseModel):
     # Set when the API Guard blocked a live call (or Qwen was unreachable) and
     # the result fell back to example data. The UI surfaces this to the user.
     notice: str | None = None
+    # Real token/cost usage for this run (None in Mock Mode).
+    usage: RunUsage | None = None
 
 
 # --- Validation Agent --------------------------------------------------------
