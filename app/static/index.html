@@ -86,6 +86,13 @@
     table.cmp { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
     table.cmp th, table.cmp td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
     table.cmp th.c, table.cmp td.c { text-align: center; width: 90px; }
+    details.agent-out { margin-top: 8px; }
+    details.agent-out > summary { cursor: pointer; color: var(--accent); font-size: 13px; user-select: none; }
+    .agent-out .out { margin-top: 8px; padding: 10px 12px; background: var(--bg);
+      border: 1px solid var(--line); border-radius: 8px; }
+    .agent-out .out-grp { margin-bottom: 8px; }
+    .agent-out .out-grp:last-child { margin-bottom: 0; }
+    .agent-out .out-grp b { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
   </style>
 </head>
 <body x-data="architect()" x-init="init()">
@@ -159,10 +166,64 @@
             <template x-for="s in result.trace" :key="s.agent">
               <div class="step" :class="s.status">
                 <div class="dot" :class="s.status"></div>
-                <div>
+                <div style="flex:1">
                   <span class="agent" x-text="s.agent"></span>
                   <span class="role" x-text="'· ' + s.role"></span>
                   <div class="summary" x-text="s.summary"></div>
+                  <details class="agent-out">
+                    <summary>Show output</summary>
+                    <template x-if="s.agent === 'Requirements Agent'">
+                      <div class="out">
+                        <div class="out-grp" x-show="result.requirements.requirements.length"><b>Requirements</b>
+                          <ul><template x-for="x in result.requirements.requirements" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.requirements.constraints.length"><b>Constraints</b>
+                          <ul><template x-for="x in result.requirements.constraints" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.requirements.questions.length"><b>Clarification questions</b>
+                          <ul><template x-for="x in result.requirements.questions" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.requirements.assumptions.length"><b>Assumptions</b>
+                          <ul><template x-for="x in result.requirements.assumptions" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="muted" x-text="'Confidence: ' + Math.round(result.requirements.confidence*100) + '%'"></div>
+                      </div>
+                    </template>
+                    <template x-if="s.agent === 'System Architect'">
+                      <div class="out">
+                        <div class="out-grp"><b>Blocks</b>
+                          <ul><template x-for="b in result.architecture.blocks" :key="b.name"><li><span x-text="b.name"></span> — <span x-text="b.purpose"></span> <span class="muted" x-text="'(' + b.sheet + ')'"></span></li></template></ul></div>
+                        <div class="out-grp" x-show="result.architecture.interfaces.length"><b>Interfaces</b>
+                          <ul><template x-for="x in result.architecture.interfaces" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.architecture.signals.length"><b>Signals</b>
+                          <ul><template x-for="x in result.architecture.signals" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.architecture.power.length"><b>Power</b>
+                          <ul><template x-for="x in result.architecture.power" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.architecture.placeholder_components.length"><b>Placeholders</b>
+                          <ul><template x-for="x in result.architecture.placeholder_components" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.architecture.notes.length"><b>Notes</b>
+                          <ul><template x-for="x in result.architecture.notes" :key="x"><li x-text="x"></li></template></ul></div>
+                      </div>
+                    </template>
+                    <template x-if="s.agent === 'Design Critic'">
+                      <div class="out">
+                        <div class="out-grp" x-show="result.critique.warnings.length"><b>Warnings</b>
+                          <ul><template x-for="x in result.critique.warnings" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.critique.risks.length"><b>Risks</b>
+                          <ul><template x-for="x in result.critique.risks" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.critique.missing_blocks.length"><b>Missing blocks</b>
+                          <ul><template x-for="x in result.critique.missing_blocks" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.critique.recommendations.length"><b>Recommendations</b>
+                          <ul><template x-for="x in result.critique.recommendations" :key="x"><li x-text="x"></li></template></ul></div>
+                      </div>
+                    </template>
+                    <template x-if="s.agent === 'Arbitration'">
+                      <div class="out">
+                        <div class="out-grp" x-show="result.arbitration.todo.length"><b>TODO</b>
+                          <ul><template x-for="x in result.arbitration.todo" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.arbitration.human_review.length"><b>Needs human review</b>
+                          <ul><template x-for="x in result.arbitration.human_review" :key="x"><li x-text="x"></li></template></ul></div>
+                        <div class="out-grp" x-show="result.arbitration.accepted_assumptions.length"><b>Accepted assumptions</b>
+                          <ul><template x-for="x in result.arbitration.accepted_assumptions" :key="x"><li x-text="x"></li></template></ul></div>
+                      </div>
+                    </template>
+                  </details>
                 </div>
               </div>
             </template>
