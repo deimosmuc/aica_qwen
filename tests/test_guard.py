@@ -39,8 +39,10 @@ def test_budget_cap_blocks(tmp_path):
     g = make_guard(tmp_path, lambda: 1000.0, guard_budget_usd=0.01,
                    guard_price_in_per_1k=1.0, guard_price_out_per_1k=1.0)
     # A normal request already exceeds the tiny 0.01 budget on estimate.
+    # Use an UNLISTED model so the flat guard_price_*_per_1k=1.0 overrides apply
+    # (a listed model would take the per-model price map and ignore the override).
     with pytest.raises(GuardBlocked) as e:
-        g.precheck("sys", "A 24V board with an STM32 and RS485", "qwen-plus")
+        g.precheck("sys", "A 24V board with an STM32 and RS485", "test-model-unlisted")
     assert "budget" in str(e.value).lower()
 
 
@@ -67,3 +69,25 @@ def test_status_shape(tmp_path):
     assert s["budget_usd"] == 5.0
     assert s["remaining_usd"] == 5.0
     assert s["blocked"] is False
+
+
+def test_record_uses_per_model_pricing(tmp_path):
+    from app.services.config import Settings
+    from app.services.guard import ApiGuard
+
+    s = Settings(qwen_api_key="x")
+    g = ApiGuard(s, state_dir=tmp_path, now=lambda: 1000.0)
+    cost_turbo = g.record("qwen-turbo", "sys", "user", 1000, 1000, {"ok": True})
+    cost_max = g.record("qwen-max", "sys2", "user2", 1000, 1000, {"ok": True})
+    assert cost_max > cost_turbo
+
+
+def test_record_unknown_model_falls_back_to_flat_price(tmp_path):
+    from app.services.config import Settings
+    from app.services.guard import ApiGuard
+
+    s = Settings(qwen_api_key="x")
+    g = ApiGuard(s, state_dir=tmp_path, now=lambda: 1000.0)
+    cost = g.record("some-unlisted-model", "sys", "user", 1000, 1000, {"ok": True})
+    expected = (1000 / 1000) * s.guard_price_in_per_1k + (1000 / 1000) * s.guard_price_out_per_1k
+    assert round(cost, 6) == round(expected, 6)

@@ -16,7 +16,8 @@ from app.agents.critic import DesignCriticAgent
 from app.agents.requirements import RequirementsAgent
 from app.models.schemas import Architecture, Critique, Requirements, RunResponse, TraceStep
 from app.services.config import Settings
-from app.services.guard import GuardBlocked
+from app.services.guard import ApiGuard, GuardBlocked
+from app.services.metering import RunMeter
 from app.services.mock import mock_run, mock_run_rework
 from app.services.profiles import RunProfile, default_profile
 from app.services.qwen_client import QwenClient, QwenError, QwenTruncatedError
@@ -28,16 +29,23 @@ class Orchestrator:
         settings: Settings,
         profile: RunProfile | None = None,
         client: ChatClient | None = None,
+        guard: ApiGuard | None = None,
     ):
         self.settings = settings
         self.profile = profile or default_profile(settings)
         self._client = client  # test override: when set, used for every role
+        self._guard = guard    # optional shared ApiGuard for all stage clients
+        self._meter = RunMeter()
 
     def _client_for(self, role: str) -> ChatClient:
         if self._client is not None:
             return self._client
         model = self.profile.models[role]
-        return QwenClient(self.settings.model_copy(update={"qwen_model": model}))
+        return QwenClient(
+            self.settings.model_copy(update={"qwen_model": model}),
+            guard=self._guard,
+            meter=self._meter,
+        )
 
     @staticmethod
     def _arch_step(architecture: Architecture, round_no: int, ms: int) -> TraceStep:
@@ -105,6 +113,8 @@ class Orchestrator:
         return architecture, critique, steps
 
     def run(self, requirements_text: str, guidance: list[str] | None = None) -> RunResponse:
+        # Fresh meter per run() so usage never leaks if an instance is reused.
+        self._meter = RunMeter()
         if self.settings.mock_mode:
             return mock_run_rework(requirements_text) if self.profile.rework else mock_run(requirements_text)
         guidance = guidance or []
@@ -165,6 +175,7 @@ class Orchestrator:
             arbitration=arbitration,
             trace=[req_step, *design_steps, arb_step],
             needs_approval=True,
+            usage=self._meter.snapshot(),
         )
 
     def _guarded_fallback(self, requirements_text: str, notice: str) -> RunResponse:

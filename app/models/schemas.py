@@ -127,6 +127,15 @@ class TraceStep(BaseModel):
 # --- Full pipeline response --------------------------------------------------
 
 
+class RunUsage(BaseModel):
+    """Real token/cost totals for one pipeline run (live mode only)."""
+
+    calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost_usd: float = 0.0
+
+
 class RunResponse(BaseModel):
     mode: Literal["mock", "qwen"]
     requirements: Requirements
@@ -138,6 +147,8 @@ class RunResponse(BaseModel):
     # Set when the API Guard blocked a live call (or Qwen was unreachable) and
     # the result fell back to example data. The UI surfaces this to the user.
     notice: str | None = None
+    # Real token/cost usage for this run (None in Mock Mode).
+    usage: RunUsage | None = None
 
 
 # --- Validation Agent --------------------------------------------------------
@@ -258,3 +269,28 @@ class StepResponse(BaseModel):
     architecture: Architecture | None = None
     critique: Critique | None = None
     arbitration: Arbitration | None = None
+
+
+# --- Preset Bench (cost + quality across presets) ----------------------------
+
+
+class BenchRow(BaseModel):
+    preset: str
+    rounds: int            # review rounds actually used (1 = no rework)
+    usage: RunUsage
+    quality: int           # rubric coverage, 0..12
+    quality_per_cent: float  # quality points per USD-cent spent (0 when cost is 0)
+    best_quality: bool = False  # highest quality (tie-break: lowest cost)
+
+
+class BenchRequest(BaseModel):
+    requirements_text: str
+
+
+class BenchResult(BaseModel):
+    requirements_text: str
+    mode: Literal["mock", "qwen"]
+    rows: list[BenchRow]
+    takeaway: str          # one-line headline built from the best-quality row
+    illustrative: bool     # True in Mock Mode (numbers are not real)
+    notice: str | None = None

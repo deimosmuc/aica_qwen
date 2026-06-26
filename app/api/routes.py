@@ -15,6 +15,8 @@ from fastapi.responses import FileResponse
 
 from app.generators.kicad import generate_scaffold
 from app.models.schemas import (
+    BenchRequest,
+    BenchResult,
     CompareRequest,
     Comparison,
     GenerateRequest,
@@ -24,6 +26,7 @@ from app.models.schemas import (
     StepRequest,
     StepResponse,
 )
+from app.services.bench import run_bench
 from app.services.comparison import run_comparison
 from app.services.config import get_settings
 from app.services.guard import ApiGuard
@@ -132,6 +135,12 @@ def compare(req: CompareRequest) -> Comparison:
     return run_comparison(
         req.requirements_text, get_settings(), req.multi_model, req.single_model
     )
+
+
+@router.post("/bench", response_model=BenchResult)
+def bench(req: BenchRequest) -> BenchResult:
+    """Run the curated preset trio over one request and compare cost + quality."""
+    return run_bench(req.requirements_text, get_settings())
 
 
 @router.post("/step", response_model=StepResponse)

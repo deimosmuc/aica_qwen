@@ -65,3 +65,24 @@ def test_orchestrator_reports_cutoff_not_unreachable(tmp_path, monkeypatch):
     assert res.mode == "mock"
     assert "cut off" in res.notice
     assert "unreachable" not in res.notice
+
+
+def test_client_feeds_meter_after_a_call(tmp_path, monkeypatch):
+    from app.services.metering import RunMeter
+    payload = {
+        "choices": [{"message": {"content": '{"ok": true}'}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 123, "completion_tokens": 45},
+    }
+    settings = Settings(qwen_api_key="x")
+    guard = ApiGuard(settings, state_dir=tmp_path, now=lambda: 1000.0)
+    monkeypatch.setattr(
+        "app.services.qwen_client.httpx.post", lambda *a, **k: _FakeResp(payload)
+    )
+    meter = RunMeter()
+    client = QwenClient(settings, guard=guard, meter=meter)
+    client.chat_json("sys", "A 24V board with an STM32")
+    snap = meter.snapshot()
+    assert snap.calls == 1
+    assert snap.input_tokens == 123
+    assert snap.output_tokens == 45
+    assert snap.cost_usd > 0

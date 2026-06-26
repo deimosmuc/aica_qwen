@@ -43,7 +43,7 @@ def mock_baseline() -> BaselineResult:
     )
 
 
-def _flatten_multi(r: RunResponse) -> str:
+def flatten_multi(r: RunResponse) -> str:
     a, c, arb, req = r.architecture, r.critique, r.arbitration, r.requirements
     parts: list[str] = []
     parts += req.requirements + req.constraints + req.assumptions + req.questions
@@ -102,7 +102,7 @@ def run_comparison(
                 f"Single-agent side ({single_name}) fell back to example data ({e})."
             )
 
-    multi_scores = score(_flatten_multi(multi))
+    multi_scores = score(flatten_multi(multi))
     single_scores = score(_flatten_baseline(baseline))
     concerns = [
         ConcernResult(
