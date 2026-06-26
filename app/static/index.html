@@ -82,6 +82,7 @@
     .cmp-score .of { color: var(--muted); font-size: 16px; font-weight: 400; }
     .cmp-delta { padding: 6px 12px; border-radius: 999px; font-weight: 600;
       background: rgba(63,185,80,.15); color: var(--ok); border: 1px solid var(--ok); }
+    .cmp-delta.neutral { background: var(--panel-2); color: var(--muted); border-color: var(--line); }
     table.cmp { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
     table.cmp th, table.cmp td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
     table.cmp th.c, table.cmp td.c { text-align: center; width: 90px; }
@@ -126,7 +127,8 @@
             <div class="cmp-score" x-text="cmp.multi_score"></div><span class="of" x-text="'/ ' + cmp.total"></span></div>
           <div><div class="muted">Single-agent</div>
             <div class="cmp-score" x-text="cmp.single_score"></div><span class="of" x-text="'/ ' + cmp.total"></span></div>
-          <span class="cmp-delta" x-text="'+' + cmp.delta + ' concerns surfaced'"></span>
+          <span class="cmp-delta" :class="cmp.delta > 0 ? '' : 'neutral'"
+            x-text="cmp.delta > 0 ? ('Multi-agent surfaces +' + cmp.delta + ' more') : (cmp.delta === 0 ? 'Tie on coverage' : ('Single-agent ahead by ' + (-cmp.delta)))"></span>
         </div>
         <p class="muted" style="margin-top:8px"
           x-text="cmp.multi_calls + ' agent calls vs ' + cmp.single_calls + ' — more engineering value per extra call. Coverage = concern surfaced as engineering work, not a placed component.'"></p>

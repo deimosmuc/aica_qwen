@@ -31,10 +31,11 @@ def _to_markdown(cmp) -> str:
     lines += [
         "",
         f"**Multi-agent: {cmp.multi_score}/{cmp.total} concerns surfaced "
-        f"({cmp.multi_calls} agent calls).**",
+        f"({cmp.multi_calls} agent call{'s' if cmp.multi_calls != 1 else ''}).**",
         f"**Single-agent: {cmp.single_score}/{cmp.total} concerns surfaced "
-        f"({cmp.single_calls} call).**",
-        f"**Difference: +{cmp.delta} concerns.**",
+        f"({cmp.single_calls} call{'s' if cmp.single_calls != 1 else ''}).**",
+        f"**Difference: {'+' if cmp.delta >= 0 else ''}{cmp.delta} concerns "
+        f"({'multi-agent ahead' if cmp.delta > 0 else 'tie' if cmp.delta == 0 else 'single-agent ahead'}).**",
         "",
         "_Coverage = the concern was surfaced as engineering work (block / TODO /"
         " assumption / review item), not a placed component._",
