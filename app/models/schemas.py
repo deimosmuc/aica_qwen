@@ -169,3 +169,31 @@ class Comparison(BaseModel):
     multi_output: RunResponse
     single_output: BaselineResult
     notice: str | None = None
+
+
+# --- Stepwise pipeline (one agent at a time, human sign-off between steps) ----
+
+Stage = Literal["requirements", "architecture", "critique", "arbitration"]
+
+
+class StepRequest(BaseModel):
+    """Run a single agent stage. The already-approved prior results are passed
+    back so each stage has what it needs (the client owns the running state)."""
+
+    stage: Stage
+    requirements_text: str
+    requirements: Requirements | None = None
+    architecture: Architecture | None = None
+    critique: Critique | None = None
+
+
+class StepResponse(BaseModel):
+    stage: Stage
+    mode: Literal["mock", "qwen"]
+    trace_step: TraceStep
+    notice: str | None = None
+    # Only the field for this stage is populated.
+    requirements: Requirements | None = None
+    architecture: Architecture | None = None
+    critique: Critique | None = None
+    arbitration: Arbitration | None = None

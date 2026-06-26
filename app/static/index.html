@@ -93,6 +93,13 @@
     .agent-out .out-grp { margin-bottom: 8px; }
     .agent-out .out-grp:last-child { margin-bottom: 0; }
     .agent-out .out-grp b { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+    .out { padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+    .out-grp { margin-bottom: 8px; }
+    .out-grp:last-child { margin-bottom: 0; }
+    .out-grp b { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+    .step.pending { box-shadow: 0 0 0 1px var(--accent) inset; }
+    .auto-toggle { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px;
+      color: var(--muted); font-size: 13px; cursor: pointer; }
   </style>
 </head>
 <body x-data="architect()" x-init="init()">
@@ -115,12 +122,13 @@
       <h2>1 · Describe your hardware</h2>
       <textarea x-model="input" placeholder="e.g. A 24V industrial sensor board with an STM32, USB-C for configuration and an RS485 fieldbus interface."></textarea>
       <div class="row">
-        <button class="primary" @click="run()" :disabled="loading || !input.trim()"
-          x-text="loading ? 'Agents working…' : 'Run agents'"></button>
+        <button class="primary" @click="run()" :disabled="loading || stepBusy || !input.trim()"
+          x-text="loading ? 'Agents working…' : (auto ? 'Run agents' : 'Run agents (step by step)')"></button>
         <button @click="compareRun()" :disabled="comparing || !input.trim()"
           x-text="comparing ? 'Comparing…' : 'Compare: multi vs single agent'"></button>
         <button @click="loadExample()" :disabled="loading || comparing">Load example</button>
       </div>
+      <label class="auto-toggle"><input type="checkbox" x-model="auto" /> Auto mode (run all steps at once)</label>
       <p class="muted" x-show="cmpError" style="margin-top:10px; color: var(--warn)" x-text="cmpError"></p>
       <p class="spinner" x-show="loading">The agent team is analysing, designing, reviewing and arbitrating…</p>
     </section>
@@ -153,6 +161,79 @@
         </table>
       </section>
     </template>
+
+    <!-- Stepwise sign-off (auto mode off) -->
+    <template x-if="acc">
+      <section class="panel">
+        <h2>2 · Agent collaboration — step by step</h2>
+        <div class="trace">
+          <template x-for="s in acc.trace" :key="s.agent">
+            <div class="step" :class="s.status">
+              <div class="dot" :class="s.status"></div>
+              <div style="flex:1">
+                <span class="agent" x-text="s.agent"></span>
+                <span class="role" x-text="'· ' + s.role"></span>
+                <span class="muted" style="margin-left:8px">✓ approved</span>
+                <div class="summary" x-text="s.summary"></div>
+              </div>
+            </div>
+          </template>
+        </div>
+        <p class="spinner" x-show="stepBusy" style="margin-top:10px">Running agent…</p>
+        <template x-if="pending && !stepBusy">
+          <div class="step pending" :class="pending.trace_step.status" style="margin-top:10px">
+            <div class="dot" :class="pending.trace_step.status"></div>
+            <div style="flex:1">
+              <span class="agent" x-text="pending.trace_step.agent"></span>
+              <span class="role" x-text="'· ' + pending.trace_step.role"></span>
+              <span class="muted" style="margin-left:8px">awaiting your sign-off</span>
+              <div class="summary" x-text="pending.trace_step.summary"></div>
+              <div class="notice" x-show="stepNotice" x-text="stepNotice" style="margin-top:8px"></div>
+              <div class="out" style="margin-top:10px">
+                <template x-if="pending.requirements">
+                  <div>
+                    <div class="out-grp" x-show="pending.requirements.requirements.length"><b>Requirements</b><ul><template x-for="x in pending.requirements.requirements" :key="x"><li x-text="x"></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.requirements.constraints.length"><b>Constraints</b><ul><template x-for="x in pending.requirements.constraints" :key="x"><li x-text="x"></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.requirements.questions.length"><b>Clarification questions</b><ul><template x-for="x in pending.requirements.questions" :key="x"><li x-text="x"></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.requirements.assumptions.length"><b>Assumptions</b><ul><template x-for="x in pending.requirements.assumptions" :key="x"><li x-text="x"></li></template></ul></div>
+                  </div>
+                </template>
+                <template x-if="pending.architecture">
+                  <div>
+                    <div class="out-grp"><b>Blocks</b><ul><template x-for="b in pending.architecture.blocks" :key="b.name"><li><span x-text="b.name"></span> — <span x-text="b.purpose"></span> <span class="muted" x-text="'(' + b.sheet + ')'"></span></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.architecture.power.length"><b>Power</b><ul><template x-for="x in pending.architecture.power" :key="x"><li x-text="x"></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.architecture.placeholder_components.length"><b>Placeholders</b><ul><template x-for="x in pending.architecture.placeholder_components" :key="x"><li x-text="x"></li></template></ul></div>
+                  </div>
+                </template>
+                <template x-if="pending.critique">
+                  <div>
+                    <div class="out-grp" x-show="pending.critique.warnings.length"><b>Warnings</b><ul><template x-for="x in pending.critique.warnings" :key="x"><li x-text="x"></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.critique.risks.length"><b>Risks</b><ul><template x-for="x in pending.critique.risks" :key="x"><li x-text="x"></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.critique.missing_blocks.length"><b>Missing blocks</b><ul><template x-for="x in pending.critique.missing_blocks" :key="x"><li x-text="x"></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.critique.recommendations.length"><b>Recommendations</b><ul><template x-for="x in pending.critique.recommendations" :key="x"><li x-text="x"></li></template></ul></div>
+                  </div>
+                </template>
+                <template x-if="pending.arbitration">
+                  <div>
+                    <div class="out-grp" x-show="pending.arbitration.todo.length"><b>TODO</b><ul><template x-for="x in pending.arbitration.todo" :key="x"><li x-text="x"></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.arbitration.human_review.length"><b>Needs human review</b><ul><template x-for="x in pending.arbitration.human_review" :key="x"><li x-text="x"></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.arbitration.accepted_assumptions.length"><b>Accepted assumptions</b><ul><template x-for="x in pending.arbitration.accepted_assumptions" :key="x"><li x-text="x"></li></template></ul></div>
+                  </div>
+                </template>
+              </div>
+              <div class="row" style="margin-top:12px">
+                <button class="approve" @click="approveStep()">Freigeben &amp; weiter</button>
+                <button @click="redoStep()">Schritt wiederholen</button>
+                <button @click="stopStep()">Stopp</button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </section>
+    </template>
+    <p class="muted" x-show="stepStopped" style="max-width:1100px; margin:0 auto; padding:0 28px">
+      Pipeline stopped. Adjust your input and run again.
+    </p>
 
     <template x-if="result">
       <div style="display:grid; gap:22px;">
@@ -338,6 +419,8 @@
         input: "", loading: false, result: null, approved: false, mode: "mock", guard: null,
         generating: false, gen: null, genError: "",
         comparing: false, cmp: null, cmpError: "",
+        auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration"],
+        acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
         async init() {
           try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
           await this.fetchGuard();
@@ -348,9 +431,14 @@
         loadExample() {
           this.input = "A 24V industrial sensor board with an STM32 microcontroller, USB-C for configuration, an RS485 fieldbus interface and status LEDs.";
         },
-        async run() {
-          this.loading = true; this.result = null; this.approved = false;
-          this.gen = null; this.genError = "";
+        run() { return this.auto ? this.runAuto() : this.runStep(); },
+        _resetRun() {
+          this.result = null; this.approved = false; this.gen = null; this.genError = "";
+          this.acc = null; this.pending = null; this.stepIdx = -1;
+          this.stepStopped = false; this.stepNotice = "";
+        },
+        async runAuto() {
+          this._resetRun(); this.loading = true;
           try {
             const res = await fetch("/api/run", {
               method: "POST", headers: { "Content-Type": "application/json" },
@@ -361,6 +449,52 @@
             await this.fetchGuard();
           } finally { this.loading = false; }
         },
+        async runStep() {
+          this._resetRun();
+          this.acc = { mode: "mock", requirements: null, architecture: null,
+            critique: null, arbitration: null, trace: [] };
+          await this.loadStage(0);
+        },
+        async loadStage(i) {
+          this.stepBusy = true; this.pending = null; this.stepNotice = "";
+          try {
+            const res = await fetch("/api/step", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                stage: this.STAGES[i],
+                requirements_text: this.input,
+                requirements: this.acc.requirements,
+                architecture: this.acc.architecture,
+                critique: this.acc.critique
+              })
+            });
+            if (!res.ok) throw new Error("Step failed (" + res.status + ")");
+            const data = await res.json();
+            this.stepIdx = i; this.pending = data;
+            this.stepNotice = data.notice || ""; this.acc.mode = data.mode;
+            await this.fetchGuard();
+          } catch (e) {
+            this.stepNotice = "⚠️ " + e.message;
+          } finally { this.stepBusy = false; }
+        },
+        approveStep() {
+          if (!this.pending) return;
+          const stage = this.STAGES[this.stepIdx];
+          this.acc[stage] = this.pending[stage];
+          this.acc.trace.push(this.pending.trace_step);
+          const next = this.stepIdx + 1;
+          this.pending = null;
+          if (next < this.STAGES.length) { this.loadStage(next); return; }
+          this.result = {
+            mode: this.acc.mode,
+            requirements: this.acc.requirements, architecture: this.acc.architecture,
+            critique: this.acc.critique, arbitration: this.acc.arbitration,
+            trace: this.acc.trace, needs_approval: true, notice: null
+          };
+          this.mode = this.acc.mode; this.acc = null; this.stepIdx = -1;
+        },
+        redoStep() { if (this.stepIdx >= 0 && !this.stepBusy) this.loadStage(this.stepIdx); },
+        stopStep() { this.acc = null; this.pending = null; this.stepIdx = -1; this.stepStopped = true; },
         approve() { this.approved = true; },
         async generate() {
           this.generating = true; this.gen = null; this.genError = "";

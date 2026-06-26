@@ -21,6 +21,8 @@ from app.models.schemas import (
     GenerateResponse,
     RunRequest,
     RunResponse,
+    StepRequest,
+    StepResponse,
 )
 from app.services.comparison import run_comparison
 from app.services.config import get_settings
@@ -28,6 +30,7 @@ from app.services.guard import ApiGuard
 from app.services.kicad_cli import KiCadCli, KiCadCliError
 from app.services.orchestrator import Orchestrator
 from app.services.packaging import ZIP_NAME, create_project_zip
+from app.services.stepwise import run_stage
 from app.services.validation import validate_project
 
 router = APIRouter(prefix="/api", tags=["pipeline"])
@@ -125,3 +128,16 @@ def compare(req: CompareRequest) -> Comparison:
     """Run the same requirement through the multi-agent pipeline and a single-agent
     baseline, and score both with the deterministic rubric."""
     return run_comparison(req.requirements_text, get_settings())
+
+
+@router.post("/step", response_model=StepResponse)
+def step(req: StepRequest) -> StepResponse:
+    """Run a single agent stage (for the step-by-step, human-sign-off flow).
+
+    The client passes back the already-approved prior results so each stage has
+    what it needs. Auto mode uses /run instead.
+    """
+    try:
+        return run_stage(req, get_settings())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
