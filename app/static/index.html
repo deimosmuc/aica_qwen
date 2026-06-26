@@ -100,6 +100,24 @@
     .step.pending { box-shadow: 0 0 0 1px var(--accent) inset; }
     .auto-toggle { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px;
       color: var(--muted); font-size: 13px; cursor: pointer; }
+    .diagram { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 16px; }
+    .diagram-svg { width: 100%; height: auto; display: block; max-height: 440px; }
+    .legend { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; margin-top: 6px; font-size: 12px; color: var(--muted); }
+    .legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+    .keyinfo { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 18px; }
+    @media (max-width: 760px) { .keyinfo { grid-template-columns: repeat(3, 1fr); } }
+    .ki { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px; text-align: center; }
+    .ki-n { display: block; font-size: 22px; font-weight: 700; color: var(--text); }
+    .ki-l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; }
+    .ms { float: right; font-size: 12px; color: var(--muted); background: var(--bg);
+      border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+    .chips { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+    .chip { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-size: 13px; }
+    .chip b { font-size: 16px; margin-right: 6px; color: var(--text); }
+    .status-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px;
+      font-size: 12px; font-weight: 600; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
+    .status-chip .live { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+    .status-chip .live.mock { background: var(--warn); }
   </style>
 </head>
 <body x-data="architect()" x-init="init()">
@@ -113,7 +131,8 @@
       <span x-text="'$' + (guard ? guard.spent_usd.toFixed(4) : '0') + ' / $' + (guard ? guard.budget_usd.toFixed(2) : '0')"></span>
       <span class="guard-bar"><span class="guard-fill" :style="`width:${guard ? Math.min(100, 100*guard.spent_usd/guard.budget_usd) : 0}%`"></span></span>
     </div>
-    <span class="badge" :class="mode" x-text="mode === 'mock' ? 'MOCK MODE' : 'QWEN'"></span>
+    <span class="status-chip"><span class="live" :class="mode === 'mock' ? 'mock' : ''"></span>
+      <span x-text="mode === 'mock' ? 'Mock mode · demo' : 'Qwen Cloud · online'"></span></span>
   </header>
 
   <main>
@@ -250,6 +269,7 @@
                 <div style="flex:1">
                   <span class="agent" x-text="s.agent"></span>
                   <span class="role" x-text="'· ' + s.role"></span>
+                  <span class="ms" x-show="s.duration_ms" x-text="fmtMs(s.duration_ms)"></span>
                   <div class="summary" x-text="s.summary"></div>
                   <details class="agent-out">
                     <summary>Show output</summary>
@@ -314,6 +334,28 @@
         <!-- Architecture -->
         <section class="panel">
           <h2>3 · Proposed architecture</h2>
+
+          <template x-if="diagramSvg">
+            <div class="diagram">
+              <div x-html="diagramSvg"></div>
+              <div class="legend">
+                <span><i style="background:#f87171"></i> Power</span>
+                <span><i style="background:#60a5fa"></i> Data</span>
+                <span><i style="background:#fbbf24"></i> Control</span>
+                <span><i style="background:#34d399"></i> Debug</span>
+              </div>
+            </div>
+          </template>
+
+          <div class="keyinfo">
+            <div class="ki"><span class="ki-n" x-text="result.architecture.blocks.length"></span><span class="ki-l">Hierarchical sheets</span></div>
+            <div class="ki"><span class="ki-n" x-text="result.architecture.power.length"></span><span class="ki-l">Power domains</span></div>
+            <div class="ki"><span class="ki-n" x-text="result.architecture.interfaces.length"></span><span class="ki-l">Interfaces</span></div>
+            <div class="ki"><span class="ki-n" x-text="result.architecture.signals.length"></span><span class="ki-l">Main signals</span></div>
+            <div class="ki"><span class="ki-n" x-text="result.architecture.connections.length"></span><span class="ki-l">Connections</span></div>
+            <div class="ki"><span class="ki-n" x-text="result.architecture.placeholder_components.length"></span><span class="ki-l">Placeholders</span></div>
+          </div>
+
           <div class="grid2">
             <div>
               <strong>Functional blocks</strong>
@@ -360,6 +402,11 @@
         <section class="panel">
           <h2>5 · Human approval</h2>
           <p class="muted">No KiCad project is generated until you approve. The engineer stays in control.</p>
+          <div class="chips">
+            <div class="chip"><b x-text="result.arbitration.accepted_assumptions.length"></b>Assumptions</div>
+            <div class="chip"><b x-text="result.arbitration.todo.length"></b>TODO items</div>
+            <div class="chip"><b x-text="result.requirements.questions.length"></b>Open questions</div>
+          </div>
           <div class="row">
             <button class="approve" @click="approve()" :disabled="approved" x-text="approved ? 'Approved ✓' : 'Approve architecture'"></button>
             <button class="primary" @click="generate()" :disabled="!approved || generating"
@@ -421,6 +468,7 @@
         comparing: false, cmp: null, cmpError: "",
         auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration"],
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
+        diagramSvg: null,
         async init() {
           try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
           await this.fetchGuard();
@@ -435,7 +483,7 @@
         _resetRun() {
           this.result = null; this.approved = false; this.gen = null; this.genError = "";
           this.acc = null; this.pending = null; this.stepIdx = -1;
-          this.stepStopped = false; this.stepNotice = "";
+          this.stepStopped = false; this.stepNotice = ""; this.diagramSvg = null;
         },
         async runAuto() {
           this._resetRun(); this.loading = true;
@@ -446,6 +494,7 @@
             });
             this.result = await res.json();
             this.mode = this.result.mode;
+            this.diagramSvg = this.buildDiagram(this.result.architecture);
             await this.fetchGuard();
           } finally { this.loading = false; }
         },
@@ -492,6 +541,7 @@
             trace: this.acc.trace, needs_approval: true, notice: null
           };
           this.mode = this.acc.mode; this.acc = null; this.stepIdx = -1;
+          this.diagramSvg = this.buildDiagram(this.result.architecture);
         },
         redoStep() { if (this.stepIdx >= 0 && !this.stepBusy) this.loadStage(this.stepIdx); },
         stopStep() { this.acc = null; this.pending = null; this.stepIdx = -1; this.stepStopped = true; },
@@ -522,6 +572,47 @@
           } catch (e) {
             this.cmpError = "⚠️ " + e.message;
           } finally { this.comparing = false; }
+        },
+        fmtMs(ms) {
+          if (ms == null) return "";
+          return ms < 1000 ? ms + " ms" : (ms / 1000).toFixed(1) + " s";
+        },
+        buildDiagram(arch) {
+          const blocks = (arch && arch.blocks) || [];
+          const conns = (arch && arch.connections) || [];
+          if (!blocks.length) return null;
+          const deg = {};
+          blocks.forEach(b => deg[b.name] = 0);
+          conns.forEach(c => { if (c.source in deg) deg[c.source]++; if (c.target in deg) deg[c.target]++; });
+          let central = blocks[0].name, best = -1;
+          blocks.forEach(b => {
+            let score = deg[b.name] || 0;
+            if (/mcu|micro|processor|cpu|controller/i.test(b.name + " " + (b.purpose || ""))) score += 100;
+            if (score > best) { best = score; central = b.name; }
+          });
+          const W = 760, H = 460, cx = W / 2, cy = H / 2, nodeW = 134, nodeH = 50;
+          const others = blocks.filter(b => b.name !== central);
+          const R = Math.min(175, 115 + others.length * 8);
+          const pos = {}; pos[central] = { x: cx, y: cy };
+          others.forEach((b, i) => {
+            const ang = -Math.PI / 2 + (2 * Math.PI * i / others.length);
+            pos[b.name] = { x: cx + R * Math.cos(ang), y: cy + R * Math.sin(ang) };
+          });
+          const colors = { power: "#f87171", data: "#60a5fa", control: "#fbbf24", debug: "#34d399" };
+          const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" class="diagram-svg" xmlns="http://www.w3.org/2000/svg">`;
+          conns.forEach(c => {
+            const a = pos[c.source], b = pos[c.target];
+            if (!a || !b) return;
+            s += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${colors[c.type] || "#8b98a5"}" stroke-width="2" opacity="0.85"/>`;
+          });
+          blocks.forEach(blk => {
+            const p = pos[blk.name], central_ = blk.name === central;
+            s += `<rect x="${p.x - nodeW / 2}" y="${p.y - nodeH / 2}" width="${nodeW}" height="${nodeH}" rx="8" fill="${central_ ? "#21314d" : "#222c38"}" stroke="${central_ ? "#4f9cf9" : "#2d3a48"}" stroke-width="1.5"/>`;
+            s += `<text x="${p.x}" y="${p.y}" text-anchor="middle" dominant-baseline="central" fill="#e6edf3" font-size="14" font-weight="600">${esc(blk.name)}</text>`;
+          });
+          s += `</svg>`;
+          return s;
         }
       };
     }
