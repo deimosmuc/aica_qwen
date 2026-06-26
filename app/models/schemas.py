@@ -21,6 +21,7 @@ class RunRequest(BaseModel):
     model: str | None = Field(
         default=None, description="Optional Qwen model override; ignored unless allow-listed."
     )
+    profile: str | None = Field(default=None, description="Named run profile; overrides `model` when set.")
 
 
 # --- Requirements Agent ------------------------------------------------------
@@ -214,6 +215,7 @@ class StepRequest(BaseModel):
     requirements_text: str
     guidance: list[str] = []
     model: str | None = None
+    profile: str | None = None
     requirements: Requirements | None = None
     architecture: Architecture | None = None
     critique: Critique | None = None

@@ -30,6 +30,7 @@ from app.services.guard import ApiGuard
 from app.services.kicad_cli import KiCadCli, KiCadCliError
 from app.services.orchestrator import Orchestrator
 from app.services.packaging import ZIP_NAME, create_project_zip
+from app.services.profiles import profile_for
 from app.services.stepwise import run_stage
 from app.services.validation import validate_project
 
@@ -63,8 +64,8 @@ def run(req: RunRequest) -> RunResponse:
     is generated yet — that happens only after explicit human approval.
     """
     settings = get_settings()
-    settings = settings.model_copy(update={"qwen_model": settings.resolve_model(req.model)})
-    return Orchestrator(settings).run(req.requirements_text, req.guidance)
+    profile = profile_for(req.profile, req.model, settings)
+    return Orchestrator(settings, profile).run(req.requirements_text, req.guidance)
 
 
 @router.post("/generate", response_model=GenerateResponse)
@@ -141,7 +142,8 @@ def step(req: StepRequest) -> StepResponse:
     what it needs. Auto mode uses /run instead.
     """
     settings = get_settings()
-    settings = settings.model_copy(update={"qwen_model": settings.resolve_model(req.model)})
+    profile = profile_for(req.profile, req.model, settings)
+    settings = settings.model_copy(update={"qwen_model": profile.models[req.stage]})
     try:
         return run_stage(req, settings)
     except ValueError as e:
