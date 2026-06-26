@@ -128,7 +128,9 @@ def download(project_id: str) -> FileResponse:
 def compare(req: CompareRequest) -> Comparison:
     """Run the same requirement through the multi-agent pipeline and a single-agent
     baseline, and score both with the deterministic rubric."""
-    return run_comparison(req.requirements_text, get_settings())
+    return run_comparison(
+        req.requirements_text, get_settings(), req.multi_model, req.single_model
+    )
 
 
 @router.post("/step", response_model=StepResponse)

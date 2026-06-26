@@ -173,6 +173,8 @@ class ConcernResult(BaseModel):
 
 class CompareRequest(BaseModel):
     requirements_text: str = Field(..., description="The natural-language hardware request.")
+    multi_model: str | None = None
+    single_model: str | None = None
 
 
 class Comparison(BaseModel):
