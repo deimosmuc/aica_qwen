@@ -30,6 +30,24 @@ _REQUIRED_REPORTS = ("README.md", "todo.md", "assumptions.md", "architecture.md"
 _PRODUCTION_READY = re.compile(r"production[ -]ready", re.IGNORECASE)
 
 
+def _pdf_to_png(pdf_path: Path, png_path: Path, dpi: int = 150) -> bool:
+    """Render the first page of a PDF to PNG. Best-effort: returns False on any
+    failure (mirrors how the SVG preview is best-effort). Uses PyMuPDF, already a
+    project dependency (see tools/pdf2png.py)."""
+    try:
+        import fitz  # PyMuPDF
+
+        doc = fitz.open(pdf_path)
+        try:
+            page = doc[0]
+            page.get_pixmap(dpi=dpi).save(png_path)
+        finally:
+            doc.close()
+        return png_path.is_file()
+    except Exception:
+        return False
+
+
 def _env() -> Environment:
     return Environment(
         loader=FileSystemLoader(str(_TEMPLATE_DIR)),
@@ -145,13 +163,16 @@ def validate_project(
 
     # --- Real KiCad checks ----------------------------------------------------
     kicad_opens: bool | None = None
+    kicad_version: str | None = None
     erc_violations: int | None = None
     erc_by_severity: dict[str, int] = {}
+    pdf_path = project_dir / "schematic.pdf"
     if kicad.available:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_dir = Path(tmp)
+            kicad_version = kicad.version()
             try:
-                kicad.export_pdf(root_sch, tmp_dir / "open_check.pdf")
+                kicad.export_pdf(root_sch, pdf_path)
                 kicad_opens = True
             except KiCadCliError as e:
                 kicad_opens = False
@@ -181,10 +202,25 @@ def validate_project(
         checks=checks,
         kicad_cli_available=kicad.available,
         kicad_opens=kicad_opens,
+        kicad_version=kicad_version,
         erc_violations=erc_violations,
         erc_by_severity=erc_by_severity,
         notes=notes,
     )
+
+    # --- Verification artifacts (only when KiCad actually opened it) ----------
+    if kicad_opens and pdf_path.is_file():
+        png_name = "schematic_preview.png"
+        png_ok = _pdf_to_png(pdf_path, project_dir / png_name)
+        (project_dir / "VERIFICATION.md").write_text(
+            _env().get_template("verification.md.j2").render(
+                validation=validation,
+                png_name=png_name if png_ok else None,
+            ),
+            encoding="utf-8",
+        )
+        if not png_ok:
+            notes.append("Schematic PNG could not be rendered; VERIFICATION.md is text-only.")
 
     # --- Report ---------------------------------------------------------------
     (project_dir / "validation_report.md").write_text(

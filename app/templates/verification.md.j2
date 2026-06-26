@@ -1,0 +1,19 @@
+# Verification
+
+*Machine-checked proof for this generated scaffold. The project below was opened
+and exported by KiCad itself — these files are not hallucinated. This verifies
+the scaffold **opens and is internally consistent**; it does **not** certify the
+design as correct or production-ready. A human engineer remains responsible.*
+
+**Verified by:** {{ validation.kicad_version or "KiCad" }}
+
+## What was checked
+
+- Opens & exports in KiCad: {{ "✅ yes" if validation.kicad_opens else "❌ no" }}
+{% if validation.erc_violations is not none %}- ERC ran: ✅ ({{ validation.erc_violations }} violation{{ "" if validation.erc_violations == 1 else "s" }}{% if validation.erc_by_severity %} — {% for sev, n in validation.erc_by_severity.items() %}{{ sev }}: {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %})
+{% endif %}- Structural checks: {{ "✅ all passed" if validation.ok else "⚠️ see validation_report.md" }}
+{% if png_name %}
+## Rendered schematic
+
+![Rendered schematic]({{ png_name }})
+{% endif %}
