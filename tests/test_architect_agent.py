@@ -23,6 +23,10 @@ ARCH = {
     "signals": ["USB_D+", "USB_D-", "RS485_A", "RS485_B"],
     "power": ["VIN_24V", "+5V", "+3V3", "GND"],
     "placeholder_components": ["DUMMY_MCU", "DUMMY_RS485", "DUMMY_POWER_STAGE"],
+    "connections": [
+        {"source": "Power", "target": "MCU", "type": "power"},
+        {"source": "RS485", "target": "MCU", "type": "data"},
+    ],
     "notes": ["Hierarchical design, one sheet per block."],
 }
 
@@ -42,6 +46,16 @@ def test_architect_parses_valid_architecture():
     assert [b.name for b in result.blocks] == ["Power", "MCU", "RS485"]
     assert all(b.sheet.endswith(".kicad_sch") for b in result.blocks)
     assert "VIN_24V" in result.power
+
+
+def test_architect_parses_connections():
+    result = SystemArchitectAgent().run(FakeClient(ARCH), REQS)
+    assert len(result.connections) == 2
+    c = result.connections[0]
+    assert c.source == "Power" and c.target == "MCU" and c.type == "power"
+    # source/target must reference real block names.
+    names = {b.name for b in result.blocks}
+    assert all(c.source in names and c.target in names for c in result.connections)
 
 
 def test_architect_receives_the_requirements():

@@ -34,6 +34,11 @@ Output a JSON object with exactly these keys:
 - "signals": array of strings (net names, e.g. "USB_D+", "RS485_A")
 - "power": array of strings (power-rail net names, e.g. "VIN_24V", "+3V3", "GND")
 - "placeholder_components": array of strings (DUMMY_* names)
+- "connections": array of objects, each {"source": block name, "target": block name,
+  "type": one of "power" | "data" | "control" | "debug"} describing how the blocks
+  link up. "source" and "target" MUST be names that appear in "blocks". Use "power"
+  for supply rails, "data" for buses/interfaces, "control" for control/enable lines,
+  "debug" for programming/debug links.
 - "notes": array of strings
 """
 

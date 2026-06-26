@@ -12,6 +12,8 @@ returns its slice of the prepared example pipeline.
 """
 from __future__ import annotations
 
+from time import perf_counter
+
 from app.agents.arbitration import ArbitrationAgent
 from app.agents.architect import SystemArchitectAgent
 from app.agents.critic import DesignCriticAgent
@@ -42,8 +44,10 @@ def _mock_step(stage: str, notice: str | None = None) -> StepResponse:
     return resp
 
 
-def _trace(agent, status: str, summary: str) -> TraceStep:
-    return TraceStep(agent=agent.name, role=agent.role, status=status, summary=summary)
+def _trace(agent, status: str, summary: str, duration_ms: int | None = None) -> TraceStep:
+    return TraceStep(
+        agent=agent.name, role=agent.role, status=status, summary=summary, duration_ms=duration_ms
+    )
 
 
 def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
@@ -58,37 +62,46 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
     client = QwenClient(settings)
     try:
         if req.stage == "requirements":
+            t = perf_counter()
             out: Requirements = RequirementsAgent().run(client, req.requirements_text)
+            ms = int((perf_counter() - t) * 1000)
             step = _trace(
                 RequirementsAgent,
                 "ok",
                 f"Structured {len(out.requirements)} requirements, raised "
                 f"{len(out.questions)} clarification questions (confidence {out.confidence:.0%}).",
+                ms,
             )
             return StepResponse(stage=req.stage, mode="qwen", trace_step=step, requirements=out)
 
         if req.stage == "architecture":
             if req.requirements is None:
                 raise ValueError("The architecture stage needs the approved requirements.")
+            t = perf_counter()
             arch: Architecture = SystemArchitectAgent().run(client, req.requirements)
+            ms = int((perf_counter() - t) * 1000)
             step = _trace(
                 SystemArchitectAgent,
                 "ok",
                 f"Proposed {len(arch.blocks)} functional blocks, "
                 f"{len(arch.power)} power domains across hierarchical sheets.",
+                ms,
             )
             return StepResponse(stage=req.stage, mode="qwen", trace_step=step, architecture=arch)
 
         if req.stage == "critique":
             if req.requirements is None or req.architecture is None:
                 raise ValueError("The critique stage needs the approved requirements and architecture.")
+            t = perf_counter()
             crit: Critique = DesignCriticAgent().run(client, req.requirements, req.architecture)
+            ms = int((perf_counter() - t) * 1000)
             n = len(crit.warnings) + len(crit.risks) + len(crit.missing_blocks)
             step = _trace(
                 DesignCriticAgent,
                 "warning" if n else "ok",
                 f"Flagged {len(crit.warnings)} warnings, {len(crit.risks)} risks, "
                 f"{len(crit.missing_blocks)} missing blocks.",
+                ms,
             )
             return StepResponse(stage=req.stage, mode="qwen", trace_step=step, critique=crit)
 
@@ -97,14 +110,17 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
                 raise ValueError(
                     "The arbitration stage needs the approved requirements, architecture and critique."
                 )
+            t = perf_counter()
             arb: Arbitration = ArbitrationAgent().run(
                 client, req.requirements, req.architecture, req.critique
             )
+            ms = int((perf_counter() - t) * 1000)
             step = _trace(
                 ArbitrationAgent,
                 "ok",
                 f"Approved the architecture; logged {len(arb.todo)} TODOs and "
                 f"{len(arb.human_review)} human-review items.",
+                ms,
             )
             return StepResponse(stage=req.stage, mode="qwen", trace_step=step, arbitration=arb)
 

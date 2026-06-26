@@ -11,6 +11,8 @@ off on.
 """
 from __future__ import annotations
 
+from time import perf_counter
+
 from app.agents.arbitration import ArbitrationAgent
 from app.agents.architect import SystemArchitectAgent
 from app.agents.base import ChatClient
@@ -39,10 +41,18 @@ class Orchestrator:
         # or fails, we fall back to example data with a clear notice — no charge
         # surprises and the demo keeps working.
         try:
+            t = perf_counter()
             requirements = RequirementsAgent().run(client, requirements_text)
+            req_ms = int((perf_counter() - t) * 1000)
+            t = perf_counter()
             architecture = SystemArchitectAgent().run(client, requirements)
+            arch_ms = int((perf_counter() - t) * 1000)
+            t = perf_counter()
             critique = DesignCriticAgent().run(client, requirements, architecture)
+            crit_ms = int((perf_counter() - t) * 1000)
+            t = perf_counter()
             arbitration = ArbitrationAgent().run(client, requirements, architecture, critique)
+            arb_ms = int((perf_counter() - t) * 1000)
         except GuardBlocked as e:
             return self._guarded_fallback(
                 requirements_text,
@@ -58,6 +68,7 @@ class Orchestrator:
             agent=RequirementsAgent.name,
             role=RequirementsAgent.role,
             status="ok",
+            duration_ms=req_ms,
             summary=(
                 f"Live Qwen: structured {len(requirements.requirements)} requirements, "
                 f"raised {len(requirements.questions)} clarification questions "
@@ -68,6 +79,7 @@ class Orchestrator:
             agent=SystemArchitectAgent.name,
             role=SystemArchitectAgent.role,
             status="ok",
+            duration_ms=arch_ms,
             summary=(
                 f"Live Qwen: proposed {len(architecture.blocks)} functional blocks, "
                 f"{len(architecture.power)} power domains across hierarchical sheets."
@@ -78,6 +90,7 @@ class Orchestrator:
             agent=DesignCriticAgent.name,
             role=DesignCriticAgent.role,
             status="warning" if n_findings else "ok",
+            duration_ms=crit_ms,
             summary=(
                 f"Live Qwen: flagged {len(critique.warnings)} warnings, "
                 f"{len(critique.risks)} risks, {len(critique.missing_blocks)} missing blocks."
@@ -88,6 +101,7 @@ class Orchestrator:
             agent=ArbitrationAgent.name,
             role=ArbitrationAgent.role,
             status="ok",
+            duration_ms=arb_ms,
             summary=(
                 f"Live Qwen: approved the architecture; logged {len(arbitration.todo)} TODOs "
                 f"and {len(arbitration.human_review)} human-review items."

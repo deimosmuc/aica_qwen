@@ -37,12 +37,22 @@ class Block(BaseModel):
     purpose: str
 
 
+class Connection(BaseModel):
+    """A directed link between two blocks, used to draw the architecture diagram.
+    `source`/`target` reference block names; `type` drives the connection colour."""
+
+    source: str
+    target: str
+    type: Literal["power", "data", "control", "debug"] = "data"
+
+
 class Architecture(BaseModel):
     blocks: list[Block] = []
     interfaces: list[str] = []
     signals: list[str] = []
     power: list[str] = []
     placeholder_components: list[str] = []
+    connections: list[Connection] = []
     notes: list[str] = []
 
 
@@ -74,6 +84,8 @@ class TraceStep(BaseModel):
     role: str
     status: Literal["ok", "warning", "skipped"] = "ok"
     summary: str
+    # Wall-clock time the agent took (live mode only; None in Mock Mode).
+    duration_ms: int | None = None
 
 
 # --- Full pipeline response --------------------------------------------------
