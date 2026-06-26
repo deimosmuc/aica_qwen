@@ -135,3 +135,38 @@ def test_orchestrator_falls_back_to_mock_when_guard_blocks():
     assert result.mode == "mock"
     assert result.notice is not None
     assert "budget" in result.notice.lower()
+
+
+VALID_WITH_CLARIFY = {
+    "requirements": ["24 V supply"],
+    "constraints": [],
+    "questions": [],
+    "assumptions": [],
+    "confidence": 0.6,
+    "clarifications": [
+        {
+            "id": "power",
+            "text": "Which power source?",
+            "options": [
+                {"label": "USB-C, 5V", "detail": "simple"},
+                {"label": "Li-Ion + charger", "detail": "portable"},
+            ],
+            "select": "single",
+            "assumption": "USB 5V",
+        }
+    ],
+}
+
+
+def test_agent_parses_clarifications():
+    client = FakeClient(VALID_WITH_CLARIFY)
+    result = RequirementsAgent().run(client, "a small board")
+    assert len(result.clarifications) == 1
+    q = result.clarifications[0]
+    assert q.id == "power"
+    assert q.select == "single"
+    assert q.options[0].label == "USB-C, 5V"
+    # questions backfilled from the clarification text
+    assert result.questions == ["Which power source?"]
+    # the prompt must instruct the model to produce options
+    assert "clarifications" in client.calls[0]["system"]

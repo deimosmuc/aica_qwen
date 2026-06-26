@@ -25,13 +25,22 @@ Rules:
   either ask a clarification question or record an explicit ASSUMPTION.
 - Normalise terminology (e.g. "micro" -> "microcontroller").
 - Be honest about uncertainty via the confidence value (0.0-1.0).
+- For each genuine, decision-changing ambiguity, prefer a "clarifications" entry
+  with 2-3 concrete options over a bare question. Keep clarifications few (about
+  2-4) — only the ambiguities that would actually change the design. Use
+  "select": "multi" only when multiple options can legitimately be combined.
 
 Output a JSON object with exactly these keys:
 - "requirements": array of strings (the structured functional requirements)
 - "constraints": array of strings (environmental, mechanical, regulatory, etc.)
-- "questions": array of strings (clarification questions for the human)
+- "questions": array of strings (plain clarification questions; may be empty if you use clarifications)
 - "assumptions": array of strings, each prefixed with "ASSUMPTION:"
 - "confidence": number between 0 and 1
+- "clarifications": array of objects, each:
+    {"id": short-stable-id, "text": the question,
+     "options": [{"label": short choice, "detail": one-line rationale}, ...] (2-3 options),
+     "select": "single" (default) or "multi" (only when several options can sensibly combine),
+     "assumption": what you would assume if the user skips this question}
 """
 
 
