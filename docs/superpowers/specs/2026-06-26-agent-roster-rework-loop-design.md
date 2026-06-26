@@ -93,7 +93,7 @@ When a profile has `rework=True`, mock mode returns a **scripted two-round** exa
 
 ### 6. Cost / guard
 
-Worst case with `max_rounds=2`: Requirements + (Architect+Critic)×2 + Arbitration = 6 calls — within today's `guard_max_calls_per_run` of 8. We still raise the cap to **12** as headroom, so a user can raise `max_rounds` (e.g. to 4) without hitting the call-count guard; the **$5 budget cap remains the real guard** (real cost is bounded by spend, not call count). If the guard blocks mid-loop, the existing graceful fallback applies (return what we have with an honest notice).
+Worst case with `max_rounds=2`: Requirements + (Architect+Critic)×2 + Arbitration = 6 calls. The loop is bounded **structurally by `max_rounds`** — it cannot run away regardless of what the Critic returns. The real cost backstops are the guard's **per-minute rate limit (15)** and the **$5 budget cap** (both enforced in `ApiGuard`). Note: `guard_max_calls_per_run` exists in config but is **not currently wired into `ApiGuard`** — do not rely on it as the loop's safety mechanism (the structural `max_rounds` bound + rate limit + budget are what actually protect cost). If the guard blocks mid-loop, the existing graceful fallback applies (the run falls back to example data with an honest notice).
 
 ### 7. Routes / UI
 

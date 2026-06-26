@@ -44,7 +44,3 @@ def test_profile_for_unknown_model_defaults():
     s = Settings()
     p = profile_for(None, "gpt-4", s)
     assert all(m == s.qwen_model for m in p.models.values())
-
-
-def test_guard_cap_raised_for_rework_headroom():
-    assert Settings().guard_max_calls_per_run == 12
