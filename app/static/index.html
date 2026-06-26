@@ -156,7 +156,10 @@
         <button class="primary" @click="run()" :disabled="loading || stepBusy || !input.trim()"
           x-text="loading ? 'Agents working…' : (auto ? 'Run agents' : 'Run agents (step by step)')"></button>
         <button @click="compareRun()" :disabled="comparing || !input.trim()"
-          x-text="comparing ? 'Comparing…' : 'Compare: multi vs single agent'"></button>
+          x-text="comparing ? 'Comparing…' : 'Compare: fair (same model)'"></button>
+        <button @click="compareRun({ single_model: 'qwen-max' })" :disabled="comparing || !input.trim()"
+          :title="'Multi-agent @ qwen-plus vs single-agent @ qwen-max'"
+          x-text="comparing ? 'Comparing…' : '🏆 Architecture beats tier'"></button>
         <button @click="loadExample()" :disabled="loading || comparing">Load example</button>
         <label class="model-pick">Model:
           <select x-model="selectedModel" :disabled="loading || stepBusy || comparing">
@@ -180,10 +183,12 @@
         <h2>Multi-agent vs single-agent</h2>
         <div class="notice" x-show="cmp.notice" x-text="'⚠️ ' + (cmp.notice || '')" style="margin-bottom:14px"></div>
         <div class="cmp-scores">
-          <div><div class="muted">Multi-agent</div>
-            <div class="cmp-score" x-text="cmp.multi_score"></div><span class="of" x-text="'/ ' + cmp.total"></span></div>
-          <div><div class="muted">Single-agent</div>
-            <div class="cmp-score" x-text="cmp.single_score"></div><span class="of" x-text="'/ ' + cmp.total"></span></div>
+          <div><div class="muted" x-text="'Multi-agent · ' + cmp.multi_model"></div>
+            <div class="cmp-score" x-text="cmp.multi_score"></div><span class="of" x-text="'/ ' + cmp.total"></span>
+            <div class="muted" x-text="cmp.multi_blocks + ' blocks · ' + cmp.multi_findings + ' findings · ' + cmp.multi_honesty + ' honesty'"></div></div>
+          <div><div class="muted" x-text="'Single-agent · ' + cmp.single_model"></div>
+            <div class="cmp-score" x-text="cmp.single_score"></div><span class="of" x-text="'/ ' + cmp.total"></span>
+            <div class="muted" x-text="cmp.single_blocks + ' blocks · ' + cmp.single_findings + ' findings · ' + cmp.single_honesty + ' honesty'"></div></div>
           <span class="cmp-delta" :class="cmp.delta > 0 ? '' : 'neutral'"
             x-text="cmp.delta > 0 ? ('Multi-agent surfaces +' + cmp.delta + ' more') : (cmp.delta === 0 ? 'Tie on coverage' : ('Single-agent ahead by ' + (-cmp.delta)))"></span>
         </div>
@@ -606,12 +611,12 @@
             this.genError = "⚠️ " + e.message;
           } finally { this.generating = false; }
         },
-        async compareRun() {
+        async compareRun(opts = {}) {
           this.comparing = true; this.cmp = null; this.cmpError = "";
           try {
             const res = await fetch("/api/compare", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ requirements_text: this.input })
+              body: JSON.stringify({ requirements_text: this.input, ...opts })
             });
             if (!res.ok) throw new Error("Compare failed (" + res.status + ")");
             this.cmp = await res.json();
