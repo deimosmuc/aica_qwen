@@ -10,8 +10,12 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from app.services.comparison import run_comparison
-from app.services.config import Settings
+# Make the script runnable directly (e.g. `python tools/compare_report.py ...`)
+# by putting the project root on the import path before importing the app.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app.services.comparison import run_comparison  # noqa: E402
+from app.services.config import Settings  # noqa: E402
 
 
 def _to_markdown(cmp) -> str:
