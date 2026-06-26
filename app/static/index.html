@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Circuit Architect</title>
+  <script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.3/lib/elk.bundled.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     :root {
@@ -260,9 +261,9 @@
               <textarea class="correct" x-model="correctText" rows="2"
                 placeholder="Course-correct (optional): e.g. 'Wrong track — we must use part XYZ by company policy.' Then Re-run."></textarea>
               <div class="row" style="margin-top:12px">
-                <button class="approve" @click="approveStep()">Freigeben &amp; weiter</button>
-                <button @click="redoStep()" x-text="correctText.trim() ? 'Re-run with my correction' : 'Schritt wiederholen'"></button>
-                <button @click="stopStep()">Stopp</button>
+                <button class="approve" @click="approveStep()">Approve &amp; continue</button>
+                <button @click="redoStep()" x-text="correctText.trim() ? 'Re-run with my correction' : 'Re-run step'"></button>
+                <button @click="stopStep()">Stop</button>
               </div>
             </div>
           </div>
@@ -513,7 +514,7 @@
             });
             this.result = await res.json();
             this.mode = this.result.mode;
-            this.diagramSvg = this.buildDiagram(this.result.architecture);
+            this.diagramSvg = await this.buildDiagram(this.result.architecture);
             await this.fetchGuard();
           } finally { this.loading = false; }
         },
@@ -561,7 +562,7 @@
             trace: this.acc.trace, needs_approval: true, notice: null
           };
           this.mode = this.acc.mode; this.acc = null; this.stepIdx = -1;
-          this.diagramSvg = this.buildDiagram(this.result.architecture);
+          this.buildDiagram(this.result.architecture).then(svg => { this.diagramSvg = svg; });
         },
         redoStep() {
           if (this.stepIdx < 0 || this.stepBusy) return;
@@ -605,42 +606,72 @@
         parseConstraints() {
           return this.constraintsText.split("\n").map(s => s.trim()).filter(Boolean);
         },
-        buildDiagram(arch) {
+        _colors: { power: "#f87171", data: "#60a5fa", control: "#fbbf24", debug: "#34d399" },
+        _esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); },
+        _isHub(name) { return /mcu|micro|processor|cpu|controller/i.test(name); },
+        _nodeW(name) { return Math.max(112, Math.min(210, name.length * 9 + 24)); },
+        async buildDiagram(arch) {
           const blocks = (arch && arch.blocks) || [];
           const conns = (arch && arch.connections) || [];
           if (!blocks.length) return null;
-          const deg = {};
-          blocks.forEach(b => deg[b.name] = 0);
+          const NH = 48;
+          // Proper orthogonal routing + crossing minimisation via the ELK engine.
+          if (typeof ELK !== "undefined") {
+            try {
+              const elk = new ELK();
+              const typeById = {};
+              const graph = {
+                id: "root",
+                layoutOptions: {
+                  "elk.algorithm": "layered", "elk.direction": "RIGHT",
+                  "elk.edgeRouting": "ORTHOGONAL",
+                  "elk.layered.spacing.nodeNodeBetweenLayers": "70",
+                  "elk.spacing.nodeNode": "34",
+                  "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+                  "elk.padding": "[top=14,left=14,bottom=14,right=14]"
+                },
+                children: blocks.map(b => ({ id: b.name, width: this._nodeW(b.name), height: NH })),
+                edges: conns.filter(c => c.source && c.target).map((c, i) => {
+                  typeById["e" + i] = c.type;
+                  return { id: "e" + i, sources: [c.source], targets: [c.target] };
+                })
+              };
+              const g = await elk.layout(graph);
+              let s = `<svg viewBox="0 0 ${Math.ceil(g.width)} ${Math.ceil(g.height)}" preserveAspectRatio="xMidYMid meet" class="diagram-svg" xmlns="http://www.w3.org/2000/svg">`;
+              (g.edges || []).forEach(e => {
+                const sec = e.sections && e.sections[0];
+                if (!sec) return;
+                const pts = [sec.startPoint, ...(sec.bendPoints || []), sec.endPoint]
+                  .map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+                s += `<polyline points="${pts}" fill="none" stroke="${this._colors[typeById[e.id]] || "#8b98a5"}" stroke-width="2"/>`;
+              });
+              (g.children || []).forEach(n => {
+                const c = this._isHub(n.id);
+                s += `<rect x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}" width="${n.width}" height="${n.height}" rx="8" fill="${c ? "#21314d" : "#222c38"}" stroke="${c ? "#4f9cf9" : "#2d3a48"}" stroke-width="1.5"/>`;
+                s += `<text x="${(n.x + n.width / 2).toFixed(1)}" y="${(n.y + n.height / 2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="#e6edf3" font-size="13" font-weight="600">${this._esc(n.id)}</text>`;
+              });
+              return s + "</svg>";
+            } catch (err) {
+              console.warn("ELK layout failed, using fallback:", err);
+            }
+          }
+          return this._simpleDiagram(blocks, conns, NH);
+        },
+        _simpleDiagram(blocks, conns, NH) {
+          // Fallback (ELK unavailable): hub in the centre, others on a ring, straight links.
+          const deg = {}; blocks.forEach(b => deg[b.name] = 0);
           conns.forEach(c => { if (c.source in deg) deg[c.source]++; if (c.target in deg) deg[c.target]++; });
           let central = blocks[0].name, best = -1;
-          blocks.forEach(b => {
-            let score = deg[b.name] || 0;
-            if (/mcu|micro|processor|cpu|controller/i.test(b.name + " " + (b.purpose || ""))) score += 100;
-            if (score > best) { best = score; central = b.name; }
-          });
-          const W = 760, H = 460, cx = W / 2, cy = H / 2, nodeW = 134, nodeH = 50;
+          blocks.forEach(b => { const sc = (deg[b.name] || 0) + (this._isHub(b.name) ? 100 : 0); if (sc > best) { best = sc; central = b.name; } });
+          const W = 760, H = 460, cx = W / 2, cy = H / 2, nodeW = 134;
           const others = blocks.filter(b => b.name !== central);
           const R = Math.min(175, 115 + others.length * 8);
           const pos = {}; pos[central] = { x: cx, y: cy };
-          others.forEach((b, i) => {
-            const ang = -Math.PI / 2 + (2 * Math.PI * i / others.length);
-            pos[b.name] = { x: cx + R * Math.cos(ang), y: cy + R * Math.sin(ang) };
-          });
-          const colors = { power: "#f87171", data: "#60a5fa", control: "#fbbf24", debug: "#34d399" };
-          const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          others.forEach((b, i) => { const a = -Math.PI / 2 + (2 * Math.PI * i / others.length); pos[b.name] = { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) }; });
           let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" class="diagram-svg" xmlns="http://www.w3.org/2000/svg">`;
-          conns.forEach(c => {
-            const a = pos[c.source], b = pos[c.target];
-            if (!a || !b) return;
-            s += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${colors[c.type] || "#8b98a5"}" stroke-width="2" opacity="0.85"/>`;
-          });
-          blocks.forEach(blk => {
-            const p = pos[blk.name], central_ = blk.name === central;
-            s += `<rect x="${p.x - nodeW / 2}" y="${p.y - nodeH / 2}" width="${nodeW}" height="${nodeH}" rx="8" fill="${central_ ? "#21314d" : "#222c38"}" stroke="${central_ ? "#4f9cf9" : "#2d3a48"}" stroke-width="1.5"/>`;
-            s += `<text x="${p.x}" y="${p.y}" text-anchor="middle" dominant-baseline="central" fill="#e6edf3" font-size="14" font-weight="600">${esc(blk.name)}</text>`;
-          });
-          s += `</svg>`;
-          return s;
+          conns.forEach(c => { const a = pos[c.source], b = pos[c.target]; if (!a || !b) return; s += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${this._colors[c.type] || "#8b98a5"}" stroke-width="2" opacity="0.85"/>`; });
+          blocks.forEach(blk => { const p = pos[blk.name], c = blk.name === central; s += `<rect x="${p.x - nodeW / 2}" y="${p.y - NH / 2}" width="${nodeW}" height="${NH}" rx="8" fill="${c ? "#21314d" : "#222c38"}" stroke="${c ? "#4f9cf9" : "#2d3a48"}" stroke-width="1.5"/><text x="${p.x}" y="${p.y}" text-anchor="middle" dominant-baseline="central" fill="#e6edf3" font-size="13" font-weight="600">${this._esc(blk.name)}</text>`; });
+          return s + "</svg>";
         }
       };
     }
