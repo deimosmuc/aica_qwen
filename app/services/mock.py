@@ -33,6 +33,8 @@ def mock_run(requirements_text: str) -> RunResponse:
             "Industrial environment (ESD / surge exposure on the 24 V rail)",
             "Single-board design",
         ],
+        # No explicit `questions=` — the Requirements validator backfills the legacy
+        # `questions` list from these clarifications' text (see schemas.py).
         clarifications=[
             ClarifyingQuestion(
                 id="rs485-isolation",
