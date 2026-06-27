@@ -19,20 +19,48 @@ def test_meter_accumulates_across_calls():
 
 
 def test_orchestrator_attaches_summed_usage(tmp_path, monkeypatch):
-    """A live run (faked httpx) sums usage across all four stage calls and
+    """A live run (faked httpx) sums usage across all six stage calls and
     attaches it to RunResponse.usage."""
+    import json
     from app.services.config import Settings
     from app.services.guard import ApiGuard
     from app.services.orchestrator import Orchestrator
 
-    payload = {
-        "choices": [{"message": {"content": '{"requirements":[],"blocks":[],"warnings":[],"approved_architecture":{"blocks":[]}}'}, "finish_reason": "stop"}],
-        "usage": {"prompt_tokens": 100, "completion_tokens": 40},
-    }
+    # Per-call blobs — each agent gets its own keys.
+    blobs = [
+        # 1. RequirementsAgent
+        {"requirements": [], "constraints": [], "questions": [], "assumptions": [],
+         "confidence": 0.5, "clarifications": []},
+        # 2. SystemArchitectAgent
+        {"blocks": [], "interfaces": [], "signals": [], "power": [],
+         "placeholder_components": [], "connections": [], "notes": []},
+        # 3. DesignCriticAgent
+        {"warnings": [], "risks": [], "missing_blocks": [], "recommendations": []},
+        # 4. ArbitrationAgent
+        {"approved_architecture": {"blocks": [], "interfaces": [], "signals": [],
+                                   "power": [], "placeholder_components": [],
+                                   "connections": [], "notes": []},
+         "todo": [], "human_review": [], "accepted_assumptions": []},
+        # 5. PcbEngineerAgent
+        {"layerstack": "2-layer", "layerstack_reason": "simple",
+         "netclasses": [{"name": "Default", "min_width_mm": 0.2, "clearance_mm": 0.2, "nets": []}],
+         "constraints": {"min_clearance_mm": 0.2, "min_track_width_mm": 0.2,
+                         "via_drill_mm": 0.4, "via_annular_ring_mm": 0.15},
+         "floorplan_text": "", "floorplan_ascii": "", "package_hints": []},
+        # 6. PcbCriticAgent
+        {"missing_blocks": [], "warnings": [], "risks": []},
+    ]
+    call_count = {"n": 0}
 
     class _FakeResp:
         def raise_for_status(self): return None
-        def json(self): return payload
+        def json(self):
+            idx = min(call_count["n"], len(blobs) - 1)
+            call_count["n"] += 1
+            return {
+                "choices": [{"message": {"content": json.dumps(blobs[idx])}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": 100, "completion_tokens": 40},
+            }
 
     monkeypatch.setattr("app.services.qwen_client.httpx.post", lambda *a, **k: _FakeResp())
     settings = Settings(qwen_api_key="x")
@@ -41,7 +69,7 @@ def test_orchestrator_attaches_summed_usage(tmp_path, monkeypatch):
 
     assert res.mode == "qwen"
     assert res.usage is not None
-    assert res.usage.calls == 4          # requirements, architecture, critique, arbitration
-    assert res.usage.input_tokens == 400
-    assert res.usage.output_tokens == 160
+    assert res.usage.calls == 6          # requirements, architecture, critique, arbitration, pcb_engineer, pcb_critic
+    assert res.usage.input_tokens == 600
+    assert res.usage.output_tokens == 240
     assert res.usage.cost_usd > 0

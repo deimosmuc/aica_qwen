@@ -104,9 +104,31 @@ def test_orchestrator_mock_mode_without_key():
     assert len(result.trace) == 4
 
 
+VALID_ARB = {
+    "approved_architecture": VALID_ARCH,
+    "todo": ["TODO: verify RS485 isolation"],
+    "human_review": [],
+    "accepted_assumptions": [],
+}
+
+VALID_PCB = {
+    "layerstack": "2-layer",
+    "layerstack_reason": "simple board",
+    "netclasses": [{"name": "Default", "min_width_mm": 0.2, "clearance_mm": 0.2, "nets": []}],
+    "constraints": {"min_clearance_mm": 0.2, "min_track_width_mm": 0.2,
+                    "via_drill_mm": 0.4, "via_annular_ring_mm": 0.15},
+    "floorplan_text": "MCU central.",
+    "floorplan_ascii": "[MCU]",
+    "package_hints": [],
+}
+
+VALID_PCB_CRIT = {"missing_blocks": [], "warnings": [], "risks": []}
+
+
 def test_orchestrator_qwen_mode_runs_three_live_agents():
     settings = Settings(qwen_api_key="test-key")  # non-empty -> qwen mode
-    client = FakeClient([VALID, VALID_ARCH, VALID_CRIT])  # req -> arch -> critic
+    # req -> arch -> critic -> arbitration -> pcb_engineer -> pcb_critic
+    client = FakeClient([VALID, VALID_ARCH, VALID_CRIT, VALID_ARB, VALID_PCB, VALID_PCB_CRIT])
     result = Orchestrator(settings, client=client).run("A 24V board with an STM32")
     assert result.mode == "qwen"
     # The live requirements replace the mock ones...

@@ -25,15 +25,31 @@ def test_mock_mode_pipeline_unchanged():
 
 
 import app.services.orchestrator as orch_mod
-from app.models.schemas import Arbitration, Architecture, Block, Critique, Requirements
+from app.models.schemas import Arbitration, Architecture, Block, Critique, PcbCritique, PcbReadiness, Requirements
 from app.services.profiles import RunProfile
+
+_ALL_ROLES = ("requirements", "architecture", "critique", "arbitration", "pcb_engineer", "pcb_critique")
 
 
 def _rework_profile(rounds=2):
     return RunProfile(
         name="t",
-        models={r: "qwen-plus" for r in ("requirements", "architecture", "critique", "arbitration")},
+        models={r: "qwen-plus" for r in _ALL_ROLES},
         rework=True, max_rounds=rounds,
+    )
+
+
+def _stub_pcb_readiness() -> PcbReadiness:
+    from app.models.schemas import ConstraintSet, NetClass, PackageHint
+    return PcbReadiness(
+        layerstack="2-layer",
+        layerstack_reason="simple board",
+        netclasses=[NetClass(name="Default", min_width_mm=0.2, clearance_mm=0.2)],
+        constraints=ConstraintSet(min_clearance_mm=0.2, min_track_width_mm=0.2,
+                                  via_drill_mm=0.4, via_annular_ring_mm=0.15),
+        floorplan_text="MCU central.",
+        floorplan_ascii="[MCU]",
+        package_hints=[],
     )
 
 
@@ -53,6 +69,10 @@ def _patch_agents(monkeypatch, critic_fn, calls):
     monkeypatch.setattr(orch_mod.DesignCriticAgent, "run", crit)
     monkeypatch.setattr(orch_mod.ArbitrationAgent, "run",
                         lambda self, c, req, arch, crit, g=None: Arbitration(approved_architecture=arch))
+    monkeypatch.setattr(orch_mod.PcbEngineerAgent, "run",
+                        lambda self, c, req, arch, arb, g=None: _stub_pcb_readiness())
+    monkeypatch.setattr(orch_mod.PcbCriticAgent, "run",
+                        lambda self, c, req, pcb, g=None: PcbCritique())
 
 
 def test_rework_stops_when_critic_is_clean(monkeypatch):

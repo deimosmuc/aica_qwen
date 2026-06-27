@@ -13,8 +13,10 @@ from app.agents.arbitration import ArbitrationAgent
 from app.agents.architect import SystemArchitectAgent
 from app.agents.base import ChatClient
 from app.agents.critic import DesignCriticAgent
+from app.agents.pcb_critic import PcbCriticAgent
+from app.agents.pcb_engineer import PcbEngineerAgent
 from app.agents.requirements import RequirementsAgent
-from app.models.schemas import Architecture, Critique, Requirements, RunResponse, TraceStep
+from app.models.schemas import Architecture, Critique, PcbCritique, PcbReadiness, Requirements, RunResponse, TraceStep
 from app.services.config import Settings
 from app.services.guard import ApiGuard, GuardBlocked
 from app.services.metering import RunMeter
@@ -76,6 +78,64 @@ class Orchestrator:
             ),
         )
 
+    @staticmethod
+    def _pcb_step(pcb: PcbReadiness, round_no: int, ms: int) -> TraceStep:
+        return TraceStep(
+            agent=PcbEngineerAgent.name, role=PcbEngineerAgent.role,
+            status="ok", duration_ms=ms, round=round_no,
+            summary=(
+                f"Live Qwen (round {round_no}): {pcb.layerstack}, "
+                f"{len(pcb.netclasses)} net classes, "
+                f"{len(pcb.package_hints)} package hints."
+            ),
+        )
+
+    @staticmethod
+    def _pcb_critic_step(critique: PcbCritique, round_no: int, ms: int) -> TraceStep:
+        n = len(critique.missing_blocks) + len(critique.warnings) + len(critique.risks)
+        return TraceStep(
+            agent=PcbCriticAgent.name, role=PcbCriticAgent.role,
+            status="warning" if n else "ok", duration_ms=ms, round=round_no,
+            summary=(
+                f"Live Qwen (round {round_no}): "
+                f"{len(critique.missing_blocks)} must-fix, "
+                f"{len(critique.warnings)} warnings, "
+                f"{len(critique.risks)} risks."
+            ),
+        )
+
+    def _pcb_design_and_review(
+        self,
+        requirements: Requirements,
+        architecture: Architecture,
+        arbitration,
+        guidance: list[str],
+    ) -> tuple[PcbReadiness, PcbCritique, list[TraceStep]]:
+        """PCB Engineer + PCB Critic rework loop (mirrors _design_and_review)."""
+        steps: list[TraceStep] = []
+        t = perf_counter()
+        pcb = PcbEngineerAgent().run(self._client_for("pcb_engineer"), requirements, architecture, arbitration, guidance)
+        steps.append(self._pcb_step(pcb, 1, int((perf_counter() - t) * 1000)))
+        t = perf_counter()
+        pcb_critique = PcbCriticAgent().run(self._client_for("pcb_critique"), requirements, pcb, guidance)
+        steps.append(self._pcb_critic_step(pcb_critique, 1, int((perf_counter() - t) * 1000)))
+
+        round_no = 1
+        while self.profile.rework and pcb_critique.missing_blocks and round_no < self.profile.max_rounds:
+            round_no += 1
+            rework_guidance = guidance + [
+                "Revise the PCB recommendations to address these review findings:",
+                *pcb_critique.missing_blocks,
+            ]
+            t = perf_counter()
+            pcb = PcbEngineerAgent().run(self._client_for("pcb_engineer"), requirements, architecture, arbitration, rework_guidance)
+            steps.append(self._pcb_step(pcb, round_no, int((perf_counter() - t) * 1000)))
+            t = perf_counter()
+            pcb_critique = PcbCriticAgent().run(self._client_for("pcb_critique"), requirements, pcb, rework_guidance)
+            steps.append(self._pcb_critic_step(pcb_critique, round_no, int((perf_counter() - t) * 1000)))
+
+        return pcb, pcb_critique, steps
+
     def _design_and_review(
         self, requirements: Requirements, guidance: list[str]
     ) -> tuple[Architecture, Critique, list[TraceStep]]:
@@ -132,6 +192,10 @@ class Orchestrator:
                 self._client_for("arbitration"), requirements, architecture, critique, guidance
             )
             arb_ms = int((perf_counter() - t) * 1000)
+
+            pcb, pcb_critique, pcb_steps = self._pcb_design_and_review(
+                requirements, architecture, arbitration, guidance
+            )
         except GuardBlocked as e:
             return self._guarded_fallback(
                 requirements_text,
@@ -173,7 +237,8 @@ class Orchestrator:
             architecture=architecture,
             critique=critique,
             arbitration=arbitration,
-            trace=[req_step, *design_steps, arb_step],
+            pcb_readiness=pcb,
+            trace=[req_step, *design_steps, arb_step, *pcb_steps],
             needs_approval=True,
             usage=self._meter.snapshot(),
         )
