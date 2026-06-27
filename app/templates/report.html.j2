@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 14mm 14mm 12mm 14mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+         color: #0f172a; font-size: 10px; margin: 0; }
+  .header { display: flex; align-items: center; justify-content: space-between;
+            padding-bottom: 8px; border-bottom: 2px solid #0d9488; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand img { height: 26px; }
+  .brand .name { font-size: 13px; font-weight: 700; }
+  .brand .tag { font-size: 7px; color: #64748b; letter-spacing: .04em; }
+  .header .meta { text-align: right; }
+  .header .meta .kind { font-size: 8px; font-weight: 700; color: #0d9488;
+                        text-transform: uppercase; }
+  .header .meta .date { font-size: 8px; color: #94a3b8; }
+  h1 { font-size: 19px; margin: 12px 0 2px; }
+  .desc { font-size: 9px; color: #64748b; margin: 0 0 12px; }
+  .stats { display: flex; border: 1px solid #e2e8f0; border-radius: 5px;
+           overflow: hidden; margin-bottom: 14px; }
+  .stats .cell { flex: 1; padding: 7px 9px; border-right: 1px solid #e2e8f0; }
+  .stats .cell:last-child { border-right: none; }
+  .stats .k { font-size: 7px; color: #64748b; text-transform: uppercase; }
+  .stats .v { font-size: 15px; font-weight: 700; color: #0d9488; }
+  .stats .v.warn { color: #f59e0b; }
+  .section { display: flex; align-items: center; gap: 6px; margin: 14px 0 6px; }
+  .section .bar { width: 3px; height: 14px; background: #0d9488; border-radius: 2px; }
+  .section .t { font-size: 10px; font-weight: 700; text-transform: uppercase;
+                letter-spacing: .05em; }
+  ul.bullets { margin: 0; padding-left: 4px; list-style: none; }
+  ul.bullets li { font-size: 9px; line-height: 1.6; color: #374151; }
+  .diagram { border: 1px solid #f1f5f9; border-radius: 5px; background: #fcfdff;
+             padding: 6px; }
+  .diagram svg { width: 100%; height: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.5px; }
+  th { background: #f0fdfa; color: #0f766e; text-align: left; padding: 4px 6px; }
+  td { padding: 4px 6px; border-bottom: 1px solid #f1f5f9; }
+  .disclaimer { margin-top: 12px; padding: 7px 9px; background: #fff7ed;
+                border-left: 3px solid #f59e0b; border-radius: 3px;
+                font-size: 8px; color: #92400e; line-height: 1.5; }
+  .footer { margin-top: 10px; padding-top: 6px; border-top: 1px solid #f1f5f9;
+            display: flex; justify-content: space-between; font-size: 7px;
+            color: #94a3b8; }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      {% if logo_data_uri %}<img src="{{ logo_data_uri }}" alt="logo">{% endif %}
+      <div>
+        <div class="name">AI Circuit Architect</div>
+        <div class="tag">MULTI-AGENT ELECTRONICS ASSISTANT</div>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="kind">PCB Design Brief</div>
+      <div class="date">{{ iso_date }} · v1</div>
+    </div>
+  </div>
+
+  <h1>{{ title }}</h1>
+  <p class="desc">{{ description }}</p>
+
+  <div class="stats">
+    <div class="cell"><div class="k">Layerstack</div><div class="v">{{ layerstack }}</div></div>
+    <div class="cell"><div class="k">Net Classes</div><div class="v">{{ net_class_count }}</div></div>
+    <div class="cell"><div class="k">Min Clearance</div><div class="v">{{ "%.2f"|format(min_clearance_mm) }} mm</div></div>
+    <div class="cell"><div class="k">Open TODOs</div><div class="v warn">{{ open_todo_count }}</div></div>
+  </div>
+
+  <div class="section"><div class="bar"></div><div class="t">Executive Summary</div></div>
+  <ul class="bullets">
+    {% for b in summary_bullets %}<li>{{ b }}</li>{% endfor %}
+  </ul>
+
+  <div class="section"><div class="bar"></div><div class="t">System Architecture</div></div>
+  <div class="diagram">{{ architecture_svg|safe }}</div>
+
+  <div class="page-break"></div>
+
+  <div class="section"><div class="bar"></div><div class="t">Net Class Constraints</div></div>
+  <table>
+    <thead><tr><th>Class</th><th>Track (mm)</th><th>Clearance (mm)</th><th>Nets</th></tr></thead>
+    <tbody>
+      {% for nc in net_classes %}
+      <tr><td>{{ nc.name }}</td><td>{{ "%.2f"|format(nc.min_width_mm) }}</td>
+          <td>{{ "%.2f"|format(nc.clearance_mm) }}</td><td>{{ nc.nets }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="section"><div class="bar"></div><div class="t">Floorplan Sketch</div></div>
+  <div class="diagram">{{ floorplan_svg|safe }}</div>
+
+  <div class="section"><div class="bar"></div><div class="t">Package Hints</div></div>
+  <table>
+    <thead><tr><th>Component</th><th>Recommended Package</th></tr></thead>
+    <tbody>
+      {% for ph in package_hints %}
+      <tr><td>{{ ph.component_type }}</td><td>{{ ph.recommended_package }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="disclaimer">⚠ AI-generated draft. All constraints and placements require
+    review and sign-off by a qualified PCB designer before manufacturing.</div>
+
+  <div class="footer">
+    <div>Via drill {{ "%.2f"|format(via_drill_mm) }} mm · annular ring
+      {{ "%.2f"|format(via_annular_ring_mm) }} mm · constraints exported to
+      pcb_constraints.kicad_dru</div>
+    <div>AI Circuit Architect</div>
+  </div>
+</body>
+</html>

@@ -11,7 +11,15 @@ from datetime import date
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
 from app.models.schemas import RunResponse
+
+_TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
+_jinja_env = Environment(
+    loader=FileSystemLoader(str(_TEMPLATES_DIR)),
+    autoescape=select_autoescape(["html", "xml"]),
+)
 
 # Layout constants for the deterministic diagrams (viewBox units).
 _COLS = 3
@@ -226,3 +234,22 @@ def _floorplan_svg(result: RunResponse) -> str:
 
     parts.append("</svg>")
     return "".join(parts)
+
+
+def generate_report_pdf(
+    result: RunResponse, requirements_text: str, project_name: str
+) -> bytes:
+    """Render the PCB Design Brief to PDF bytes.
+
+    WeasyPrint is imported lazily so this module loads even where its system
+    libraries are absent; callers that cannot tolerate failure should guard the
+    call (the /generate handler does).
+    """
+    from weasyprint import HTML  # lazy import; needs Pango/Cairo at runtime
+
+    context = _report_context(result, requirements_text, project_name)
+    context["architecture_svg"] = _architecture_svg(result)
+    context["floorplan_svg"] = _floorplan_svg(result)
+
+    html = _jinja_env.get_template("report.html.j2").render(**context)
+    return HTML(string=html).write_pdf()

@@ -92,3 +92,24 @@ def test_floorplan_svg_placeholder_when_empty():
     svg = _floorplan_svg(result)
     assert svg.startswith("<svg")
     assert "unavailable" in svg.lower()
+
+
+import pytest
+
+from app.generators.report import generate_report_pdf
+
+
+def test_generate_report_pdf_returns_pdf_bytes():
+    # WeasyPrint may be installed yet fail to import because its native system
+    # libraries (Pango/Cairo/GObject) are absent — on Windows this surfaces as an
+    # OSError, not an ImportError, so importorskip alone is not enough. Skip on
+    # either so the suite stays green wherever the libs are missing.
+    try:
+        import weasyprint  # noqa: F401
+    except (ImportError, OSError) as exc:
+        pytest.skip(f"WeasyPrint system libs not installed in this environment: {exc}")
+    result = mock_run("A 24V industrial board with an STM32 and RS485.")
+    pdf = generate_report_pdf(result, "A 24V industrial board with an STM32 and RS485.", "project")
+    assert isinstance(pdf, bytes)
+    assert pdf.startswith(b"%PDF-")
+    assert len(pdf) > 1000
