@@ -17,11 +17,15 @@ from time import perf_counter
 from app.agents.arbitration import ArbitrationAgent
 from app.agents.architect import SystemArchitectAgent
 from app.agents.critic import DesignCriticAgent
+from app.agents.pcb_critic import PcbCriticAgent
+from app.agents.pcb_engineer import PcbEngineerAgent
 from app.agents.requirements import RequirementsAgent
 from app.models.schemas import (
     Arbitration,
     Architecture,
     Critique,
+    PcbCritique,
+    PcbReadiness,
     Requirements,
     StepRequest,
     StepResponse,
@@ -32,7 +36,7 @@ from app.services.guard import GuardBlocked
 from app.services.mock import mock_run
 from app.services.qwen_client import QwenClient, QwenError
 
-_STAGE_ORDER = ["requirements", "architecture", "critique", "arbitration"]
+_STAGE_ORDER = ["requirements", "architecture", "critique", "arbitration", "pcb_engineer"]
 
 
 def _mock_step(stage: str, notice: str | None = None) -> StepResponse:
@@ -40,7 +44,9 @@ def _mock_step(stage: str, notice: str | None = None) -> StepResponse:
     mock = mock_run("")
     trace_step = mock.trace[_STAGE_ORDER.index(stage)]
     resp = StepResponse(stage=stage, mode="mock", trace_step=trace_step, notice=notice)
-    setattr(resp, stage, getattr(mock, stage))
+    # pcb_engineer stage maps to pcb_readiness on RunResponse
+    field = "pcb_readiness" if stage == "pcb_engineer" else stage
+    setattr(resp, field, getattr(mock, field))
     return resp
 
 
@@ -125,6 +131,25 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
                 ms,
             )
             return StepResponse(stage=req.stage, mode="qwen", trace_step=step, arbitration=arb)
+
+        if req.stage == "pcb_engineer":
+            if req.requirements is None or req.architecture is None or req.arbitration is None:
+                raise ValueError(
+                    "The pcb_engineer stage needs the approved requirements, architecture and arbitration."
+                )
+            t = perf_counter()
+            pcb: PcbReadiness = PcbEngineerAgent().run(
+                client, req.requirements, req.architecture, req.arbitration, req.guidance
+            )
+            ms = int((perf_counter() - t) * 1000)
+            step = _trace(
+                PcbEngineerAgent,
+                "ok",
+                f"{pcb.layerstack} recommended. "
+                f"{len(pcb.netclasses)} net classes, {len(pcb.package_hints)} package hints.",
+                ms,
+            )
+            return StepResponse(stage=req.stage, mode="qwen", trace_step=step, pcb_readiness=pcb)
 
         raise ValueError(f"Unknown stage: {req.stage}")  # pragma: no cover - guarded by schema
 

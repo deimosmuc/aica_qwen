@@ -282,7 +282,7 @@ class Comparison(BaseModel):
 
 # --- Stepwise pipeline (one agent at a time, human sign-off between steps) ----
 
-Stage = Literal["requirements", "architecture", "critique", "arbitration"]
+Stage = Literal["requirements", "architecture", "critique", "arbitration", "pcb_engineer"]
 
 
 class StepRequest(BaseModel):
@@ -297,6 +297,7 @@ class StepRequest(BaseModel):
     requirements: Requirements | None = None
     architecture: Architecture | None = None
     critique: Critique | None = None
+    arbitration: Arbitration | None = None
 
 
 class StepResponse(BaseModel):
@@ -309,6 +310,7 @@ class StepResponse(BaseModel):
     architecture: Architecture | None = None
     critique: Critique | None = None
     arbitration: Arbitration | None = None
+    pcb_readiness: PcbReadiness | None = None
 
 
 # --- Preset Bench (cost + quality across presets) ----------------------------
