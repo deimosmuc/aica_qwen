@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from app.services.config import Settings
 
-ROLES = ("requirements", "architecture", "critique", "arbitration")
+ROLES = ("requirements", "architecture", "critique", "arbitration", "pcb_engineer", "pcb_critique")
 
 
 class RunProfile(BaseModel):
@@ -36,6 +36,8 @@ PROFILES: dict[str, RunProfile] = {
             "architecture": "qwen-plus",
             "critique": "qwen-max",
             "arbitration": "qwen-max",
+            "pcb_engineer": "qwen-plus",
+            "pcb_critique": "qwen-max",
         },
         rework=True,
         max_rounds=2,
