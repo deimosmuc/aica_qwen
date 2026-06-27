@@ -132,6 +132,31 @@
     .active-cons b { font-size: 12px; text-transform: uppercase; letter-spacing: .3px; color: var(--warn); }
     .active-cons ul { margin-top: 4px; }
     textarea.correct { width: 100%; margin-top: 8px; min-height: 0; }
+    /* --- Agent Society tab ------------------------------------------------ */
+    .tab-row { display: flex; border: 1px solid var(--line); border-radius: 8px;
+      overflow: hidden; margin-bottom: 14px; }
+    .tab-row button { flex: 1; border-radius: 0; border: none; border-right: 1px solid var(--line);
+      background: var(--panel-2); color: var(--muted); font-weight: 500; padding: 8px 0;
+      font-size: 13px; cursor: pointer; }
+    .tab-row button:last-child { border-right: none; }
+    .tab-row button.tab-active { background: var(--panel); color: var(--text); font-weight: 600; }
+    .society-chat { display: flex; flex-direction: column; gap: 10px; }
+    .bubble-left { display: flex; flex-direction: row; gap: 8px; align-items: flex-start; }
+    .bubble-right { display: flex; flex-direction: row-reverse; gap: 8px; align-items: flex-start; }
+    .bubble-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; color: #fff; font-size: 9px;
+      font-weight: 700; flex-shrink: 0; }
+    .bubble-body { flex: 1; max-width: 72%; }
+    .bubble-left .bubble-body { background: #1e2130; border-radius: 0 8px 8px 8px; padding: 8px 10px; }
+    .bubble-right .bubble-body { background: #2d1515; border-radius: 8px 0 8px 8px; padding: 8px 10px; }
+    .bubble-meta { font-size: 11px; color: var(--muted); margin-bottom: 3px; display: flex;
+      gap: 5px; align-items: center; flex-wrap: wrap; }
+    .bubble-right .bubble-meta { justify-content: flex-end; }
+    .bubble-text { font-size: 13px; line-height: 1.4; color: var(--text); }
+    .chip-rework { background: rgba(210,153,34,.15); color: var(--warn); border: 1px solid var(--warn);
+      border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 600; }
+    .society-empty { color: var(--muted); font-size: 13px; padding: 10px 0; }
+    .typing { color: var(--muted); font-size: 22px; letter-spacing: 2px; padding: 2px 0; }
   </style>
 </head>
 <body x-data="architect()" x-init="init()">
