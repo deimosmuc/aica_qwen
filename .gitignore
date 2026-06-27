@@ -24,3 +24,4 @@ kicad_test/render/
 .vscode/
 
 .superpowers/
+.worktrees/
