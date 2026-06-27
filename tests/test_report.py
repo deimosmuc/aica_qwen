@@ -7,3 +7,45 @@ def test_logo_data_uri_returns_png_data_uri_or_empty():
     # Either the bundled logo resolves to a base64 PNG data URI, or (if the asset
     # is absent in this checkout) an empty string so the header degrades to text.
     assert uri == "" or uri.startswith("data:image/png;base64,")
+
+
+from app.generators.report import _report_context
+from app.services.mock import mock_run
+
+
+def test_report_context_core_fields():
+    result = mock_run("A 24V industrial board with an STM32 and RS485.")
+    ctx = _report_context(result, "A 24V industrial board with an STM32 and RS485.", "project")
+
+    # Stats come straight from pcb_readiness.
+    assert ctx["layerstack"] == "4-layer"
+    assert ctx["net_class_count"] == 4
+    assert ctx["min_clearance_mm"] == 0.2
+    assert ctx["open_todo_count"] == len(result.arbitration.todo)
+
+    # Net-class rows preserve order and key fields.
+    assert [r["name"] for r in ctx["net_classes"]] == ["PWR", "Signal", "USB", "RS485"]
+    assert ctx["net_classes"][0]["nets"]  # non-empty
+
+    # Package hints are flattened to component -> package.
+    assert ctx["package_hints"][0]["component_type"] == "STM32 MCU"
+
+    # Global via constraints surface for the footer caption.
+    assert ctx["via_drill_mm"] == 0.4
+    assert ctx["via_annular_ring_mm"] == 0.15
+
+    # Summary bullets include the human-review and todo items.
+    bullet_text = " ".join(ctx["summary_bullets"])
+    for item in result.arbitration.human_review:
+        assert item in bullet_text
+
+
+def test_report_context_handles_missing_pcb():
+    result = mock_run("x")
+    result.pcb_readiness = None
+    ctx = _report_context(result, "x", "project")
+    # Degrades to safe defaults instead of raising.
+    assert ctx["layerstack"] == "—"
+    assert ctx["net_class_count"] == 0
+    assert ctx["net_classes"] == []
+    assert ctx["package_hints"] == []
