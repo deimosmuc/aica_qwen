@@ -59,10 +59,10 @@ def generate_dru(constraints: ConstraintSet, netclasses: list[NetClass]) -> str:
     # --- Net assignment comments (informational only, not valid DRU syntax) ---
     # KiCad net class assignments live in the schematic/PCB, not the DRU file.
     # We include them as comments so the user knows what to assign in KiCad.
-    lines.append("; Net class assignments (configure in KiCad PCB editor):")
-    for nc in netclasses:
-        if nc.nets:
-            nets_str = ", ".join(nc.nets)
-            lines.append(f"; {nc.name}: {nets_str}")
+    nets_with_names = [(nc.name, nc.nets) for nc in netclasses if nc.nets]
+    if nets_with_names:
+        lines.append("; Net class assignments (configure in KiCad PCB editor):")
+        for name, nets in nets_with_names:
+            lines.append(f"; {name}: {', '.join(nets)}")
 
     return "\n".join(lines) + "\n"

@@ -44,8 +44,8 @@ def test_dru_contains_netclass_rule():
     assert "0.5" in result   # PWR min_width_mm
 
 
-def test_dru_nets_in_condition():
+def test_dru_nets_in_comments():
     result = generate_dru(_constraints(), _netclasses())
-    # PWR nets should appear as conditions
+    # PWR nets appear in trailing informational comments (not in DRU conditions)
     assert "GND" in result
     assert "+3.3V" in result
