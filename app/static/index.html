@@ -398,6 +398,14 @@
         <!-- Society chat (stepwise — shows approved steps so far) -->
         <div x-show="societyTab==='society'" class="society-chat">
           <template x-for="(s, i) in societyBubbles" :key="i">
+            <!-- PCB-Readiness Phase divider -->
+            <template x-if="s.agent === 'PCB Engineer' && !societyBubbles.slice(0, i).some(b => b.agent === 'PCB Engineer')">
+              <div style="display:flex;align-items:center;gap:8px;margin:4px 0">
+                <div style="flex:1;height:1px;background:var(--border)"></div>
+                <div style="font-size:11px;color:var(--text-muted);white-space:nowrap">PCB-Readiness Phase</div>
+                <div style="flex:1;height:1px;background:var(--border)"></div>
+              </div>
+            </template>
             <div :class="s.agent==='Design Critic' ? 'bubble-right' : 'bubble-left'">
               <div class="bubble-avatar" :style="avatarColor(s.agent)"
                    x-text="s.agent.slice(0,3).toUpperCase()"></div>
@@ -516,6 +524,14 @@
           <!-- Society chat -->
           <div x-show="societyTab==='society'" class="society-chat">
             <template x-for="(s, i) in societyBubbles" :key="i">
+              <!-- PCB-Readiness Phase divider -->
+              <template x-if="s.agent === 'PCB Engineer' && !societyBubbles.slice(0, i).some(b => b.agent === 'PCB Engineer')">
+                <div style="display:flex;align-items:center;gap:8px;margin:4px 0">
+                  <div style="flex:1;height:1px;background:var(--border)"></div>
+                  <div style="font-size:11px;color:var(--text-muted);white-space:nowrap">PCB-Readiness Phase</div>
+                  <div style="flex:1;height:1px;background:var(--border)"></div>
+                </div>
+              </template>
               <div :class="s.agent==='Design Critic' ? 'bubble-right' : 'bubble-left'">
                 <div class="bubble-avatar" :style="avatarColor(s.agent)"
                      x-text="s.agent.slice(0,3).toUpperCase()"></div>
@@ -785,6 +801,8 @@
             'System Architect':   '#8b5cf6',
             'Design Critic':      '#ef4444',
             'Arbitration':        '#f59e0b',
+            'PCB Engineer':       '#0d9488',
+            'PCB Critic':         '#ef4444',
           };
           const color = map[agent] || '#6b7280';
           return `background:${color}`;
