@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Circuit Architect — Agent Pipeline Flow</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #fff; color: #222; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.25rem; }
+  .subtitle { font-size: 0.9rem; color: #666; margin-bottom: 1.5rem; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #555; }
+  .leg-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .caption { font-size: 12px; color: #888; margin-top: 0.75rem; }
+</style>
+</head>
+<body>
+<h1>AI Circuit Architect — Agent Pipeline Flow</h1>
+<p class="subtitle">Critic/Supervisor (qwen-max) überwacht Architect und PCB Engineer · Stand 2026-06-27</p>
+
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:#3b82f6"></div> Requirements Agent</div>
+  <div class="leg"><div class="leg-dot" style="background:#8b5cf6"></div> System Architect</div>
+  <div class="leg"><div class="leg-dot" style="background:#ef4444"></div> Design Critic / Supervisor (qwen-max)</div>
+  <div class="leg"><div class="leg-dot" style="background:#f59e0b"></div> Arbitration Agent</div>
+  <div class="leg"><div class="leg-dot" style="background:#0d9488"></div> PCB Engineer (Feature D, neu)</div>
+</div>
+
+<svg viewBox="0 0 780 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:780px;display:block;border:1px solid #e5e7eb;border-radius:8px;padding:8px">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#888780"/>
+    </marker>
+    <marker id="arr-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#ef4444"/>
+    </marker>
+  </defs>
+
+  <!-- 1: Requirements -->
+  <rect x="10" y="50" width="110" height="58" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="65" y="74" text-anchor="middle" font-size="11" font-weight="500" fill="#1e40af">Requirements</text>
+  <text x="65" y="90" text-anchor="middle" font-size="10" fill="#3b82f6">Agent</text>
+  <text x="65" y="104" text-anchor="middle" font-size="9" fill="#6b7280">qwen-plus</text>
+
+  <line x1="120" y1="79" x2="158" y2="79" stroke="#888780" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 2: Architect -->
+  <rect x="160" y="50" width="110" height="58" rx="8" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.5"/>
+  <text x="215" y="74" text-anchor="middle" font-size="11" font-weight="500" fill="#5b21b6">System</text>
+  <text x="215" y="88" text-anchor="middle" font-size="11" font-weight="500" fill="#5b21b6">Architect</text>
+  <text x="215" y="104" text-anchor="middle" font-size="9" fill="#6b7280">qwen-plus</text>
+
+  <line x1="270" y1="79" x2="308" y2="79" stroke="#888780" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 3: Arbitration -->
+  <rect x="310" y="50" width="110" height="58" rx="8" fill="#fffbeb" stroke="#fcd34d" stroke-width="1.5"/>
+  <text x="365" y="78" text-anchor="middle" font-size="11" font-weight="500" fill="#92400e">Arbitration</text>
+  <text x="365" y="92" text-anchor="middle" font-size="10" fill="#f59e0b">Agent</text>
+  <text x="365" y="106" text-anchor="middle" font-size="9" fill="#6b7280">qwen-plus</text>
+
+  <line x1="420" y1="79" x2="458" y2="79" stroke="#888780" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- 4: PCB Engineer (NEW) -->
+  <rect x="460" y="50" width="110" height="58" rx="8" fill="#f0fdfa" stroke="#5eead4" stroke-width="2"/>
+  <text x="515" y="72" text-anchor="middle" font-size="11" font-weight="500" fill="#0f766e">PCB</text>
+  <text x="515" y="86" text-anchor="middle" font-size="11" font-weight="500" fill="#0f766e">Engineer</text>
+  <text x="515" y="100" text-anchor="middle" font-size="9" fill="#6b7280">qwen-plus</text>
+  <rect x="580" y="50" width="38" height="18" rx="4" fill="#ccfbf1"/>
+  <text x="599" y="63" text-anchor="middle" font-size="9" fill="#0f766e" font-weight="500">NEU</text>
+
+  <line x1="620" y1="79" x2="658" y2="79" stroke="#888780" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Output -->
+  <rect x="660" y="55" width="110" height="48" rx="8" fill="#f1efea" stroke="#b4b2a9" stroke-width="1"/>
+  <text x="715" y="74" text-anchor="middle" font-size="10" font-weight="500" fill="#444441">ZIP + Report</text>
+  <text x="715" y="88" text-anchor="middle" font-size="9" fill="#6b7280">.kicad_dru etc.</text>
+
+  <!-- Critic box -->
+  <rect x="260" y="210" width="260" height="68" rx="10" fill="#fef2f2" stroke="#fca5a5" stroke-width="2"/>
+  <text x="390" y="233" text-anchor="middle" font-size="12" font-weight="500" fill="#991b1b">Design Critic / Supervisor</text>
+  <text x="390" y="250" text-anchor="middle" font-size="10" fill="#ef4444">qwen-max  ·  strenger Reviewer</text>
+  <text x="390" y="265" text-anchor="middle" font-size="9" fill="#6b7280">findet missing_blocks, Fehler, schlägt Korrekturen vor</text>
+
+  <!-- Architect ↔ Critic loop -->
+  <path d="M215,108 L215,170 Q215,190 235,200 L270,210" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-red)"/>
+  <path d="M270,220 Q235,220 220,210 L220,160 L215,108" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-red)"/>
+
+  <rect x="120" y="148" width="85" height="30" rx="4" fill="#fef2f2" stroke="#fca5a5" stroke-width="1"/>
+  <text x="162" y="162" text-anchor="middle" font-size="9" fill="#991b1b" font-weight="500">Rework-Loop</text>
+  <text x="162" y="174" text-anchor="middle" font-size="9" fill="#6b7280">max. 2 Runden</text>
+
+  <!-- PCB ↔ Critic loop -->
+  <path d="M515,108 L515,170 Q515,190 495,200 L520,210" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-red)"/>
+  <path d="M520,222 Q495,222 510,210 L515,160 L515,108" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-red)"/>
+
+  <rect x="555" y="148" width="85" height="30" rx="4" fill="#f0fdfa" stroke="#5eead4" stroke-width="1"/>
+  <text x="597" y="162" text-anchor="middle" font-size="9" fill="#0f766e" font-weight="500">Rework-Loop</text>
+  <text x="597" y="174" text-anchor="middle" font-size="9" fill="#6b7280">max. 2 Runden</text>
+
+  <!-- No-loop badges -->
+  <rect x="25" y="116" width="80" height="18" rx="4" fill="#f1efea" stroke="#b4b2a9" stroke-width="1"/>
+  <text x="65" y="129" text-anchor="middle" font-size="9" fill="#5f5e5a">kein Review-Loop</text>
+
+  <rect x="320" y="116" width="90" height="18" rx="4" fill="#f1efea" stroke="#b4b2a9" stroke-width="1"/>
+  <text x="365" y="129" text-anchor="middle" font-size="9" fill="#5f5e5a">kein Review-Loop</text>
+
+  <!-- Title -->
+  <text x="390" y="22" text-anchor="middle" font-size="13" font-weight="500" fill="#444441">Agent Pipeline — aktuell + Feature D (PCB Engineer)</text>
+  <text x="390" y="38" text-anchor="middle" font-size="11" fill="#888780">Critic/Supervisor (qwen-max) überwacht Architect und PCB Engineer</text>
+
+  <!-- Step circles -->
+  <circle cx="65" cy="52" r="9" fill="#3b82f6"/>
+  <text x="65" y="56" text-anchor="middle" font-size="9" fill="white" font-weight="500">1</text>
+  <circle cx="215" cy="52" r="9" fill="#8b5cf6"/>
+  <text x="215" y="56" text-anchor="middle" font-size="9" fill="white" font-weight="500">2</text>
+  <circle cx="365" cy="52" r="9" fill="#f59e0b"/>
+  <text x="365" y="56" text-anchor="middle" font-size="9" fill="white" font-weight="500">3</text>
+  <circle cx="515" cy="52" r="9" fill="#0d9488"/>
+  <text x="515" y="56" text-anchor="middle" font-size="9" fill="white" font-weight="500">4</text>
+</svg>
+
+<p class="caption">
+  Requirements (1) und Arbitration (3) laufen ohne Review-Loop.
+  Der Critic/Supervisor reviewt Architect (2) und PCB Engineer (4) — jeweils max. 2 Rework-Runden.
+  Gestrichelte rote Pfeile = Rework-Loop (Critic → Rework-Auftrag → Agent überarbeitet → Critic prüft erneut).
+</p>
+</body>
+</html>
