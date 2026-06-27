@@ -112,11 +112,13 @@ class Arbitration(BaseModel):
 
 # --- PCB-Readiness Pack (Feature D) -----------------------------------------
 
+
 class NetClass(BaseModel):
     name: str
     min_width_mm: float
     clearance_mm: float
     nets: list[str] = []
+
 
 class ConstraintSet(BaseModel):
     min_clearance_mm: float
@@ -124,13 +126,15 @@ class ConstraintSet(BaseModel):
     via_drill_mm: float
     via_annular_ring_mm: float
 
+
 class PackageHint(BaseModel):
     component_type: str
     recommended_package: str
     reason: str
 
+
 class PcbReadiness(BaseModel):
-    layerstack: str          # "2-layer" | "4-layer" | "6-layer"
+    layerstack: Literal["2-layer", "4-layer", "6-layer"]
     layerstack_reason: str
     netclasses: list[NetClass]
     constraints: ConstraintSet
