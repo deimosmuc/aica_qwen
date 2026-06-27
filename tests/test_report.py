@@ -70,3 +70,25 @@ def test_architecture_svg_placeholder_when_empty():
     svg = _architecture_svg(result)
     assert svg.startswith("<svg")
     assert "unavailable" in svg.lower()
+
+
+from app.generators.report import _floorplan_svg
+
+
+def test_floorplan_svg_has_outline_and_zones():
+    result = mock_run("A 24V industrial board with an STM32 and RS485.")
+    svg = _floorplan_svg(result)
+    assert svg.startswith("<svg")
+    assert svg.rstrip().endswith("</svg>")
+    # Board outline rect present.
+    assert "<rect" in svg
+    # At least the first few block names are placed as zone labels.
+    assert result.architecture.blocks[0].name in svg
+
+
+def test_floorplan_svg_placeholder_when_empty():
+    result = mock_run("x")
+    result.architecture.blocks = []
+    svg = _floorplan_svg(result)
+    assert svg.startswith("<svg")
+    assert "unavailable" in svg.lower()

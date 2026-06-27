@@ -174,3 +174,55 @@ def _architecture_svg(result: RunResponse) -> str:
 
     parts.append("</svg>")
     return "".join(parts)
+
+
+def _floorplan_svg(result: RunResponse) -> str:
+    """Deterministic placement-zone sketch from architecture blocks.
+
+    Blocks are packed into a board outline on a fixed grid. The first column is
+    treated as the power/input edge; a dashed keepout line separates it from the
+    rest to hint at isolation. This is an illustrative sketch, not a real layout.
+    """
+    blocks = result.architecture.blocks
+    if not blocks:
+        return _placeholder_svg("Floorplan sketch unavailable")
+
+    cols = 3
+    zone_w = 150
+    zone_h = 70
+    gap = 16
+    pad = 20
+    rows = (len(blocks) + cols - 1) // cols
+    inner_w = cols * zone_w + (cols - 1) * gap
+    inner_h = rows * zone_h + (rows - 1) * gap
+    width = inner_w + pad * 2
+    height = inner_h + pad * 2
+
+    parts = [
+        f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">',
+        # Board outline.
+        f'<rect x="{pad / 2}" y="{pad / 2}" width="{width - pad}" '
+        f'height="{height - pad}" rx="8" fill="none" stroke="#10b981" '
+        f'stroke-width="1.5" stroke-dasharray="6,3"/>',
+        # Isolation keepout between the first column and the rest.
+        f'<line x1="{pad + zone_w + gap / 2:.0f}" y1="{pad / 2}" '
+        f'x2="{pad + zone_w + gap / 2:.0f}" y2="{height - pad / 2}" '
+        f'stroke="#fca5a5" stroke-width="1" stroke-dasharray="4,3"/>',
+    ]
+
+    for i, block in enumerate(blocks):
+        row, col = divmod(i, cols)
+        x = pad + col * (zone_w + gap)
+        y = pad + row * (zone_h + gap)
+        parts.append(
+            f'<rect x="{x}" y="{y}" width="{zone_w}" height="{zone_h}" rx="6" '
+            f'fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.2"/>'
+        )
+        parts.append(
+            f'<text x="{x + zone_w / 2:.0f}" y="{y + zone_h / 2 + 4:.0f}" '
+            f'text-anchor="middle" font-family="sans-serif" font-size="12" '
+            f'fill="#5b21b6" font-weight="600">{escape(block.name)}</text>'
+        )
+
+    parts.append("</svg>")
+    return "".join(parts)
