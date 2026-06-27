@@ -69,6 +69,9 @@ class Block(BaseModel):
     name: str
     sheet: str
     purpose: str
+    category: Literal[
+        "mcu", "sensor", "power", "connectivity", "debug", "status", "other"
+    ] = "other"
 
 
 class Connection(BaseModel):
@@ -133,6 +136,35 @@ class PackageHint(BaseModel):
     reason: str
 
 
+class Candidate(BaseModel):
+    """One concrete part option for a decision-worthy component."""
+
+    part: str
+    package: str
+    score: float = 0.0            # overall 0–5, one decimal
+    recommended: bool = False
+    pros: list[str] = []
+    cons: list[str] = []
+
+
+class ComponentChoice(BaseModel):
+    """A decision-worthy component with a recommended part plus alternatives."""
+
+    component_type: str
+    category: str = "other"
+    candidates: list[Candidate] = []
+
+
+class FloorplanZone(BaseModel):
+    """A placement zone the renderer lays out on a coarse board grid."""
+
+    label: str
+    category: str = "other"
+    blocks: list[str] = []
+    placement: str = "center"     # edge|center|corner|top|bottom|left|right
+    separation: list[str] = []    # zone labels/categories to keep apart
+
+
 class PcbReadiness(BaseModel):
     layerstack: Literal["2-layer", "4-layer", "6-layer"]
     layerstack_reason: str
@@ -141,6 +173,8 @@ class PcbReadiness(BaseModel):
     floorplan_text: str
     floorplan_ascii: str
     package_hints: list[PackageHint]
+    component_choices: list[ComponentChoice] = []
+    floorplan_zones: list[FloorplanZone] = []
 
 
 class PcbCritique(BaseModel):
@@ -221,6 +255,9 @@ class GenerateRequest(BaseModel):
 
     requirements_text: str = Field(..., description="The original natural-language request.")
     result: RunResponse = Field(..., description="The approved pipeline result from /api/run.")
+    architecture_svg: str | None = Field(
+        default=None, description="Client-rendered light-themed ELK block diagram SVG."
+    )
 
 
 class GenerateResponse(BaseModel):
