@@ -695,6 +695,7 @@
           }
         },
         playSociety() {
+          if (this.societyPlaying) return;
           const steps = (this.result && this.result.trace) || (this.acc && this.acc.trace) || [];
           if (!steps.length) return;
           this.societyPlaying = true;
