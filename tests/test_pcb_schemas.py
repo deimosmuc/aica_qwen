@@ -33,7 +33,8 @@ def test_pcb_readiness_round_trip():
     assert data["netclasses"][0]["name"] == "Signal"
 
 def test_run_response_pcb_readiness_optional():
-    # RunResponse.pcb_readiness must default to None (additive, no breaking change)
+    # Mock mode now includes PCB readiness data
     from app.services.mock import mock_run
     r = mock_run("test")
-    assert r.pcb_readiness is None
+    assert r.pcb_readiness is not None
+    assert r.pcb_readiness.layerstack == "4-layer"

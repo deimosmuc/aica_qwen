@@ -32,7 +32,7 @@ def test_mock_comparison_is_labelled_illustrative():
     cmp = run_comparison(TEXT, _mock_settings())
     assert cmp.notice is not None
     assert "illustrative" in cmp.notice.lower()
-    assert cmp.multi_calls == 4
+    assert cmp.multi_calls == 6
     assert cmp.single_calls == 0
 
 

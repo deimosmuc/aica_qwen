@@ -101,7 +101,7 @@ def test_orchestrator_mock_mode_without_key():
     settings = Settings(qwen_api_key="")
     result = Orchestrator(settings).run("24V sensor board")
     assert result.mode == "mock"
-    assert len(result.trace) == 4
+    assert len(result.trace) == 6
 
 
 VALID_ARB = {

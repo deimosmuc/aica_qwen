@@ -13,11 +13,106 @@ from app.models.schemas import (
     ClarifyOption,
     ClarifyingQuestion,
     Connection,
+    ConstraintSet,
     Critique,
+    NetClass,
+    PackageHint,
+    PcbReadiness,
     Requirements,
     RunResponse,
     TraceStep,
 )
+
+
+def _mock_pcb() -> PcbReadiness:
+    """Fixed PCB-readiness data for mock mode (keyless demo)."""
+    return PcbReadiness(
+        layerstack="4-layer",
+        layerstack_reason=(
+            "RS485 fieldbus and USB-C data lines require a solid GND plane for "
+            "signal integrity. A 4-layer stackup (Signal / GND / PWR / Signal) "
+            "provides proper reference planes for both differential pairs."
+        ),
+        netclasses=[
+            NetClass(
+                name="PWR",
+                min_width_mm=0.5,
+                clearance_mm=0.3,
+                nets=["VIN_24V", "+5V", "+3V3", "GND"],
+            ),
+            NetClass(
+                name="Signal",
+                min_width_mm=0.2,
+                clearance_mm=0.2,
+                nets=["I2C_SCL", "I2C_SDA", "SWDIO", "SWCLK", "NRST"],
+            ),
+            NetClass(
+                name="USB",
+                min_width_mm=0.15,
+                clearance_mm=0.15,
+                nets=["USB_D+", "USB_D-"],
+            ),
+            NetClass(
+                name="RS485",
+                min_width_mm=0.2,
+                clearance_mm=0.25,
+                nets=["RS485_A", "RS485_B"],
+            ),
+        ],
+        constraints=ConstraintSet(
+            min_clearance_mm=0.2,
+            min_track_width_mm=0.15,
+            via_drill_mm=0.4,
+            via_annular_ring_mm=0.15,
+        ),
+        floorplan_text=(
+            "Power section (24 V input, LDOs) in the top-left corner, isolated from "
+            "signal traces by a copper-free keepout. MCU placed centrally for short "
+            "signal paths to all peripherals. USB-C connector on the bottom edge. "
+            "RS485 transceiver near the screw-terminal connector on the right edge. "
+            "SWD debug header in the top-right corner. Status LEDs along the front "
+            "edge visible when installed in an enclosure."
+        ),
+        floorplan_ascii=(
+            "+--[PWR]------[MCU]-------[DEBUG]--+\n"
+            "|                                  |\n"
+            "|             [MCU]                |\n"
+            "|                                  |\n"
+            "+--[USB-C]-------[RS485]---[LEDs]--+"
+        ),
+        package_hints=[
+            PackageHint(
+                component_type="STM32 MCU",
+                recommended_package="LQFP-64",
+                reason="Hand-solderable, good thermal path, widely available for prototyping",
+            ),
+            PackageHint(
+                component_type="Resistors / Capacitors",
+                recommended_package="0603",
+                reason="Hand-solderable, compact, adequate for this power level",
+            ),
+            PackageHint(
+                component_type="24V input LDO / Buck",
+                recommended_package="SOT-223 or D-PAK",
+                reason="Exposed pad for heat dissipation at 24 V input",
+            ),
+            PackageHint(
+                component_type="RS485 Transceiver",
+                recommended_package="SOIC-8",
+                reason="Hand-solderable, standard footprint available in every EDA library",
+            ),
+            PackageHint(
+                component_type="USB-C Connector",
+                recommended_package="USB-C SMD mid-mount",
+                reason="SMD pads withstand insertion forces with proper footprint; no THT needed",
+            ),
+            PackageHint(
+                component_type="Power Input Screw Terminal",
+                recommended_package="2.54 mm pitch screw terminal (THT)",
+                reason="THT justified for high-current power connectors: superior mechanical retention",
+            ),
+        ],
+    )
 
 
 def mock_run(requirements_text: str) -> RunResponse:
@@ -126,6 +221,8 @@ def mock_run(requirements_text: str) -> RunResponse:
         ],
     )
 
+    pcb = _mock_pcb()
+
     trace = [
         TraceStep(agent="Requirements Agent", role="Senior Systems Engineer", status="ok",
                   summary="Structured 5 requirements, raised 2 clarification questions."),
@@ -135,6 +232,11 @@ def mock_run(requirements_text: str) -> RunResponse:
                   summary="Flagged missing surge protection and RS485 isolation risk."),
         TraceStep(agent="Arbitration", role="Chief Engineer", status="ok",
                   summary="Approved architecture; logged 2 TODOs and 2 human-review items."),
+        TraceStep(agent="PCB Engineer", role="PCB Layout Preparation Engineer", status="ok",
+                  summary="4-layer stackup. 4 net classes (PWR 0.5 mm, USB 0.15 mm, RS485 0.2 mm). "
+                          "Floorplan: PWR isolated top-left, MCU central, RS485 right edge."),
+        TraceStep(agent="PCB Critic", role="Senior PCB Reviewer", status="ok",
+                  summary="All PCB constraints validated. Via drill 0.4 mm adequate for current budget."),
     ]
 
     return RunResponse(
@@ -143,6 +245,7 @@ def mock_run(requirements_text: str) -> RunResponse:
         architecture=architecture,
         critique=critique,
         arbitration=arbitration,
+        pcb_readiness=pcb,
         trace=trace,
         needs_approval=True,
     )
@@ -167,6 +270,19 @@ def mock_run_rework(requirements_text: str) -> RunResponse:
         recommendations=base.critique.recommendations,
     )
 
+    # PCB rework: Round 1 has via_drill too small, Round 2 corrected
+    pcb_round1 = _mock_pcb()
+    # Simulate the via-drill error that the critic will catch
+    pcb_round1 = pcb_round1.model_copy(
+        update={"constraints": ConstraintSet(
+            min_clearance_mm=pcb_round1.constraints.min_clearance_mm,
+            min_track_width_mm=pcb_round1.constraints.min_track_width_mm,
+            via_drill_mm=0.2,  # too small — critic will flag this
+            via_annular_ring_mm=pcb_round1.constraints.via_annular_ring_mm,
+        )}
+    )
+    pcb_round2 = _mock_pcb()  # corrected version
+
     trace = [
         TraceStep(agent="Requirements Agent", role="Senior Systems Engineer", status="ok", round=1,
                   summary="Structured 5 requirements, raised 2 clarification questions."),
@@ -180,6 +296,14 @@ def mock_run_rework(requirements_text: str) -> RunResponse:
                   summary="Re-reviewed: no missing blocks remain."),
         TraceStep(agent="Arbitration", role="Chief Engineer", status="ok", round=2,
                   summary="Approved architecture; logged 2 TODOs and 2 human-review items."),
+        TraceStep(agent="PCB Engineer", role="PCB Layout Preparation Engineer", status="ok", round=1,
+                  summary="4-layer stackup. Via drill 0.2 mm proposed (error — too small for 500 mA PWR net)."),
+        TraceStep(agent="PCB Critic", role="Senior PCB Reviewer", status="warning", round=1,
+                  summary="Via drill 0.2 mm too small for 500 mA on VIN_24V. Must increase to ≥ 0.4 mm."),
+        TraceStep(agent="PCB Engineer", role="PCB Layout Preparation Engineer", status="ok", round=2,
+                  summary="Corrected: via drill increased to 0.4 mm. .kicad_dru and PCB_READINESS.md generated."),
+        TraceStep(agent="PCB Critic", role="Senior PCB Reviewer", status="ok", round=2,
+                  summary="Re-reviewed: all PCB constraints valid. Via drill 0.4 mm adequate."),
     ]
 
     return RunResponse(
@@ -188,6 +312,7 @@ def mock_run_rework(requirements_text: str) -> RunResponse:
         architecture=base.architecture,   # final = full design
         critique=round2_critique,
         arbitration=base.arbitration,
+        pcb_readiness=pcb_round2,
         trace=trace,
         needs_approval=True,
     )

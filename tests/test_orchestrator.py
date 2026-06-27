@@ -20,7 +20,7 @@ def test_default_profile_is_uniform():
 def test_mock_mode_pipeline_unchanged():
     out = Orchestrator(Settings(qwen_api_key="")).run("a 24V board")
     assert out.mode == "mock"
-    assert len(out.trace) == 4
+    assert len(out.trace) == 6
     assert all(s.round == 1 for s in out.trace)
 
 
@@ -112,5 +112,5 @@ def test_mock_mode_rework_profile_shows_two_rounds():
 
 def test_mock_mode_non_rework_profile_is_single_pass():
     out = orch_mod.Orchestrator(Settings(qwen_api_key=""), profile=PROFILES["Uniform qwen-plus"]).run("board")
-    assert len(out.trace) == 4
+    assert len(out.trace) == 6
     assert all(s.round == 1 for s in out.trace)

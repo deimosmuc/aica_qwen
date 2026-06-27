@@ -26,8 +26,8 @@ def test_run_returns_full_pipeline():
     body = r.json()
     assert body["mode"] == "mock"
     assert body["needs_approval"] is True
-    # The agent trace must show all four collaborating agents.
-    assert len(body["trace"]) == 4
+    # The agent trace must show all six collaborating agents (arch + PCB).
+    assert len(body["trace"]) == 6
     # Architecture must carry hierarchical blocks and power domains.
     assert len(body["architecture"]["blocks"]) >= 4
     assert "VIN_24V" in body["architecture"]["power"]
