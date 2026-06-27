@@ -42,6 +42,19 @@ router = APIRouter(prefix="/api", tags=["pipeline"])
 
 _PROJECT_NAME = "project"
 _REPORT_NAME = "AI_Circuit_Architect_Report.pdf"
+_MAX_CLIENT_SVG = 200_000
+
+
+def _safe_client_svg(svg: str | None) -> str | None:
+    """Accept a client-rendered architecture SVG only if it looks like an SVG and
+    is within a sane size cap; otherwise drop it so the report falls back to the
+    Python-rendered diagram."""
+    if not svg or not isinstance(svg, str):
+        return None
+    s = svg.strip()
+    if not s.startswith("<svg") or len(s) > _MAX_CLIENT_SVG:
+        return None
+    return s
 
 
 @router.get("/health")
@@ -100,7 +113,10 @@ def generate(req: GenerateRequest) -> GenerateResponse:
 
     report_url: str | None = None
     try:
-        pdf_bytes = generate_report_pdf(req.result, req.requirements_text, _PROJECT_NAME)
+        pdf_bytes = generate_report_pdf(
+            req.result, req.requirements_text, _PROJECT_NAME,
+            architecture_svg=_safe_client_svg(req.architecture_svg),
+        )
         (project_dir / _REPORT_NAME).write_bytes(pdf_bytes)
         report_url = f"/api/report/{project_id}"
     except Exception:
