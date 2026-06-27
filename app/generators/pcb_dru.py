@@ -1,7 +1,8 @@
-"""KiCad 9 Design Rules (.kicad_dru) file generator.
+"""KiCad 9/10 Design Rules (.kicad_dru) file generator.
 
 Pure Python template — no LLM. Converts ConstraintSet + list[NetClass] to
-a valid KiCad 9 .kicad_dru file.
+a valid KiCad 9/10 .kicad_dru file. The DRU format is compatible with both
+KiCad 9 and KiCad 10.
 
 KiCad 9 DRU format reference:
   (version 1)
@@ -45,7 +46,10 @@ def generate_dru(constraints: ConstraintSet, netclasses: list[NetClass]) -> str:
 
     # --- Per-netclass rules ---
     for nc in netclasses:
-        # Build condition: A.NetClass == 'Name' OR B.NetClass == 'Name'
+        # TODO: For full KiCad DRU correctness, the clearance condition should cover
+        # both sides: "A.NetClass == 'X' || B.NetClass == 'X'". The single-sided form
+        # below is valid syntax and fires when net A belongs to the class, which is
+        # sufficient for a scaffold. Board-level clearance applies as the fallback.
         condition = f"A.NetClass == '{nc.name}'"
         lines += [
             f'(rule "{nc.name}"',

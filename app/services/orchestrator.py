@@ -108,7 +108,7 @@ class Orchestrator:
         self,
         requirements: Requirements,
         architecture: Architecture,
-        arbitration,
+        arbitration: Arbitration,
         guidance: list[str],
     ) -> tuple[PcbReadiness, PcbCritique, list[TraceStep]]:
         """PCB Engineer + PCB Critic rework loop (mirrors _design_and_review)."""
