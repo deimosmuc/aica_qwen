@@ -32,6 +32,38 @@ _PAD = 12
 _ASSETS_DIR = Path(__file__).resolve().parent.parent / "static" / "assets"
 _LOGO_PATH = _ASSETS_DIR / "logo.png"
 
+# Single source of truth for category colours (light theme). Mirrors the design
+# spec; shared by the block diagram, the floorplan and the legend.
+CATEGORY_STYLE = {
+    "mcu":          {"fill": "#E6F1FB", "stroke": "#2563EB", "text": "#0C447C"},
+    "sensor":       {"fill": "#F3E8FF", "stroke": "#7C3AED", "text": "#5B21B6"},
+    "power":        {"fill": "#FEF3C7", "stroke": "#D97706", "text": "#92400E"},
+    "connectivity": {"fill": "#D7EEF2", "stroke": "#0E7490", "text": "#0B4A57"},
+    "debug":        {"fill": "#F1F5F9", "stroke": "#64748B", "text": "#334155"},
+    "status":       {"fill": "#DCFCE7", "stroke": "#16A34A", "text": "#14532D"},
+    "other":        {"fill": "#F8FAFC", "stroke": "#94A3B8", "text": "#475569"},
+}
+_CATEGORY_LABELS = {
+    "mcu": "MCU", "sensor": "Sensor", "power": "Power", "connectivity": "Connectivity",
+    "debug": "Debug", "status": "Status", "other": "Other",
+}
+_CATEGORY_ORDER = ["mcu", "sensor", "power", "connectivity", "debug", "status", "other"]
+
+
+def _category_style(category: str) -> dict:
+    return CATEGORY_STYLE.get(category, CATEGORY_STYLE["other"])
+
+
+def _legend_entries(result: RunResponse) -> list[dict]:
+    """Category legend rows for the categories actually present in the design."""
+    present = {b.category for b in result.architecture.blocks}
+    out = []
+    for cat in _CATEGORY_ORDER:
+        if cat in present:
+            s = _category_style(cat)
+            out.append({"label": _CATEGORY_LABELS[cat], "fill": s["fill"], "stroke": s["stroke"]})
+    return out
+
 
 def _logo_data_uri() -> str:
     """Return the bundled logo as a base64 PNG data URI, or "" if it is missing.
