@@ -45,6 +45,20 @@
             display: flex; justify-content: space-between; font-size: 7px;
             color: #94a3b8; }
   .page-break { page-break-before: always; }
+  .legend { margin: 4px 0 0; font-size: 8px; color: #475569; }
+  .legend .lg { margin-right: 10px; }
+  .legend .sw { display: inline-block; width: 8px; height: 8px; border: 1px solid;
+                border-radius: 2px; margin-right: 3px; vertical-align: middle; }
+  .cc { border: 1px solid #e2e8f0; border-radius: 5px; margin-bottom: 6px; padding: 5px 7px; }
+  .cc-h { font-size: 9px; font-weight: 700; color: #0f766e; margin-bottom: 3px; }
+  .cand { padding: 3px 0; border-top: 1px solid #f1f5f9; }
+  .cand.rec { background: #f0fdfa; }
+  .cand-top { font-size: 8.5px; }
+  .stars { color: #d97706; margin-left: 4px; letter-spacing: 1px; }
+  .badge { background: #0d9488; color: #fff; border-radius: 3px; padding: 0 4px;
+           font-size: 7px; margin-left: 4px; }
+  .pro { font-size: 8px; color: #15803d; }
+  .con { font-size: 8px; color: #b91c1c; }
 </style>
 </head>
 <body>
@@ -79,6 +93,12 @@
 
   <div class="section"><div class="bar"></div><div class="t">System Architecture</div></div>
   <div class="diagram">{{ architecture_svg|safe }}</div>
+  {% if legend %}
+  <div class="legend">
+    {% for e in legend %}<span class="lg"><span class="sw"
+      style="background:{{ e.fill }}; border-color:{{ e.stroke }}"></span>{{ e.label }}</span>{% endfor %}
+  </div>
+  {% endif %}
 
   <div class="page-break"></div>
 
@@ -96,15 +116,32 @@
   <div class="section"><div class="bar"></div><div class="t">Floorplan Sketch</div></div>
   <div class="diagram">{{ floorplan_svg|safe }}</div>
 
-  <div class="section"><div class="bar"></div><div class="t">Package Hints</div></div>
-  <table>
-    <thead><tr><th>Component</th><th>Recommended Package</th></tr></thead>
-    <tbody>
-      {% for ph in package_hints %}
-      <tr><td>{{ ph.component_type }}</td><td>{{ ph.recommended_package }}</td></tr>
+  <div class="section"><div class="bar"></div><div class="t">Component Candidates</div></div>
+  {% if component_choices %}
+    {% for ch in component_choices %}
+    <div class="cc">
+      <div class="cc-h">{{ ch.component_type }}</div>
+      {% for c in ch.candidates %}
+      <div class="cand {% if c.recommended %}rec{% endif %}">
+        <div class="cand-top"><b>{{ c.part }}</b> · {{ c.package }}
+          <span class="stars">{{ c.stars }}</span>
+          {% if c.recommended %}<span class="badge">Empfehlung</span>{% endif %}</div>
+        {% if c.pros %}<div class="pro">+ {{ c.pros|join("; ") }}</div>{% endif %}
+        {% if c.cons %}<div class="con">– {{ c.cons|join("; ") }}</div>{% endif %}
+      </div>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
+    {% endfor %}
+  {% else %}
+    <table>
+      <thead><tr><th>Component</th><th>Recommended Package</th></tr></thead>
+      <tbody>
+        {% for ph in package_hints %}
+        <tr><td>{{ ph.component_type }}</td><td>{{ ph.recommended_package }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
 
   <div class="disclaimer">⚠ AI-generated draft. All constraints and placements require
     review and sign-off by a qualified PCB designer before manufacturing.</div>
