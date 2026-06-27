@@ -1,9 +1,20 @@
 """Milestone 1 verification: the scaffold runs end-to-end in Mock Mode."""
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.config import Settings
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _force_mock_mode(monkeypatch):
+    """Pin these checks to Mock Mode regardless of any real QWEN_API_KEY in the
+    developer's .env. The init kwarg outranks env vars and the .env file, so the
+    app reports/uses mock mode here even when a live key is configured locally."""
+    mock_settings = Settings(qwen_api_key="")
+    monkeypatch.setattr("app.api.routes.get_settings", lambda: mock_settings)
 
 
 def test_health_reports_mock_mode_without_api_key():

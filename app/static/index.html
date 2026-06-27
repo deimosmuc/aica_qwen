@@ -286,7 +286,7 @@
           <button :class="societyTab==='trace' ? 'tab-active' : ''"
                   @click="societyTab='trace'">📋 Trace</button>
           <button :class="societyTab==='society' ? 'tab-active' : ''"
-                  @click="societyTab='society'; if(!societyBubbles.length) playSociety()">
+                  @click="societyTab='society'; playSociety()">
             💬 Agent Society
           </button>
         </div>
@@ -393,11 +393,25 @@
             </div>
           </div>
         </template>
+        <!-- Upcoming pipeline stages, greyed out (assembly-line feel — F2) -->
+        <template x-if="stepIdx >= 0">
+          <template x-for="st in STAGES.slice(stepIdx + 1)" :key="st">
+            <div class="step upcoming" style="opacity:.4; margin-top:10px">
+              <div class="dot"></div>
+              <div style="flex:1">
+                <span class="agent" x-text="STAGE_META[st].agent"></span>
+                <span class="role" x-text="'· ' + STAGE_META[st].role"></span>
+                <span class="muted" style="margin-left:8px">upcoming</span>
+              </div>
+            </div>
+          </template>
+        </template>
         </div><!-- /tab:trace (stepwise) -->
 
         <!-- Society chat (stepwise — shows approved steps so far) -->
         <div x-show="societyTab==='society'" class="society-chat">
           <template x-for="(s, i) in societyBubbles" :key="i">
+            <div style="display:flex; flex-direction:column; gap:10px">  <!-- single x-for root (Alpine requires one) -->
             <!-- PCB-Readiness Phase divider -->
             <template x-if="s.agent === 'PCB Engineer' && !societyBubbles.slice(0, i).some(b => b.agent === 'PCB Engineer')">
               <div style="display:flex;align-items:center;gap:8px;margin:4px 0">
@@ -419,6 +433,7 @@
                      x-text="s.summary.slice(0,120) + (s.summary.length > 120 ? '…' : '')"></div>
               </div>
             </div>
+            </div><!-- /single x-for root -->
           </template>
           <div x-show="!societyBubbles.length && !societyPlaying" class="society-empty">
             Noch kein Run gestartet.
@@ -444,7 +459,7 @@
             <button :class="societyTab==='trace' ? 'tab-active' : ''"
                     @click="societyTab='trace'">📋 Trace</button>
             <button :class="societyTab==='society' ? 'tab-active' : ''"
-                    @click="societyTab='society'; if(!societyBubbles.length) playSociety()">
+                    @click="societyTab='society'; playSociety()">
               💬 Agent Society
             </button>
           </div>
@@ -524,6 +539,7 @@
           <!-- Society chat -->
           <div x-show="societyTab==='society'" class="society-chat">
             <template x-for="(s, i) in societyBubbles" :key="i">
+              <div style="display:flex; flex-direction:column; gap:10px">  <!-- single x-for root (Alpine requires one) -->
               <!-- PCB-Readiness Phase divider -->
               <template x-if="s.agent === 'PCB Engineer' && !societyBubbles.slice(0, i).some(b => b.agent === 'PCB Engineer')">
                 <div style="display:flex;align-items:center;gap:8px;margin:4px 0">
@@ -545,6 +561,7 @@
                        x-text="s.summary.slice(0,120) + (s.summary.length > 120 ? '…' : '')"></div>
                 </div>
               </div>
+              </div><!-- /single x-for root -->
             </template>
             <div x-show="!societyBubbles.length && !societyPlaying" class="society-empty">
               Noch kein Run — starte die Pipeline oben.
@@ -705,7 +722,14 @@
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
         diagramSvg: null, constraintsText: "", correctText: "",
         clarifyAnswers: {},   // { [questionId]: { picked: [labels], text: "" } }
-        societyBubbles: [], societyPlaying: false, societyTab: 'trace',
+        societyBubbles: [], societyPlaying: false, societyTab: 'trace', societyScheduled: 0,
+        // stage -> display agent/role, for greying-out upcoming pipeline steps (F2)
+        STAGE_META: {
+          requirements: { agent: 'Requirements Agent', role: 'Senior Systems Engineer' },
+          architecture: { agent: 'System Architect', role: 'Principal Hardware Architect' },
+          critique:     { agent: 'Design Critic',    role: 'Senior Hardware Reviewer' },
+          arbitration:  { agent: 'Arbitration',      role: 'Chief Engineer' },
+        },
         PROFILES: ["Uniform qwen-plus", "Uniform qwen-max", "Budget Turbo", "Senior Review Team"], selectedProfile: "Uniform qwen-plus",
         async init() {
           try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
@@ -722,7 +746,7 @@
           this.result = null; this.approved = false; this.gen = null; this.genError = "";
           this.acc = null; this.pending = null; this.stepIdx = -1;
           this.stepStopped = false; this.stepNotice = ""; this.diagramSvg = null;
-          this.societyBubbles = []; this.societyPlaying = false; this.societyTab = 'trace';
+          this.societyBubbles = []; this.societyPlaying = false; this.societyTab = 'trace'; this.societyScheduled = 0;
         },
         async runAuto() {
           this._resetRun(); this.loading = true;
@@ -785,15 +809,23 @@
           }
         },
         playSociety() {
-          if (this.societyPlaying) return;
+          // Reconcile the chat bubbles with the live trace source. In step mode the
+          // trace grows one approved step at a time (acc.trace) and then becomes
+          // result.trace after the final sign-off; in auto mode result.trace is set
+          // at once. Append only the not-yet-shown steps (animated), so repeated
+          // calls — tab re-open, each approval, the acc→result hand-off — stay in
+          // sync without ever duplicating or dropping a bubble. (Fixes F3.)
           const steps = (this.result && this.result.trace) || (this.acc && this.acc.trace) || [];
-          if (!steps.length) return;
+          const shown = this.societyScheduled;
+          if (steps.length <= shown) return;
+          const fresh = steps.slice(shown);
+          this.societyScheduled = shown + fresh.length;
           this.societyPlaying = true;
-          steps.forEach((step, i) => {
+          fresh.forEach((step, k) => {
             setTimeout(() => {
               this.societyBubbles.push(step);
-              if (i === steps.length - 1) this.societyPlaying = false;
-            }, i * 350);
+              if (this.societyBubbles.length >= this.societyScheduled) this.societyPlaying = false;
+            }, k * 350);
           });
         },
         avatarColor(agent) {
@@ -835,6 +867,7 @@
           }
           this.acc[stage] = this.pending[stage];
           this.acc.trace.push(this.pending.trace_step);
+          if (this.societyTab === 'society') this.playSociety();  // live bubble if watching (F3)
           const next = this.stepIdx + 1;
           this.pending = null;
           if (next < this.STAGES.length) { this.loadStage(next); return; }

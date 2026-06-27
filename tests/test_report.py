@@ -9,8 +9,23 @@ def test_logo_data_uri_returns_png_data_uri_or_empty():
     assert uri == "" or uri.startswith("data:image/png;base64,")
 
 
-from app.generators.report import _report_context
+from app.generators.report import _derive_title, _report_context
 from app.services.mock import mock_run
+
+
+def test_derive_title_strips_instruction_preamble():
+    # The raw imperative prompt must not become the report title.
+    assert (
+        _derive_title("erstelle mir ein grundgerüst für ein 24V industrial sensor board")
+        == "24V industrial sensor board"
+    )
+    # English preamble + acronym casing preserved.
+    assert _derive_title("Please build me a board with an STM32 and RS485") == (
+        "Board with an STM32 and RS485"
+    )
+    # Empty / filler-only input falls back to a generic name.
+    assert _derive_title("") == "Circuit Design"
+    assert _derive_title("create a circuit") == "Circuit"
 
 
 def test_report_context_core_fields():

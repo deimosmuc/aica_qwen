@@ -45,6 +45,40 @@ def _logo_data_uri() -> str:
     return f"data:image/png;base64,{encoded}"
 
 
+# Leading instruction/filler words stripped so the report title reads like a
+# project name rather than the raw imperative prompt ("erstelle mir ein
+# grundgerüst für …"). German + English; acronyms keep their casing (F1).
+_TITLE_STOPWORDS = {
+    "erstelle", "erstell", "erstellen", "baue", "bau", "bauen", "entwirf",
+    "entwerfe", "entwerfen", "entwickle", "mach", "mache", "machen", "generiere",
+    "generier", "design", "create", "build", "make", "generate", "develop",
+    "please", "bitte", "mir", "me", "uns", "us", "for", "für", "of", "to",
+    "i", "ich", "need", "brauche", "möchte", "will", "want", "give", "gib",
+    "a", "an", "the", "der", "die", "das", "ein", "eine", "einen", "einem", "einer",
+    "grundgerüst", "gerüst", "scaffold", "schematic", "schaltplan",
+}
+
+
+def _derive_title(requirements_text: str) -> str:
+    """A concise, project-name-like title derived from the request.
+
+    Strips a leading run of instruction/filler words so the header reads like a
+    project name instead of the raw imperative prompt. Acronyms (STM32, RS485,
+    USB-C) keep their casing; falls back to a generic name when nothing
+    meaningful remains.
+    """
+    first_line = next((ln.strip() for ln in requirements_text.splitlines() if ln.strip()), "")
+    words = first_line.replace(",", " ").split()
+    i = 0
+    # Drop leading filler, but never strip the last remaining word.
+    while i < len(words) - 1 and words[i].lower().strip(".:;-") in _TITLE_STOPWORDS:
+        i += 1
+    title = " ".join(words[i:]).strip(" .,:;-") or "Circuit Design"
+    if len(title) > 70:
+        title = title[:70].rsplit(" ", 1)[0] + "…"
+    return title[:1].upper() + title[1:]
+
+
 def _report_context(result: RunResponse, requirements_text: str, project_name: str) -> dict:
     """Flatten a RunResponse into a flat, template-ready dict.
 
@@ -54,9 +88,8 @@ def _report_context(result: RunResponse, requirements_text: str, project_name: s
     arch = result.architecture
     pcb = result.pcb_readiness
 
-    # Title: first non-empty line of the request, trimmed; description: the rest.
-    first_line = next((ln.strip() for ln in requirements_text.splitlines() if ln.strip()), "")
-    title = (first_line[:80] or "Circuit Design").rstrip(".")
+    # Title: a project-name-like label; description: the full request on one line.
+    title = _derive_title(requirements_text)
     description = requirements_text.strip().replace("\n", " ")
     if len(description) > 160:
         description = description[:157].rstrip() + "…"
