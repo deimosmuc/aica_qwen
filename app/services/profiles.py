@@ -3,7 +3,7 @@
 A profile assigns a model to each pipeline stage (a strong supervisor can run on
 a stronger model than the junior sub-agents) and decides whether the Critic→
 Architect review-and-rework loop runs. Slot keys are the four pipeline STAGE
-names so /step can map a stage straight to its model.
+names so /step can map a stage straight to its model. Six stages in total.
 """
 from __future__ import annotations
 

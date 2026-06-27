@@ -123,7 +123,7 @@ def test_pcb_stage_trace_has_pcb_steps():
     result = orch.run("Build RS485 interface")
     agent_names = [s.agent for s in result.trace]
     assert "PCB Engineer" in agent_names
-    assert "Design Critic" in agent_names
+    assert "PCB Critic" in agent_names
 
 
 def test_pcb_rework_loop():
