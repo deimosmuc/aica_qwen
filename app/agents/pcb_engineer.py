@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from app.agents.base import ChatClient, guidance_block
 from app.models.schemas import (
-    Arbitration, Architecture, ConstraintSet, NetClass,
-    PackageHint, PcbReadiness, Requirements,
+    Arbitration, Architecture, Candidate, ComponentChoice, ConstraintSet,
+    FloorplanZone, NetClass, PackageHint, PcbReadiness, Requirements,
 )
 
 NAME = "PCB Engineer"
@@ -64,6 +64,22 @@ Output a JSON object with exactly these keys:
 - "floorplan_text": string (prose)
 - "floorplan_ascii": string (ASCII sketch, use \\n for newlines)
 - "package_hints": array of {component_type, recommended_package, reason}
+- "component_choices": array of objects for DECISION-WORTHY components only (MCU,
+  sensors, comms/bridge chips, central connectors/converters). Skip no-brainers
+  (passives, standard LEDs). Each: {"component_type": str, "category": one of the
+  block categories, "candidates": array of {"part": str, "package": str,
+  "score": number 0-5 one decimal, "recommended": bool (exactly one true),
+  "pros": array of str, "cons": array of str}}. Emit 1 recommended + up to 2
+  alternatives. Weigh TYPE-SPECIFIC criteria and name them in pros/cons (MCU:
+  interface/peripheral fit, integrated radios, compute/memory, then size/price/
+  availability; sensor: measurands/accuracy; power: efficiency/thermal). The
+  package MUST be correct for the part (a WROOM module is a castellated PCB module,
+  not a QFN).
+- "floorplan_zones": array of {"label": str, "category": one of the block
+  categories, "blocks": array of block names, "placement": one of "edge"|"center"|
+  "corner"|"top"|"bottom"|"left"|"right", "separation": array of zone labels/
+  categories to keep apart}. Keep sensitive sensors away from power/heat; give
+  airflow sensors a board edge; thermally isolate temperature/CO2 sensors.
 """
 
 
@@ -98,4 +114,13 @@ class PcbEngineerAgent:
             floorplan_text=data.get("floorplan_text", ""),
             floorplan_ascii=data.get("floorplan_ascii", ""),
             package_hints=[PackageHint(**ph) for ph in data.get("package_hints", [])],
+            component_choices=[
+                ComponentChoice(
+                    component_type=cc.get("component_type", ""),
+                    category=cc.get("category", "other"),
+                    candidates=[Candidate(**c) for c in cc.get("candidates", [])],
+                )
+                for cc in data.get("component_choices", [])
+            ],
+            floorplan_zones=[FloorplanZone(**fz) for fz in data.get("floorplan_zones", [])],
         )
