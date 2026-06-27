@@ -49,3 +49,24 @@ def test_report_context_handles_missing_pcb():
     assert ctx["net_class_count"] == 0
     assert ctx["net_classes"] == []
     assert ctx["package_hints"] == []
+
+
+from app.generators.report import _architecture_svg
+
+
+def test_architecture_svg_contains_block_labels():
+    result = mock_run("A 24V industrial board with an STM32 and RS485.")
+    svg = _architecture_svg(result)
+    assert svg.startswith("<svg")
+    assert svg.rstrip().endswith("</svg>")
+    # Every block name should appear as a label.
+    for block in result.architecture.blocks:
+        assert block.name in svg
+
+
+def test_architecture_svg_placeholder_when_empty():
+    result = mock_run("x")
+    result.architecture.blocks = []
+    svg = _architecture_svg(result)
+    assert svg.startswith("<svg")
+    assert "unavailable" in svg.lower()
