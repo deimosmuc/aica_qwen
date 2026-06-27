@@ -1,11 +1,6 @@
-import json
-import pytest
 from unittest.mock import MagicMock
 from app.agents.pcb_engineer import PcbEngineerAgent
-from app.models.schemas import (
-    Architecture, Block, Connection, Requirements, ClarifyingQuestion,
-    Arbitration, PcbReadiness
-)
+from app.models.schemas import Architecture, Block, Requirements, Arbitration, PcbReadiness
 
 def _mock_requirements() -> Requirements:
     return Requirements(
