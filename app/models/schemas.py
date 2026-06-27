@@ -143,6 +143,12 @@ class PcbReadiness(BaseModel):
     package_hints: list[PackageHint]
 
 
+class PcbCritique(BaseModel):
+    missing_blocks: list[str] = []
+    warnings: list[str] = []
+    risks: list[str] = []
+
+
 # --- Agent trace (what the UI visualises) ------------------------------------
 
 
