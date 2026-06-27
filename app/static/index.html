@@ -395,8 +395,19 @@
         <!-- Agent trace -->
         <section class="panel">
           <h2>2 · Agent collaboration</h2>
-          <div class="trace">
-            <template x-for="(s, i) in result.trace" :key="i">
+          <div class="tab-row">
+            <button :class="societyTab==='trace' ? 'tab-active' : ''"
+                    @click="societyTab='trace'">📋 Trace</button>
+            <button :class="societyTab==='society' ? 'tab-active' : ''"
+                    @click="societyTab='society'; if(!societyBubbles.length) playSociety()">
+              💬 Agent Society
+            </button>
+          </div>
+
+          <!-- Existing trace list -->
+          <div x-show="societyTab==='trace'">
+            <div class="trace">
+              <template x-for="(s, i) in result.trace" :key="i">
               <div class="step" :class="s.status">
                 <div class="dot" :class="s.status"></div>
                 <div style="flex:1">
@@ -462,7 +473,32 @@
                 </div>
               </div>
             </template>
-          </div>
+            </div><!-- /.trace -->
+          </div><!-- /tab:trace -->
+
+          <!-- Society chat -->
+          <div x-show="societyTab==='society'" class="society-chat">
+            <template x-for="(s, i) in societyBubbles" :key="i">
+              <div :class="s.agent==='Design Critic' ? 'bubble-right' : 'bubble-left'">
+                <div class="bubble-avatar" :style="avatarColor(s.agent)"
+                     x-text="s.agent.slice(0,3).toUpperCase()"></div>
+                <div class="bubble-body">
+                  <div class="bubble-meta">
+                    <span x-text="s.agent"></span>
+                    <span x-show="s.round > 1" x-text="'· Round ' + s.round"></span>
+                    <span x-show="s.status==='warning'" class="chip-rework">↺ Rework</span>
+                  </div>
+                  <div class="bubble-text"
+                       x-text="s.summary.slice(0,120) + (s.summary.length > 120 ? '…' : '')"></div>
+                </div>
+              </div>
+            </template>
+            <div x-show="!societyBubbles.length && !societyPlaying" class="society-empty">
+              Noch kein Run — starte die Pipeline oben.
+            </div>
+            <div x-show="societyPlaying" class="society-typing">···</div>
+          </div><!-- /tab:society -->
+
         </section>
 
         <!-- Architecture -->
