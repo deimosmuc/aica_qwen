@@ -110,6 +110,35 @@ class Arbitration(BaseModel):
     accepted_assumptions: list[str] = []
 
 
+# --- PCB-Readiness Pack (Feature D) -----------------------------------------
+
+class NetClass(BaseModel):
+    name: str
+    min_width_mm: float
+    clearance_mm: float
+    nets: list[str] = []
+
+class ConstraintSet(BaseModel):
+    min_clearance_mm: float
+    min_track_width_mm: float
+    via_drill_mm: float
+    via_annular_ring_mm: float
+
+class PackageHint(BaseModel):
+    component_type: str
+    recommended_package: str
+    reason: str
+
+class PcbReadiness(BaseModel):
+    layerstack: str          # "2-layer" | "4-layer" | "6-layer"
+    layerstack_reason: str
+    netclasses: list[NetClass]
+    constraints: ConstraintSet
+    floorplan_text: str
+    floorplan_ascii: str
+    package_hints: list[PackageHint]
+
+
 # --- Agent trace (what the UI visualises) ------------------------------------
 
 
@@ -149,6 +178,7 @@ class RunResponse(BaseModel):
     notice: str | None = None
     # Real token/cost usage for this run (None in Mock Mode).
     usage: RunUsage | None = None
+    pcb_readiness: PcbReadiness | None = None
 
 
 # --- Validation Agent --------------------------------------------------------
