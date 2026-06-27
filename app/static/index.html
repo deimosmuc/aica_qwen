@@ -306,6 +306,7 @@
             </div>
           </template>
         </div>
+        <!-- still inside x-show="societyTab==='trace'" -->
         <p class="spinner" x-show="stepBusy" style="margin-top:10px">Running agent…</p>
         <template x-if="pending && !stepBusy">
           <div class="step pending" :class="pending.trace_step.status" style="margin-top:10px">
