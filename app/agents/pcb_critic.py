@@ -9,7 +9,7 @@ from __future__ import annotations
 from app.agents.base import ChatClient, guidance_block
 from app.models.schemas import PcbCritique, PcbReadiness, Requirements
 
-NAME = "Design Critic"   # same display name — appears in Society chat as the existing Critic
+NAME = "Design Critic"   # same agent name as DesignCriticAgent; role differs ("Senior PCB Reviewer")
 ROLE = "Senior PCB Reviewer"
 
 SYSTEM_PROMPT = """You are a senior PCB reviewer.
