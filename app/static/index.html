@@ -654,6 +654,7 @@
                       ? ('✅ Verified in ' + (gen.validation.kicad_version || 'KiCad'))
                       : '❌ KiCad verification failed')"></span>
               <a class="dl" :href="gen.download_url"><button class="approve">⬇ Download ZIP</button></a>
+              <a class="dl" :href="gen.report_url" x-show="gen.report_url"><button class="approve">📄 Download PDF Report</button></a>
             </div>
             <div class="grid2" style="margin-top:16px">
               <div>
