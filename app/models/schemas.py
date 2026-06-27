@@ -228,6 +228,7 @@ class GenerateResponse(BaseModel):
     validation: Validation
     preview_svg_url: str | None = None
     download_url: str | None = None
+    report_url: str | None = None
     files: list[str] = []
 
 

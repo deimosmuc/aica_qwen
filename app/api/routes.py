@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from app.generators.kicad import generate_scaffold
+from app.generators.report import generate_report_pdf
 from app.models.schemas import (
     BenchRequest,
     BenchResult,
@@ -40,6 +41,7 @@ from app.services.validation import validate_project
 router = APIRouter(prefix="/api", tags=["pipeline"])
 
 _PROJECT_NAME = "project"
+_REPORT_NAME = "AI_Circuit_Architect_Report.pdf"
 
 
 @router.get("/health")
@@ -96,6 +98,16 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         except KiCadCliError:
             preview_url = None  # preview is best-effort; validation already covers correctness
 
+    report_url: str | None = None
+    try:
+        pdf_bytes = generate_report_pdf(req.result, req.requirements_text, _PROJECT_NAME)
+        (project_dir / _REPORT_NAME).write_bytes(pdf_bytes)
+        report_url = f"/api/report/{project_id}"
+    except Exception:
+        # Report is best-effort: missing WeasyPrint system libs must not break
+        # scaffold generation or the ZIP. The button is simply hidden.
+        report_url = None
+
     create_project_zip(project_dir)
 
     files = sorted(
@@ -108,6 +120,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         validation=validation,
         preview_svg_url=preview_url,
         download_url=f"/api/download/{project_id}",
+        report_url=report_url,
         files=files,
     )
 
@@ -125,6 +138,21 @@ def download(project_id: str) -> FileResponse:
         zip_path,
         media_type="application/zip",
         filename=f"ai-circuit-architect-{project_id}.zip",
+    )
+
+
+@router.get("/report/{project_id}")
+def report(project_id: str) -> FileResponse:
+    """Download the generated PDF design brief."""
+    if not project_id.isalnum():
+        raise HTTPException(status_code=400, detail="Invalid project id.")
+    pdf_path = Path(get_settings().output_dir) / project_id / _REPORT_NAME
+    if not pdf_path.is_file():
+        raise HTTPException(status_code=404, detail="Report not found.")
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=f"ai-circuit-architect-{project_id}.pdf",
     )
 
 
