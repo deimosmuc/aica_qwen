@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from time import perf_counter
 
+from pydantic import ValidationError
+
 from app.agents.arbitration import ArbitrationAgent
 from app.agents.architect import SystemArchitectAgent
 from app.agents.base import ChatClient
@@ -211,6 +213,12 @@ class Orchestrator:
             return self._guarded_fallback(
                 requirements_text,
                 f"Qwen was unreachable ({e}). Showing example data instead.",
+            )
+        except ValidationError as e:
+            return self._guarded_fallback(
+                requirements_text,
+                f"Qwen returned a malformed answer ({e.error_count()} field error(s)). "
+                "Showing example data instead.",
             )
 
         req_step = TraceStep(

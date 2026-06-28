@@ -54,6 +54,33 @@ class Requirements(BaseModel):
     confidence: float = 0.0
     clarifications: list[ClarifyingQuestion] = []
 
+    @model_validator(mode="before")
+    @classmethod
+    def _sanitize_clarifications(cls, data):
+        # Live Qwen occasionally returns a malformed clarifications array
+        # (truncated JSON turns "options" into a string, or loose option objects
+        # get promoted into the array without id/text). Salvage the well-formed
+        # entries instead of letting a ValidationError crash the whole run.
+        if not isinstance(data, dict):
+            return data
+        raw = data.get("clarifications")
+        if not isinstance(raw, list):
+            if raw is not None:
+                data["clarifications"] = []
+            return data
+        cleaned = []
+        for entry in raw:
+            if isinstance(entry, dict):
+                if not entry.get("id") or not entry.get("text"):
+                    continue  # drop loose/partial objects (e.g. promoted options)
+                if not isinstance(entry.get("options"), list):
+                    entry["options"] = []  # coerce truncated/garbled options to empty
+                cleaned.append(entry)
+            else:
+                cleaned.append(entry)  # already a ClarifyingQuestion model — keep as-is
+        data["clarifications"] = cleaned
+        return data
+
     @model_validator(mode="after")
     def _backfill_questions(self):
         # Keep the legacy plain-text "Open questions" list working when only the

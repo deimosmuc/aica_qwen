@@ -35,6 +35,33 @@ def test_requirements_keeps_explicit_questions():
     assert r.questions == ["explicit one"]  # explicit questions are NOT overwritten
 
 
+def test_requirements_sanitizes_malformed_clarifications_from_qwen():
+    # A real live qwen response once emitted a corrupted clarifications array:
+    # one entry's "options" was a string (truncated JSON), and loose option
+    # objects (no id/text) were promoted into the array. This must not crash;
+    # the salvageable clarification survives and the junk is dropped.
+    r = Requirements.model_validate(
+        {
+            "requirements": ["ECG front-end"],
+            "confidence": 0.9,
+            "clarifications": [
+                {"id": "rate", "text": "Sample rate?", "options": ":[{"},
+                {"label": "250 Hz", "detail": "basic monitoring"},
+                {"label": "500 Hz", "detail": "captures fast features"},
+            ],
+        }
+    )
+    assert len(r.clarifications) == 1          # only the one with id+text survives
+    assert r.clarifications[0].id == "rate"
+    assert r.clarifications[0].options == []   # string options coerced to empty list
+    assert r.questions == ["Sample rate?"]     # backfill still works
+
+
+def test_requirements_tolerates_non_list_clarifications():
+    r = Requirements.model_validate({"requirements": ["x"], "clarifications": "oops"})
+    assert r.clarifications == []
+
+
 def test_mock_requirements_has_clarifications():
     from app.services.mock import mock_run
 

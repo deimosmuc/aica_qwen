@@ -101,6 +101,18 @@ def test_no_rework_when_profile_disables_it(monkeypatch):
     assert all(s.round == 1 for s in out.trace)
 
 
+def test_validation_error_degrades_to_mock(monkeypatch):
+    # A live agent returning malformed JSON (pydantic ValidationError) must not
+    # crash the run — it degrades to example data with an honest notice.
+    def boom(self, c, text, g=None):
+        Requirements.model_validate({"confidence": "not-a-number"})  # raises ValidationError
+
+    monkeypatch.setattr(orch_mod.RequirementsAgent, "run", boom)
+    out = orch_mod.Orchestrator(Settings(qwen_api_key="sk-test")).run("board")
+    assert out.mode == "mock"
+    assert "malformed" in (out.notice or "")
+
+
 def test_mock_mode_rework_profile_shows_two_rounds():
     out = orch_mod.Orchestrator(Settings(qwen_api_key=""), profile=_rework_profile()).run("a 24V board")
     assert out.mode == "mock"
