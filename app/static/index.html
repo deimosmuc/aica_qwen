@@ -170,6 +170,53 @@
       border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 600; }
     .society-empty { color: var(--muted); font-size: 13px; padding: 10px 0; }
     .society-typing { color: var(--muted); font-size: 22px; letter-spacing: 2px; padding: 2px 0; }
+    /* --- Mission Control pipeline rail (F4) --- */
+    .rail { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+            padding: 18px 16px 14px; margin-bottom: 16px; }
+    .rail-cap { font-size: 11px; letter-spacing: .4px; text-transform: uppercase; color: var(--muted);
+                margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+    .rail-live { width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
+                 animation: rl-blink 1.3s infinite; }
+    @keyframes rl-blink { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+    .rail-line { position: relative; height: 56px; }
+    .rail-track { position: absolute; left: 6%; right: 6%; top: 11px; height: 4px;
+                  background: var(--line); border-radius: 2px; overflow: hidden; }
+    .rail-fill { position: absolute; left: 0; top: 0; height: 100%; width: 0;
+                 background: linear-gradient(90deg, var(--ok), var(--accent)); transition: width .5s ease; }
+    .rail-stns { position: absolute; left: 0; right: 0; top: 0; display: flex;
+                 justify-content: space-between; padding: 0 6%; }
+    .rail-stn { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .rail-dot { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--panel-2);
+                position: relative; transition: box-shadow .3s; }
+    .rail-stn.upcoming .rail-dot { opacity: .38; }
+    .rail-stn.active .rail-dot { box-shadow: 0 0 0 4px var(--accent); animation: rl-pulse 1.3s infinite; }
+    @keyframes rl-pulse { 0%,100% { box-shadow: 0 0 0 4px var(--accent) } 50% { box-shadow: 0 0 0 7px transparent } }
+    .rail-stn.addressed .rail-dot { animation: rl-glow 1.6s ease-in-out infinite; }
+    @keyframes rl-glow { 0%,100% { box-shadow: 0 0 10px 3px #d2992288, 0 0 0 3px #d2992233 }
+                          50% { box-shadow: 0 0 20px 7px #d29922ee, 0 0 0 6px #d2992255 } }
+    .rail-lbl { font-size: 10px; color: var(--muted); text-align: center; white-space: nowrap; }
+    .rail-stn.active .rail-lbl { color: var(--text); }
+    .rail-stn.addressed .rail-lbl { color: #e8b75a; }
+    .rail-phase { position: absolute; top: 2px; bottom: 18px; border-left: 1px dashed #3a4a5a; }
+    .rail-pkt { position: absolute; top: 9px; width: 9px; height: 9px; border-radius: 50%;
+                background: #ffd56b; box-shadow: 0 0 8px 2px #d29922; }
+    .rail-pkt.p1 { animation: rl-flow 2.2s linear infinite; }
+    .rail-pkt.p2 { animation: rl-flow 2.2s linear infinite .7s; }
+    .rail-pkt.p3 { animation: rl-flow 2.2s linear infinite 1.4s; }
+    @keyframes rl-flow { 0% { opacity: 0; transform: scale(.6) }
+                         12% { opacity: 1; transform: scale(1) }
+                         88% { opacity: 1; transform: scale(1) }
+                         100% { opacity: 0; transform: scale(.6) } }
+    .rail-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px;
+                   font-size: 11px; color: var(--muted); }
+    .rail-legend i { display: inline-block; width: 16px; height: 4px; border-radius: 2px;
+                     vertical-align: middle; margin-right: 6px; }
+    .rail-legend .o { width: 11px; height: 11px; border-radius: 50%; background: #d29922;
+                      box-shadow: 0 0 7px 2px #d29922; }
+    @media (prefers-reduced-motion: reduce) {
+      .rail-live, .rail-stn.active .rail-dot, .rail-stn.addressed .rail-dot, .rail-pkt { animation: none !important; }
+      .rail-pkt { display: none !important; }
+    }
   </style>
 </head>
 <body x-data="architect()" x-init="init()">
