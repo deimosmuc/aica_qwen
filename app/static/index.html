@@ -170,6 +170,53 @@
       border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 600; }
     .society-empty { color: var(--muted); font-size: 13px; padding: 10px 0; }
     .society-typing { color: var(--muted); font-size: 22px; letter-spacing: 2px; padding: 2px 0; }
+    /* --- Mission Control pipeline rail (F4) --- */
+    .rail { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+            padding: 18px 16px 14px; margin-bottom: 16px; }
+    .rail-cap { font-size: 11px; letter-spacing: .4px; text-transform: uppercase; color: var(--muted);
+                margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+    .rail-live { width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
+                 animation: rl-blink 1.3s infinite; }
+    @keyframes rl-blink { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+    .rail-line { position: relative; height: 56px; }
+    .rail-track { position: absolute; left: 6%; right: 6%; top: 11px; height: 4px;
+                  background: var(--line); border-radius: 2px; overflow: hidden; }
+    .rail-fill { position: absolute; left: 0; top: 0; height: 100%; width: 0;
+                 background: linear-gradient(90deg, var(--ok), var(--accent)); transition: width .5s ease; }
+    .rail-stns { position: absolute; left: 0; right: 0; top: 0; display: flex;
+                 justify-content: space-between; padding: 0 6%; }
+    .rail-stn { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .rail-dot { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--panel-2);
+                position: relative; transition: box-shadow .3s; }
+    .rail-stn.upcoming .rail-dot { opacity: .38; }
+    .rail-stn.active .rail-dot { box-shadow: 0 0 0 4px var(--accent); animation: rl-pulse 1.3s infinite; }
+    @keyframes rl-pulse { 0%,100% { box-shadow: 0 0 0 4px var(--accent) } 50% { box-shadow: 0 0 0 7px transparent } }
+    .rail-stn.addressed .rail-dot { animation: rl-glow 1.6s ease-in-out infinite; }
+    @keyframes rl-glow { 0%,100% { box-shadow: 0 0 10px 3px #d2992288, 0 0 0 3px #d2992233 }
+                          50% { box-shadow: 0 0 20px 7px #d29922ee, 0 0 0 6px #d2992255 } }
+    .rail-lbl { font-size: 10px; color: var(--muted); text-align: center; white-space: nowrap; }
+    .rail-stn.active .rail-lbl { color: var(--text); }
+    .rail-stn.addressed .rail-lbl { color: #e8b75a; }
+    .rail-phase { position: absolute; top: 2px; bottom: 18px; border-left: 1px dashed #3a4a5a; }
+    .rail-pkt { position: absolute; top: 9px; width: 9px; height: 9px; border-radius: 50%;
+                background: #ffd56b; box-shadow: 0 0 8px 2px #d29922; }
+    .rail-pkt.p1 { animation: rl-flow 2.2s linear infinite; }
+    .rail-pkt.p2 { animation: rl-flow 2.2s linear infinite .7s; }
+    .rail-pkt.p3 { animation: rl-flow 2.2s linear infinite 1.4s; }
+    @keyframes rl-flow { 0%   { left: 50%; opacity: 0; transform: scale(.6) }
+                         12%  { opacity: 1; transform: scale(1) }
+                         88%  { left: 30%; opacity: 1; transform: scale(1) }
+                         100% { left: 28.5%; opacity: 0; transform: scale(.6) } }
+    .rail-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px;
+                   font-size: 11px; color: var(--muted); }
+    .rail-legend i { display: inline-block; width: 16px; height: 4px; border-radius: 2px;
+                     vertical-align: middle; margin-right: 6px; }
+    .rail-legend .o { width: 11px; height: 11px; border-radius: 50%; background: #d29922;
+                      box-shadow: 0 0 7px 2px #d29922; }
+    @media (prefers-reduced-motion: reduce) {
+      .rail-live, .rail-stn.active .rail-dot, .rail-stn.addressed .rail-dot, .rail-pkt { animation: none !important; }
+      .rail-pkt { display: none !important; }
+    }
   </style>
 </head>
 <body x-data="architect()" x-init="init()">
@@ -295,11 +342,34 @@
     <template x-if="acc">
       <section class="panel">
         <h2>2 · Agent collaboration — step by step</h2>
+        <div class="rail" x-show="railView().stations.length">
+          <div class="rail-cap"><span class="rail-live" x-show="railView().active"></span> Agent collaboration · <span x-text="railView().active ? 'LIVE' : 'done'"></span></div>
+          <div class="rail-line">
+            <div class="rail-track"><div class="rail-fill" :style="`width:${railView().fillPct}%`"></div></div>
+            <div class="rail-phase" style="left:81.5%"></div>
+            <template x-if="railView().packetFrom === 'critique'">
+              <div><div class="rail-pkt p1"></div><div class="rail-pkt p2"></div><div class="rail-pkt p3"></div></div>
+            </template>
+            <div class="rail-stns">
+              <template x-for="st in railView().stations" :key="st.key">
+                <div class="rail-stn" :class="st.addressed ? 'addressed' : st.state">
+                  <div class="rail-dot" :style="`background:${st.state==='upcoming' ? '#3a4a5a' : st.color}`"></div>
+                  <div class="rail-lbl" x-text="st.label"></div>
+                </div>
+              </template>
+            </div>
+          </div>
+          <div class="rail-legend">
+            <span><i style="background:linear-gradient(90deg,var(--ok),var(--accent))"></i>Progress / hand-off →</span>
+            <span><i style="background:#ffd56b"></i>← Critic feedback</span>
+            <span><span class="o" style="display:inline-block;margin-right:6px;vertical-align:middle"></span>addressed / reacting</span>
+          </div>
+        </div>
         <div class="tab-row">
           <button :class="societyTab==='trace' ? 'tab-active' : ''"
                   @click="societyTab='trace'">📋 Trace</button>
           <button :class="societyTab==='society' ? 'tab-active' : ''"
-                  @click="societyTab='society'; playSociety()">
+                  @click="societyTab='society'">
             💬 Agent Society
           </button>
         </div>
@@ -426,10 +496,10 @@
 
         <!-- Society chat (stepwise — shows approved steps so far) -->
         <div x-show="societyTab==='society'" class="society-chat">
-          <template x-for="(s, i) in societyBubbles" :key="i">
+          <template x-for="(s, i) in revealedTrace()" :key="i">
             <div style="display:flex; flex-direction:column; gap:10px">  <!-- single x-for root (Alpine requires one) -->
             <!-- PCB-Readiness Phase divider -->
-            <template x-if="s.agent === 'PCB Engineer' && !societyBubbles.slice(0, i).some(b => b.agent === 'PCB Engineer')">
+            <template x-if="s.agent === 'PCB Engineer' && !revealedTrace().slice(0, i).some(b => b.agent === 'PCB Engineer')">
               <div style="display:flex;align-items:center;gap:8px;margin:4px 0">
                 <div style="flex:1;height:1px;background:var(--border)"></div>
                 <div style="font-size:11px;color:var(--text-muted);white-space:nowrap">PCB-Readiness Phase</div>
@@ -451,10 +521,10 @@
             </div>
             </div><!-- /single x-for root -->
           </template>
-          <div x-show="!societyBubbles.length && !societyPlaying" class="society-empty">
+          <div x-show="!revealedTrace().length && !isPlaying()" class="society-empty">
             No run yet.
           </div>
-          <div x-show="societyPlaying" class="society-typing">···</div>
+          <div x-show="isPlaying()" class="society-typing">···</div>
         </div><!-- /tab:society (stepwise) -->
 
       </section>
@@ -471,11 +541,34 @@
         <!-- Agent trace -->
         <section class="panel">
           <h2>2 · Agent collaboration</h2>
+          <div class="rail" x-show="railView().stations.length">
+            <div class="rail-cap"><span class="rail-live" x-show="railView().active"></span> Agent collaboration · <span x-text="railView().active ? 'LIVE' : 'done'"></span></div>
+            <div class="rail-line">
+              <div class="rail-track"><div class="rail-fill" :style="`width:${railView().fillPct}%`"></div></div>
+              <div class="rail-phase" style="left:81.5%"></div>
+              <template x-if="railView().packetFrom === 'critique'">
+                <div><div class="rail-pkt p1"></div><div class="rail-pkt p2"></div><div class="rail-pkt p3"></div></div>
+              </template>
+              <div class="rail-stns">
+                <template x-for="st in railView().stations" :key="st.key">
+                  <div class="rail-stn" :class="st.addressed ? 'addressed' : st.state">
+                    <div class="rail-dot" :style="`background:${st.state==='upcoming' ? '#3a4a5a' : st.color}`"></div>
+                    <div class="rail-lbl" x-text="st.label"></div>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div class="rail-legend">
+              <span><i style="background:linear-gradient(90deg,var(--ok),var(--accent))"></i>Progress / hand-off →</span>
+              <span><i style="background:#ffd56b"></i>← Critic feedback</span>
+              <span><span class="o" style="display:inline-block;margin-right:6px;vertical-align:middle"></span>addressed / reacting</span>
+            </div>
+          </div>
           <div class="tab-row">
             <button :class="societyTab==='trace' ? 'tab-active' : ''"
                     @click="societyTab='trace'">📋 Trace</button>
             <button :class="societyTab==='society' ? 'tab-active' : ''"
-                    @click="societyTab='society'; playSociety()">
+                    @click="societyTab='society'">
               💬 Agent Society
             </button>
           </div>
@@ -557,10 +650,10 @@
 
           <!-- Society chat -->
           <div x-show="societyTab==='society'" class="society-chat">
-            <template x-for="(s, i) in societyBubbles" :key="i">
+            <template x-for="(s, i) in revealedTrace()" :key="i">
               <div style="display:flex; flex-direction:column; gap:10px">  <!-- single x-for root (Alpine requires one) -->
               <!-- PCB-Readiness Phase divider -->
-              <template x-if="s.agent === 'PCB Engineer' && !societyBubbles.slice(0, i).some(b => b.agent === 'PCB Engineer')">
+              <template x-if="s.agent === 'PCB Engineer' && !revealedTrace().slice(0, i).some(b => b.agent === 'PCB Engineer')">
                 <div style="display:flex;align-items:center;gap:8px;margin:4px 0">
                   <div style="flex:1;height:1px;background:var(--border)"></div>
                   <div style="font-size:11px;color:var(--text-muted);white-space:nowrap">PCB-Readiness Phase</div>
@@ -582,10 +675,10 @@
               </div>
               </div><!-- /single x-for root -->
             </template>
-            <div x-show="!societyBubbles.length && !societyPlaying" class="society-empty">
+            <div x-show="!revealedTrace().length && !isPlaying()" class="society-empty">
               No run yet — start the pipeline above.
             </div>
-            <div x-show="societyPlaying" class="society-typing">···</div>
+            <div x-show="isPlaying()" class="society-typing">···</div>
           </div><!-- /tab:society -->
 
         </section>
@@ -754,7 +847,7 @@
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
         diagramSvg: null, exportSvg: null, constraintsText: "", correctText: "", projectName: "",
         clarifyAnswers: {},   // { [questionId]: { picked: [labels], text: "" } }
-        societyBubbles: [], societyPlaying: false, societyTab: 'trace', societyScheduled: 0,
+        playedSteps: 0, societyTab: 'trace', _pipelineTimers: [],
         // stage -> display agent/role, for greying-out upcoming pipeline steps (F2)
         STAGE_META: {
           requirements: { agent: 'Requirements Agent', role: 'Senior Systems Engineer' },
@@ -779,7 +872,8 @@
           this.result = null; this.approved = false; this.gen = null; this.genError = "";
           this.acc = null; this.pending = null; this.stepIdx = -1;
           this.stepStopped = false; this.stepNotice = ""; this.diagramSvg = null; this.exportSvg = null; this.projectName = "";
-          this.societyBubbles = []; this.societyPlaying = false; this.societyTab = 'trace'; this.societyScheduled = 0;
+          this._pipelineTimers.forEach(clearTimeout); this._pipelineTimers = [];
+          this.playedSteps = 0; this.societyTab = 'trace';
         },
         async runAuto() {
           this._resetRun(); this.loading = true;
@@ -793,6 +887,7 @@
             this.diagramSvg = await this.buildDiagram(this.result.architecture);
             this.exportSvg = await this.buildExportDiagram(this.result.architecture);
             await this.fetchGuard();
+            this.playPipeline();
           } finally { this.loading = false; }
         },
         async runStep() {
@@ -843,25 +938,68 @@
             a.picked = (a.picked[0] === label) ? [] : [label];   // single: toggle/replace
           }
         },
-        playSociety() {
-          // Reconcile the chat bubbles with the live trace source. In step mode the
-          // trace grows one approved step at a time (acc.trace) and then becomes
-          // result.trace after the final sign-off; in auto mode result.trace is set
-          // at once. Append only the not-yet-shown steps (animated), so repeated
-          // calls — tab re-open, each approval, the acc→result hand-off — stay in
-          // sync without ever duplicating or dropping a bubble. (Fixes F3.)
-          const steps = (this.result && this.result.trace) || (this.acc && this.acc.trace) || [];
-          const shown = this.societyScheduled;
-          if (steps.length <= shown) return;
-          const fresh = steps.slice(shown);
-          this.societyScheduled = shown + fresh.length;
-          this.societyPlaying = true;
-          fresh.forEach((step, k) => {
-            setTimeout(() => {
-              this.societyBubbles.push(step);
-              if (this.societyBubbles.length >= this.societyScheduled) this.societyPlaying = false;
-            }, k * 350);
+        pipelineTrace() {
+          return (this.result && this.result.trace) || (this.acc && this.acc.trace) || [];
+        },
+        revealedTrace() {
+          return this.pipelineTrace().slice(0, this.playedSteps);
+        },
+        railView() {
+          const STATIONS = [
+            { key: 'requirements', label: 'Requirements', agent: 'Requirements Agent', color: '#3b82f6' },
+            { key: 'architecture', label: 'Architect',    agent: 'System Architect',   color: '#8b5cf6' },
+            { key: 'critique',     label: 'Critic',        agent: 'Design Critic',      color: '#ef4444' },
+            { key: 'arbitration',  label: 'Arbitration',   agent: 'Arbitration',        color: '#f59e0b' },
+            { key: 'pcb_engineer', label: 'PCB Eng.',      agent: 'PCB Engineer',       color: '#0d9488' },
+          ];
+          const revealed = this.revealedTrace();
+          const total = this.pipelineTrace().length;
+          const settled = total > 0 && this.playedSteps >= total;
+          const last = revealed.length ? revealed[revealed.length - 1] : null;
+          const seen = new Set(revealed.map(s => s.agent));
+          // active station: step mode -> pending/loading stage; auto replay -> last revealed agent until settled
+          const pendingStage = this.pending ? this.pending.stage
+            : (this.stepBusy && this.stepIdx >= 0 ? this.STAGES[this.stepIdx] : null);
+          let activeKey = pendingStage;
+          if (!activeKey && last && !settled) {
+            const a = STATIONS.find(st => st.agent === last.agent);
+            activeKey = a ? a.key : null;
+          }
+          // rework beat (auto replay only): active step is a warning Critic or a round>1 Architect
+          let addressed = null, packetFrom = null, packetTo = null;
+          if (!pendingStage && last && !settled) {
+            if ((last.agent === 'Design Critic' && last.status === 'warning') ||
+                (last.agent === 'System Architect' && last.round > 1)) {
+              addressed = 'System Architect'; packetFrom = 'critique'; packetTo = 'architecture';
+            } else if ((last.agent === 'PCB Critic' && last.status === 'warning') ||
+                       (last.agent === 'PCB Engineer' && last.round > 1)) {
+              // PCB Critic is not a rail station -> addressed glow only, no packets
+              addressed = 'PCB Engineer';
+            }
+          }
+          const stations = STATIONS.map(st => {
+            let state = 'upcoming';
+            if (st.key === activeKey) state = 'active';
+            else if (seen.has(st.agent)) state = 'done';
+            return { key: st.key, label: st.label, color: st.color, state,
+                     addressed: st.agent === addressed };
           });
+          const reached = stations.filter(s => s.state !== 'upcoming').length;
+          const fillPct = STATIONS.length > 1 ? Math.round((reached - 1) / (STATIONS.length - 1) * 100) : 0;
+          return { stations, fillPct: Math.max(0, fillPct), packetFrom, packetTo,
+                   active: this.isPlaying() || !!pendingStage };
+        },
+        isPlaying() {
+          return this.playedSteps < this.pipelineTrace().length;
+        },
+        // Timed replay (auto-run): reveal trace steps one at a time. Idempotent —
+        // only schedules the not-yet-revealed steps, so repeat calls never duplicate.
+        playPipeline() {
+          const total = this.pipelineTrace().length;
+          const start = this.playedSteps;
+          for (let k = 0; k < total - start; k++) {
+            this._pipelineTimers.push(setTimeout(() => { this.playedSteps = start + k + 1; }, k * 600));
+          }
         },
         avatarColor(agent) {
           const map = {
@@ -969,7 +1107,7 @@
           const field = stage === "pcb_engineer" ? "pcb_readiness" : stage;
           this.acc[field] = this.pending[field];
           this.acc.trace.push(this.pending.trace_step);
-          if (this.societyTab === 'society') this.playSociety();  // live bubble if watching (F3)
+          this.playedSteps = this.acc.trace.length;  // step mode: reveal approved steps immediately
           const next = this.stepIdx + 1;
           this.pending = null;
           if (next < this.STAGES.length) { this.loadStage(next); return; }
@@ -980,6 +1118,7 @@
             pcb_readiness: this.acc.pcb_readiness,
             trace: this.acc.trace, needs_approval: true, notice: null
           };
+          this.playedSteps = this.result.trace.length;
           this.mode = this.acc.mode; this.acc = null; this.stepIdx = -1;
           this.buildDiagram(this.result.architecture).then(svg => { this.diagramSvg = svg; });
           this.buildExportDiagram(this.result.architecture).then(svg => { this.exportSvg = svg; });
