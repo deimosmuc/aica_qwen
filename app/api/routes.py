@@ -11,8 +11,9 @@ import uuid
 from datetime import date
 from pathlib import Path
 
+import anyio
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from app.generators.kicad import generate_scaffold
 from app.generators.report import generate_report_pdf
@@ -87,6 +88,39 @@ def run(req: RunRequest) -> RunResponse:
     profile = profile_for(req.profile, req.model, settings)
     guidance = [persona_instruction(req.persona)] + req.guidance
     return Orchestrator(settings, profile).run(req.requirements_text, guidance)
+
+
+@router.post("/run/stream")
+async def run_stream(req: RunRequest) -> StreamingResponse:
+    """Server-Sent Events version of /api/run: emit one `stage` event per
+    finished agent, then a `final` event with the full result. Lets the UI show
+    real live progress instead of a spinner for the whole multi-minute run."""
+    settings = get_settings()
+    profile = profile_for(req.profile, req.model, settings)
+    guidance = [persona_instruction(req.persona)] + req.guidance
+    orch = Orchestrator(settings, profile)
+
+    async def event_source():
+        gen = orch.run_stream(req.requirements_text, guidance)
+        done = object()
+
+        def _next():
+            try:
+                return next(gen)
+            except StopIteration:
+                return done
+
+        while True:
+            event = await anyio.to_thread.run_sync(_next)
+            if event is done:
+                break
+            yield f"data: {event.model_dump_json()}\n\n"
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/generate", response_model=GenerateResponse)
