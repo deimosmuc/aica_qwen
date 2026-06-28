@@ -14,6 +14,7 @@ from xml.sax.saxutils import escape
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.models.schemas import RunResponse
+from app.services.persona import persona_label
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 _jinja_env = Environment(
@@ -196,7 +197,7 @@ def _dfx_groups(result: RunResponse) -> list[dict]:
 
 
 def _report_context(result: RunResponse, requirements_text: str, project_name: str,
-                    title: str | None = None) -> dict:
+                    title: str | None = None, persona: str | None = None) -> dict:
     """Flatten a RunResponse into a flat, template-ready dict.
 
     Everything the Jinja2 template needs is computed here so the template stays
@@ -273,6 +274,7 @@ def _report_context(result: RunResponse, requirements_text: str, project_name: s
         "component_choices": _candidate_cards(result),
         "legend": _legend_entries(result),
         "dfx_groups": _dfx_groups(result),
+        "persona_label": persona_label(persona) if persona else "",
         "via_drill_mm": via_drill_mm,
         "via_annular_ring_mm": via_annular_ring_mm,
         "logo_data_uri": _logo_data_uri(),
@@ -527,6 +529,7 @@ def _floorplan_fallback_svg(result: RunResponse) -> str:
 def generate_report_pdf(
     result: RunResponse, requirements_text: str, project_name: str,
     architecture_svg: str | None = None, title: str | None = None,
+    persona: str | None = None,
 ) -> bytes:
     """Render the PCB Design Brief to PDF bytes.
 
@@ -538,7 +541,7 @@ def generate_report_pdf(
     """
     from weasyprint import HTML  # lazy import; needs Pango/Cairo at runtime
 
-    context = _report_context(result, requirements_text, project_name, title=title)
+    context = _report_context(result, requirements_text, project_name, title=title, persona=persona)
     context["architecture_svg"] = architecture_svg or _architecture_svg(result)
     # The client ELK export carries its own legend (also needed by the standalone
     # KiCad bitmap); only the Python fallback relies on the separate HTML legend.
