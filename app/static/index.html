@@ -465,6 +465,13 @@
                 <template x-if="pending.pcb_readiness">
                   <div x-html="pcbReadinessHtml(pending.pcb_readiness)"></div>
                 </template>
+                <template x-if="pending.pcb_critique">
+                  <div>
+                    <div class="out-grp" x-show="pending.pcb_critique.missing_blocks.length"><b>Must fix</b><ul><template x-for="x in pending.pcb_critique.missing_blocks" :key="x"><li x-text="x"></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.pcb_critique.warnings.length"><b>Warnings</b><ul><template x-for="x in pending.pcb_critique.warnings" :key="x"><li x-text="x"></li></template></ul></div>
+                    <div class="out-grp" x-show="pending.pcb_critique.risks.length"><b>Risks</b><ul><template x-for="x in pending.pcb_critique.risks" :key="x"><li x-text="x"></li></template></ul></div>
+                  </div>
+                </template>
               </div>
               <div x-show="acc?.guidance?.length" class="active-cons">
                 <b>Active constraints (honored by every agent)</b>
@@ -845,7 +852,7 @@
         generating: false, gen: null, genError: "",
         comparing: false, cmp: null, cmpError: "",
         benching: false, bench: null, benchError: "",
-        auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration", "pcb_engineer"],
+        auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration", "pcb_engineer", "pcb_critic"],
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
         diagramSvg: null, exportSvg: null, constraintsText: "", correctText: "", projectName: "",
         clarifyAnswers: {},   // { [questionId]: { picked: [labels], text: "" } }
@@ -857,6 +864,7 @@
           critique:     { agent: 'Design Critic',    role: 'Senior Hardware Reviewer' },
           arbitration:  { agent: 'Arbitration',      role: 'Chief Engineer' },
           pcb_engineer: { agent: 'PCB Engineer',     role: 'PCB Layout Preparation Engineer' },
+          pcb_critic:   { agent: 'PCB Critic',       role: 'Senior PCB Reviewer' },
         },
         PROFILES: ["Uniform qwen-plus", "Uniform qwen-max", "Budget Turbo", "Senior Review Team"], selectedProfile: "Uniform qwen-plus",
         async init() {
@@ -895,7 +903,7 @@
         async runStep() {
           this._resetRun();
           this.acc = { mode: "mock", requirements: null, architecture: null,
-            critique: null, arbitration: null, pcb_readiness: null, trace: [], guidance: this.parseConstraints() };
+            critique: null, arbitration: null, pcb_readiness: null, pcb_critique: null, trace: [], guidance: this.parseConstraints() };
           await this.loadStage(0);
         },
         async loadStage(i) {
@@ -911,6 +919,7 @@
                 architecture: this.acc.architecture,
                 critique: this.acc.critique,
                 arbitration: this.acc.arbitration,
+                pcb_readiness: this.acc.pcb_readiness,
                 profile: this.selectedProfile
               })
             });
@@ -1114,7 +1123,8 @@
                 .forEach(g => this.acc.guidance.push(g));
           }
           // pcb_engineer stage carries its payload on the pcb_readiness field
-          const field = stage === "pcb_engineer" ? "pcb_readiness" : stage;
+          const field = stage === "pcb_engineer" ? "pcb_readiness"
+                      : stage === "pcb_critic" ? "pcb_critique" : stage;
           this.acc[field] = this.pending[field];
           this.acc.trace.push(this.pending.trace_step);
           this.playedSteps = this.acc.trace.length;  // step mode: reveal approved steps immediately
@@ -1126,6 +1136,7 @@
             requirements: this.acc.requirements, architecture: this.acc.architecture,
             critique: this.acc.critique, arbitration: this.acc.arbitration,
             pcb_readiness: this.acc.pcb_readiness,
+            pcb_critique: this.acc.pcb_critique,
             trace: this.acc.trace, needs_approval: true, notice: null
           };
           this.playedSteps = this.result.trace.length;
