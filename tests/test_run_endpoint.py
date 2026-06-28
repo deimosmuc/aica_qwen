@@ -77,3 +77,44 @@ def test_step_pcb_critic_endpoint_resolves_model(monkeypatch):
                                        "profile": "Senior Review Team"})
     assert r.status_code == 200
     assert r.json()["pcb_critique"] is not None
+
+
+def test_run_prepends_persona_instruction_to_guidance(monkeypatch):
+    captured = {}
+
+    class FakeOrch:
+        def __init__(self, settings, profile=None, client=None):
+            pass
+
+        def run(self, text, guidance=None):
+            captured["guidance"] = guidance
+            return mock_run(text)
+
+    monkeypatch.setattr(routes, "Orchestrator", FakeOrch)
+    client = TestClient(app)
+    r = client.post("/api/run", json={"requirements_text": "x", "persona": "student",
+                                      "guidance": ["Use part XYZ"]})
+    assert r.status_code == 200
+    g = captured["guidance"]
+    assert "engineering student" in g[0].lower()
+    assert g[1] == "Use part XYZ"
+
+
+def test_step_prepends_persona_instruction(monkeypatch):
+    from app.services.config import Settings
+    captured = {}
+    monkeypatch.setattr(routes, "get_settings", lambda: Settings(qwen_api_key=""))
+
+    def fake_run_stage(req, settings):
+        captured["guidance"] = req.guidance
+        from app.models.schemas import StepResponse, TraceStep
+        return StepResponse(stage=req.stage, mode="mock",
+                            trace_step=TraceStep(agent="Requirements Agent", role="r", summary="s"))
+
+    monkeypatch.setattr(routes, "run_stage", fake_run_stage)
+    client = TestClient(app)
+    r = client.post("/api/step", json={"stage": "requirements", "requirements_text": "x",
+                                       "persona": "maker", "guidance": ["keep it cheap"]})
+    assert r.status_code == 200
+    assert "hobbyist maker" in captured["guidance"][0].lower()
+    assert captured["guidance"][1] == "keep it cheap"
