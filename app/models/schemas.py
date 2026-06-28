@@ -264,6 +264,25 @@ class RunResponse(BaseModel):
     pcb_readiness: PcbReadiness | None = None
 
 
+# --- Streaming pipeline events (live auto-mode progress) ---------------------
+
+
+class StreamEvent(BaseModel):
+    """One server-sent event from the streaming pipeline.
+
+    `stage` fires as each agent finishes, carrying just that agent's TraceStep
+    (the live rail + Society chat need nothing more). `final` carries the
+    complete RunResponse the non-streaming path returns today. `error` carries
+    the same honest notice used by the blocking fallback and is always followed
+    by a `final` event whose result is the example-data fallback.
+    """
+
+    type: Literal["stage", "final", "error"]
+    step: TraceStep | None = None
+    result: RunResponse | None = None
+    notice: str | None = None
+
+
 # --- Validation Agent --------------------------------------------------------
 
 

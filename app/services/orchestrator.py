@@ -7,6 +7,7 @@ run on a stronger model than the junior sub-agents.
 """
 from __future__ import annotations
 
+from collections.abc import Generator, Iterator
 from time import perf_counter
 
 from pydantic import ValidationError
@@ -18,7 +19,10 @@ from app.agents.critic import DesignCriticAgent
 from app.agents.pcb_critic import PcbCriticAgent
 from app.agents.pcb_engineer import PcbEngineerAgent
 from app.agents.requirements import RequirementsAgent
-from app.models.schemas import Architecture, Critique, PcbCritique, PcbReadiness, Requirements, RunResponse, TraceStep
+from app.models.schemas import (
+    Arbitration, Architecture, Critique, PcbCritique, PcbReadiness, Requirements,
+    RunResponse, StreamEvent, TraceStep,
+)
 from app.services.config import Settings
 from app.services.guard import ApiGuard, GuardBlocked
 from app.services.metering import RunMeter
@@ -106,56 +110,20 @@ class Orchestrator:
             ),
         )
 
-    def _pcb_design_and_review(
-        self,
-        requirements: Requirements,
-        architecture: Architecture,
-        arbitration: Arbitration,
-        guidance: list[str],
-    ) -> tuple[PcbReadiness, PcbCritique, list[TraceStep]]:
-        """PCB Engineer + PCB Critic rework loop (mirrors _design_and_review)."""
-        steps: list[TraceStep] = []
-        t = perf_counter()
-        pcb = PcbEngineerAgent().run(self._client_for("pcb_engineer"), requirements, architecture, arbitration, guidance)
-        steps.append(self._pcb_step(pcb, 1, int((perf_counter() - t) * 1000)))
-        t = perf_counter()
-        pcb_critique = PcbCriticAgent().run(self._client_for("pcb_critique"), requirements, pcb, guidance)
-        steps.append(self._pcb_critic_step(pcb_critique, 1, int((perf_counter() - t) * 1000)))
-
-        round_no = 1
-        while self.profile.rework and pcb_critique.missing_blocks and round_no < self.profile.max_rounds:
-            round_no += 1
-            rework_guidance = guidance + [
-                "Revise the PCB recommendations to address these review findings:",
-                *pcb_critique.missing_blocks,
-            ]
-            t = perf_counter()
-            pcb = PcbEngineerAgent().run(self._client_for("pcb_engineer"), requirements, architecture, arbitration, rework_guidance)
-            steps.append(self._pcb_step(pcb, round_no, int((perf_counter() - t) * 1000)))
-            t = perf_counter()
-            pcb_critique = PcbCriticAgent().run(self._client_for("pcb_critique"), requirements, pcb, rework_guidance)
-            steps.append(self._pcb_critic_step(pcb_critique, round_no, int((perf_counter() - t) * 1000)))
-
-        return pcb, pcb_critique, steps
-
-    def _design_and_review(
-        self, requirements: Requirements, guidance: list[str]
-    ) -> tuple[Architecture, Critique, list[TraceStep]]:
-        """Design + review, with an optional Critic->Architect rework loop.
-
-        Round 1 is the initial design + review. While rework is enabled and the
-        Critic still reports missing blocks, the findings are fed back to the
-        Architect (via the existing guidance mechanism) and re-reviewed, up to
-        max_rounds total rounds. missing_blocks is the trigger (warnings/risks
-        are softer and would never converge).
-        """
+    def _design_and_review_stream(
+        self, requirements: Requirements, guidance: list[str],
+    ) -> Generator[StreamEvent, None, tuple[Architecture, Critique, list[TraceStep]]]:
+        """Design + review with optional Critic->Architect rework. Yields one
+        StreamEvent per finished step; returns (architecture, critique, steps)."""
         steps: list[TraceStep] = []
         t = perf_counter()
         architecture = SystemArchitectAgent().run(self._client_for("architecture"), requirements, guidance)
-        steps.append(self._arch_step(architecture, 1, int((perf_counter() - t) * 1000)))
+        step = self._arch_step(architecture, 1, int((perf_counter() - t) * 1000))
+        steps.append(step); yield StreamEvent(type="stage", step=step)
         t = perf_counter()
         critique = DesignCriticAgent().run(self._client_for("critique"), requirements, architecture, guidance)
-        steps.append(self._critic_step(critique, 1, int((perf_counter() - t) * 1000)))
+        step = self._critic_step(critique, 1, int((perf_counter() - t) * 1000))
+        steps.append(step); yield StreamEvent(type="stage", step=step)
 
         round_no = 1
         while self.profile.rework and critique.missing_blocks and round_no < self.profile.max_rounds:
@@ -167,91 +135,136 @@ class Orchestrator:
             ]
             t = perf_counter()
             architecture = SystemArchitectAgent().run(self._client_for("architecture"), requirements, rework_guidance)
-            steps.append(self._arch_step(architecture, round_no, int((perf_counter() - t) * 1000)))
+            step = self._arch_step(architecture, round_no, int((perf_counter() - t) * 1000))
+            steps.append(step); yield StreamEvent(type="stage", step=step)
             t = perf_counter()
             critique = DesignCriticAgent().run(self._client_for("critique"), requirements, architecture, rework_guidance)
-            steps.append(self._critic_step(critique, round_no, int((perf_counter() - t) * 1000)))
+            step = self._critic_step(critique, round_no, int((perf_counter() - t) * 1000))
+            steps.append(step); yield StreamEvent(type="stage", step=step)
 
         return architecture, critique, steps
 
-    def run(self, requirements_text: str, guidance: list[str] | None = None) -> RunResponse:
-        # Fresh meter per run() so usage never leaks if an instance is reused.
+    def _pcb_design_and_review_stream(
+        self, requirements: Requirements, architecture: Architecture,
+        arbitration: Arbitration, guidance: list[str],
+    ) -> Generator[StreamEvent, None, tuple[PcbReadiness, PcbCritique, list[TraceStep]]]:
+        """PCB Engineer + PCB Critic rework loop. Yields one StreamEvent per
+        finished step; returns (pcb, pcb_critique, steps)."""
+        steps: list[TraceStep] = []
+        t = perf_counter()
+        pcb = PcbEngineerAgent().run(self._client_for("pcb_engineer"), requirements, architecture, arbitration, guidance)
+        step = self._pcb_step(pcb, 1, int((perf_counter() - t) * 1000))
+        steps.append(step); yield StreamEvent(type="stage", step=step)
+        t = perf_counter()
+        pcb_critique = PcbCriticAgent().run(self._client_for("pcb_critique"), requirements, pcb, guidance)
+        step = self._pcb_critic_step(pcb_critique, 1, int((perf_counter() - t) * 1000))
+        steps.append(step); yield StreamEvent(type="stage", step=step)
+
+        round_no = 1
+        while self.profile.rework and pcb_critique.missing_blocks and round_no < self.profile.max_rounds:
+            round_no += 1
+            rework_guidance = guidance + [
+                "Revise the PCB recommendations to address these review findings:",
+                *pcb_critique.missing_blocks,
+            ]
+            t = perf_counter()
+            pcb = PcbEngineerAgent().run(self._client_for("pcb_engineer"), requirements, architecture, arbitration, rework_guidance)
+            step = self._pcb_step(pcb, round_no, int((perf_counter() - t) * 1000))
+            steps.append(step); yield StreamEvent(type="stage", step=step)
+            t = perf_counter()
+            pcb_critique = PcbCriticAgent().run(self._client_for("pcb_critique"), requirements, pcb, rework_guidance)
+            step = self._pcb_critic_step(pcb_critique, round_no, int((perf_counter() - t) * 1000))
+            steps.append(step); yield StreamEvent(type="stage", step=step)
+
+        return pcb, pcb_critique, steps
+
+    def run_stream(self, requirements_text: str, guidance: list[str] | None = None) -> Iterator[StreamEvent]:
+        """Stream the pipeline: one `stage` StreamEvent per finished agent, then
+        a single `final` event with the full RunResponse. On a guard/Qwen/
+        validation failure, emit an `error` event then a `final` with the
+        example-data fallback (same honest degradation as the blocking path)."""
         self._meter = RunMeter()
         if self.settings.mock_mode:
-            return mock_run_rework(requirements_text) if self.profile.rework else mock_run(requirements_text)
+            result = mock_run_rework(requirements_text) if self.profile.rework else mock_run(requirements_text)
+            for step in result.trace:
+                yield StreamEvent(type="stage", step=step)
+            yield StreamEvent(type="final", result=result)
+            return
+
         guidance = guidance or []
+        steps: list[TraceStep] = []
         try:
             t = perf_counter()
-            requirements = RequirementsAgent().run(
-                self._client_for("requirements"), requirements_text, guidance
+            requirements = RequirementsAgent().run(self._client_for("requirements"), requirements_text, guidance)
+            req_step = TraceStep(
+                agent=RequirementsAgent.name, role=RequirementsAgent.role, status="ok",
+                duration_ms=int((perf_counter() - t) * 1000),
+                summary=(
+                    f"Live Qwen: structured {len(requirements.requirements)} requirements, "
+                    f"raised {len(requirements.questions)} clarification questions "
+                    f"(confidence {requirements.confidence:.0%})."
+                ),
             )
-            req_ms = int((perf_counter() - t) * 1000)
+            steps.append(req_step); yield StreamEvent(type="stage", step=req_step)
 
-            architecture, critique, design_steps = self._design_and_review(requirements, guidance)
+            architecture, critique, design_steps = yield from self._design_and_review_stream(requirements, guidance)
+            steps.extend(design_steps)
 
             t = perf_counter()
-            arbitration = ArbitrationAgent().run(
-                self._client_for("arbitration"), requirements, architecture, critique, guidance
+            arbitration = ArbitrationAgent().run(self._client_for("arbitration"), requirements, architecture, critique, guidance)
+            arb_step = TraceStep(
+                agent=ArbitrationAgent.name, role=ArbitrationAgent.role, status="ok",
+                duration_ms=int((perf_counter() - t) * 1000),
+                summary=(
+                    f"Live Qwen: approved the architecture; logged {len(arbitration.todo)} TODOs "
+                    f"and {len(arbitration.human_review)} human-review items."
+                ),
             )
-            arb_ms = int((perf_counter() - t) * 1000)
+            steps.append(arb_step); yield StreamEvent(type="stage", step=arb_step)
 
-            pcb, pcb_critique, pcb_steps = self._pcb_design_and_review(
-                requirements, architecture, arbitration, guidance
-            )
+            pcb, pcb_critique, pcb_steps = yield from self._pcb_design_and_review_stream(
+                requirements, architecture, arbitration, guidance)
+            steps.extend(pcb_steps)
         except GuardBlocked as e:
-            return self._guarded_fallback(
-                requirements_text,
-                f"API limit reached ({e.reason}). Showing example data instead — no charge.",
-            )
+            yield from self._error_then_fallback(
+                requirements_text, f"API limit reached ({e.reason}). Showing example data instead — no charge.")
+            return
         except QwenTruncatedError as e:
-            return self._guarded_fallback(
+            yield from self._error_then_fallback(
                 requirements_text,
                 f"Qwen's answer was cut off ({e}). Showing example data instead — "
-                "try a simpler request or raise GUARD_MAX_OUTPUT_TOKENS.",
-            )
+                "try a simpler request or raise GUARD_MAX_OUTPUT_TOKENS.")
+            return
         except QwenError as e:
-            return self._guarded_fallback(
-                requirements_text,
-                f"Qwen was unreachable ({e}). Showing example data instead.",
-            )
+            yield from self._error_then_fallback(
+                requirements_text, f"Qwen was unreachable ({e}). Showing example data instead.")
+            return
         except ValidationError as e:
-            return self._guarded_fallback(
+            yield from self._error_then_fallback(
                 requirements_text,
                 f"Qwen returned a malformed answer ({e.error_count()} field error(s)). "
-                "Showing example data instead.",
-            )
+                "Showing example data instead.")
+            return
 
-        req_step = TraceStep(
-            agent=RequirementsAgent.name, role=RequirementsAgent.role, status="ok",
-            duration_ms=req_ms,
-            summary=(
-                f"Live Qwen: structured {len(requirements.requirements)} requirements, "
-                f"raised {len(requirements.questions)} clarification questions "
-                f"(confidence {requirements.confidence:.0%})."
-            ),
+        result = RunResponse(
+            mode="qwen", requirements=requirements, architecture=architecture,
+            critique=critique, arbitration=arbitration, pcb_readiness=pcb,
+            trace=steps, needs_approval=True, usage=self._meter.snapshot(),
         )
-        arb_step = TraceStep(
-            agent=ArbitrationAgent.name, role=ArbitrationAgent.role, status="ok",
-            duration_ms=arb_ms,
-            summary=(
-                f"Live Qwen: approved the architecture; logged {len(arbitration.todo)} TODOs "
-                f"and {len(arbitration.human_review)} human-review items."
-            ),
-        )
+        yield StreamEvent(type="final", result=result)
 
-        return RunResponse(
-            mode="qwen",
-            requirements=requirements,
-            architecture=architecture,
-            critique=critique,
-            arbitration=arbitration,
-            pcb_readiness=pcb,
-            trace=[req_step, *design_steps, arb_step, *pcb_steps],
-            needs_approval=True,
-            usage=self._meter.snapshot(),
-        )
-
-    def _guarded_fallback(self, requirements_text: str, notice: str) -> RunResponse:
+    def _error_then_fallback(self, requirements_text: str, notice: str) -> Iterator[StreamEvent]:
         result = mock_run(requirements_text)
         result.notice = notice
+        yield StreamEvent(type="error", notice=notice)
+        yield StreamEvent(type="final", result=result)
+
+    def run(self, requirements_text: str, guidance: list[str] | None = None) -> RunResponse:
+        """Blocking pipeline — drains run_stream() and returns the final result.
+        Kept for /api/run, comparison, bench and the existing test-suite."""
+        result: RunResponse | None = None
+        for event in self.run_stream(requirements_text, guidance):
+            if event.type == "final":
+                result = event.result
+        assert result is not None  # run_stream always ends with a final event
         return result

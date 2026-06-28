@@ -238,6 +238,9 @@
     </div>
     <span class="status-chip"><span class="live" :class="mode === 'mock' ? 'mock' : ''"></span>
       <span x-text="mode === 'mock' ? 'Mock mode · demo' : 'Qwen Cloud · online'"></span></span>
+    <span class="status-chip" x-show="streamActive" style="margin-left:10px">
+      <span class="rail-live"></span>
+      <span x-text="(streamTrace.length) + ' agents done' + (streamStageLabel ? ' · now: ' + streamStageLabel : '')"></span></span>
   </header>
 
   <main>
@@ -282,7 +285,9 @@
         <p class="muted">Handed to the whole agent pipeline as non-negotiable requirements.</p>
       </details>
       <p class="muted" x-show="cmpError" style="margin-top:10px; color: var(--warn)" x-text="cmpError"></p>
-      <p class="spinner" x-show="loading">The agent team is analysing, designing, reviewing and arbitrating…</p>
+      <p class="muted" x-show="streamNotice" style="margin-top:10px; color: var(--warn)" x-text="streamNotice"></p>
+      <p class="spinner" x-show="loading"
+         x-text="streamStageLabel ? ('Live: ' + streamStageLabel + ' working… (' + streamTrace.length + ' done)') : 'The agent team is analysing, designing, reviewing and arbitrating…'"></p>
     </section>
 
     <template x-if="cmp">
@@ -532,7 +537,7 @@
                 <div style="flex:1;height:1px;background:var(--border)"></div>
               </div>
             </template>
-            <div :class="s.agent==='Design Critic' ? 'bubble-right' : 'bubble-left'">
+            <div :class="['Design Critic','PCB Critic'].includes(s.agent) ? 'bubble-right' : 'bubble-left'">
               <div class="bubble-avatar" :style="avatarColor(s.agent)"
                    x-text="s.agent.slice(0,3).toUpperCase()"></div>
               <div class="bubble-body">
@@ -687,7 +692,7 @@
                   <div style="flex:1;height:1px;background:var(--border)"></div>
                 </div>
               </template>
-              <div :class="s.agent==='Design Critic' ? 'bubble-right' : 'bubble-left'">
+              <div :class="['Design Critic','PCB Critic'].includes(s.agent) ? 'bubble-right' : 'bubble-left'">
                 <div class="bubble-avatar" :style="avatarColor(s.agent)"
                      x-text="s.agent.slice(0,3).toUpperCase()"></div>
                 <div class="bubble-body">
@@ -875,6 +880,7 @@
         diagramSvg: null, exportSvg: null, constraintsText: "", correctText: "", projectName: "",
         clarifyAnswers: {},   // { [questionId]: { picked: [labels], text: "" } }
         playedSteps: 0, societyTab: 'trace', _pipelineTimers: [],
+        streamTrace: [], streamActive: false, streamStageLabel: "", streamNotice: "",
         // stage -> display agent/role, for greying-out upcoming pipeline steps (F2)
         STAGE_META: {
           requirements: { agent: 'Requirements Agent', role: 'Senior Systems Engineer' },
@@ -903,21 +909,52 @@
           this.stepStopped = false; this.stepNotice = ""; this.diagramSvg = null; this.exportSvg = null; this.projectName = "";
           this._pipelineTimers.forEach(clearTimeout); this._pipelineTimers = [];
           this.playedSteps = 0; this.societyTab = 'trace';
+          this.streamTrace = []; this.streamActive = false; this.streamStageLabel = ""; this.streamNotice = "";
         },
         async runAuto() {
-          this._resetRun(); this.loading = true;
+          this._resetRun(); this.loading = true; this.streamActive = true;
           try {
-            const res = await fetch("/api/run", {
+            const res = await fetch("/api/run/stream", {
               method: "POST", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ requirements_text: this.input, guidance: this.parseConstraints(), profile: this.selectedProfile, persona: this.persona })
             });
-            this.result = await res.json();
-            this.mode = this.result.mode;
+            if (!res.ok || !res.body) throw new Error("Stream failed (" + res.status + ")");
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buf = "";
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf += decoder.decode(value, { stream: true });
+              let i;
+              while ((i = buf.indexOf("\n\n")) >= 0) {
+                const frame = buf.slice(0, i); buf = buf.slice(i + 2);
+                const line = frame.split("\n").find(l => l.startsWith("data:"));
+                if (line) await this.handleStreamEvent(JSON.parse(line.slice(5).trim()));
+              }
+            }
+          } catch (e) {
+            this.streamNotice = "⚠️ " + e.message;
+          } finally {
+            this.streamActive = false; this.loading = false;
+          }
+        },
+        async handleStreamEvent(ev) {
+          if (ev.type === "stage") {
+            this.streamTrace.push(ev.step);
+            this.playedSteps = this.streamTrace.length;
+            this.streamStageLabel = ev.step.agent;
+          } else if (ev.type === "error") {
+            this.streamNotice = "⚠️ " + (ev.notice || "");
+          } else if (ev.type === "final") {
+            this.result = ev.result;
+            this.mode = ev.result.mode;
+            this.playedSteps = ev.result.trace.length;
+            this.streamStageLabel = "";
             this.diagramSvg = await this.buildDiagram(this.result.architecture);
             this.exportSvg = await this.buildExportDiagram(this.result.architecture);
             await this.fetchGuard();
-            this.playPipeline();
-          } finally { this.loading = false; }
+          }
         },
         async runStep() {
           this._resetRun();
@@ -970,7 +1007,8 @@
           }
         },
         pipelineTrace() {
-          return (this.result && this.result.trace) || (this.acc && this.acc.trace) || [];
+          return (this.result && this.result.trace) || (this.acc && this.acc.trace)
+                 || (this.streamTrace.length ? this.streamTrace : []);
         },
         revealedTrace() {
           return this.pipelineTrace().slice(0, this.playedSteps);
@@ -986,7 +1024,7 @@
           ];
           const revealed = this.revealedTrace();
           const total = this.pipelineTrace().length;
-          const settled = total > 0 && this.playedSteps >= total;
+          const settled = total > 0 && this.playedSteps >= total && !this.streamActive;
           const last = revealed.length ? revealed[revealed.length - 1] : null;
           const seen = new Set(revealed.map(s => s.agent));
           // active station: step mode -> pending/loading stage; auto replay -> last revealed agent until settled
@@ -1026,19 +1064,10 @@
           return { stations, fillPct: Math.max(0, fillPct), packetFrom, packetTo,
                    packetStart: packetFrom ? pct(packetFrom) : null,
                    packetEnd: packetTo ? pct(packetTo) : null,
-                   active: this.isPlaying() || !!pendingStage };
+                   active: this.isPlaying() || !!pendingStage || this.streamActive };
         },
         isPlaying() {
           return this.playedSteps < this.pipelineTrace().length;
-        },
-        // Timed replay (auto-run): reveal trace steps one at a time. Idempotent —
-        // only schedules the not-yet-revealed steps, so repeat calls never duplicate.
-        playPipeline() {
-          const total = this.pipelineTrace().length;
-          const start = this.playedSteps;
-          for (let k = 0; k < total - start; k++) {
-            this._pipelineTimers.push(setTimeout(() => { this.playedSteps = start + k + 1; }, k * 600));
-          }
         },
         avatarColor(agent) {
           const map = {
