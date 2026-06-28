@@ -27,10 +27,10 @@ def test_quality_per_cent_computed_and_zero_safe():
     assert round(_quality_per_cent(12, RunUsage(cost_usd=0.087)), 2) == 1.38
 
 
-def _row(preset, quality, cost):
+def _row(preset, quality, cost, degraded=False):
     from app.models.schemas import BenchRow, RunUsage
     return BenchRow(preset=preset, rounds=1, usage=RunUsage(cost_usd=cost),
-                    quality=quality, quality_per_cent=0.0)
+                    quality=quality, quality_per_cent=0.0, degraded=degraded)
 
 
 def test_mark_best_picks_highest_quality_not_cheapest():
@@ -72,3 +72,39 @@ def test_mark_best_takeaway_without_pricier_rival():
     ]
     takeaway = _mark_best_and_takeaway(rows)
     assert "Best" in takeaway and "cheaper" not in takeaway
+
+
+def test_degraded_row_cannot_win_even_with_top_quality():
+    """A preset that fell back to example data (mock) must not be crowned the
+    winner — its quality came from mock data, not the real preset run."""
+    from app.services.bench import _mark_best_and_takeaway
+
+    rows = [
+        _row("Degraded", quality=12, cost=0.0, degraded=True),  # top quality but fake
+        _row("RealBest", quality=10, cost=0.05),
+    ]
+    _mark_best_and_takeaway(rows)
+    assert [r.preset for r in rows if r.best_quality] == ["RealBest"]
+
+
+def test_no_cost_claim_when_winner_cost_is_zero():
+    """A $0-cost winner is a cache/no-fresh-call artifact, not a cost win — the
+    takeaway must not claim it is 'cheaper' than a paid rival."""
+    from app.services.bench import _mark_best_and_takeaway
+
+    rows = [
+        _row("Cached", quality=11, cost=0.0),    # real data, but cached -> $0
+        _row("Paid", quality=9, cost=0.05),
+    ]
+    takeaway = _mark_best_and_takeaway(rows)
+    assert [r.preset for r in rows if r.best_quality] == ["Cached"]
+    assert "cheaper" not in takeaway
+
+
+def test_all_degraded_has_no_winner():
+    from app.services.bench import _mark_best_and_takeaway
+
+    rows = [_row("A", 12, 0.0, degraded=True), _row("B", 10, 0.0, degraded=True)]
+    takeaway = _mark_best_and_takeaway(rows)
+    assert not any(r.best_quality for r in rows)
+    assert takeaway

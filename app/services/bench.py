@@ -42,11 +42,21 @@ def _rounds(resp: RunResponse) -> int:
 def _mark_best_and_takeaway(rows: list[BenchRow]) -> str:
     if not rows:
         return ""
+    # Only rows that actually ran live are eligible to win: a degraded row's
+    # quality came from example data, not the real preset, so crowning it would
+    # be dishonest.
+    eligible = [r for r in rows if not r.degraded]
+    if not eligible:
+        return "All presets fell back to example data — no live comparison available."
     # Best quality wins; ties broken by lower cost.
-    best = max(rows, key=lambda r: (r.quality, -r.usage.cost_usd))
+    best = max(eligible, key=lambda r: (r.quality, -r.usage.cost_usd))
     best.best_quality = True
-    # Compare the winner's cost to the priciest other preset for the pitch line.
-    pricier = [r for r in rows if r.preset != best.preset and r.usage.cost_usd > best.usage.cost_usd]
+    # A $0-cost winner means cached / no fresh calls — not a real cost story, so
+    # don't make a "cheaper than" claim off it.
+    if best.usage.cost_usd <= 0:
+        return f"{best.preset}: highest quality ({best.quality}/12) — cost not shown (cached / no fresh calls)."
+    # Compare the winner's cost to the priciest other live preset for the pitch line.
+    pricier = [r for r in eligible if r.preset != best.preset and r.usage.cost_usd > best.usage.cost_usd]
     if pricier:
         rival = max(pricier, key=lambda r: r.usage.cost_usd)
         return (
@@ -90,7 +100,15 @@ def run_bench(requirements_text: str, settings: Settings, guard: ApiGuard | None
         rows.append(BenchRow(
             preset=name, rounds=_rounds(resp), usage=usage, quality=quality,
             quality_per_cent=_quality_per_cent(quality, usage),
+            degraded=resp.mode != "qwen",  # fell back to example data mid-bench
         ))
     takeaway = _mark_best_and_takeaway(rows)
+    degraded = [r.preset for r in rows if r.degraded]
+    if degraded:
+        notice = (
+            f"{len(degraded)} of {len(rows)} presets fell back to example data "
+            f"({', '.join(degraded)}) and are excluded from the winner."
+            + (f" Last fallback reason: {notice}" if notice else "")
+        )
     return BenchResult(requirements_text=requirements_text, mode="qwen", rows=rows,
                        takeaway=takeaway, illustrative=False, notice=notice)

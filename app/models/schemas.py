@@ -408,6 +408,7 @@ class BenchRow(BaseModel):
     quality: int           # rubric coverage, 0..12
     quality_per_cent: float  # quality points per USD-cent spent (0 when cost is 0)
     best_quality: bool = False  # highest quality (tie-break: lowest cost)
+    degraded: bool = False  # this preset fell back to example data (mock) — excluded from the winner
 
 
 class BenchRequest(BaseModel):
