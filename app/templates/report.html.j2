@@ -93,7 +93,7 @@
 
   <div class="section"><div class="bar"></div><div class="t">System Architecture</div></div>
   <div class="diagram">{{ architecture_svg|safe }}</div>
-  {% if legend %}
+  {% if legend and not diagram_has_legend %}
   <div class="legend">
     {% for e in legend %}<span class="lg"><span class="sw"
       style="background:{{ e.fill }}; border-color:{{ e.stroke }}"></span>{{ e.label }}</span>{% endfor %}

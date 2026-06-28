@@ -472,6 +472,9 @@ def generate_report_pdf(
 
     context = _report_context(result, requirements_text, project_name)
     context["architecture_svg"] = architecture_svg or _architecture_svg(result)
+    # The client ELK export carries its own legend (also needed by the standalone
+    # KiCad bitmap); only the Python fallback relies on the separate HTML legend.
+    context["diagram_has_legend"] = architecture_svg is not None
     context["floorplan_svg"] = _floorplan_svg(result)
 
     html = _jinja_env.get_template("report.html.j2").render(**context)
