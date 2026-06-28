@@ -256,6 +256,11 @@
             <template x-for="p in PROFILES" :key="p"><option :value="p" x-text="p"></option></template>
           </select>
         </label>
+        <label class="model-pick">Audience:
+          <select x-model="persona" :disabled="loading || stepBusy || comparing">
+            <template x-for="p in PERSONAS" :key="p[0]"><option :value="p[0]" x-text="p[1]"></option></template>
+          </select>
+        </label>
       </div>
       <label class="auto-toggle"><input type="checkbox" x-model="auto" /> Auto mode (run all steps at once)</label>
       <details class="constraints">
@@ -546,6 +551,7 @@
       <div style="display:grid; gap:22px;">
         <!-- Guard notice (e.g. budget hit -> fell back to example data) -->
         <div class="notice" x-show="result.notice" x-text="'⚠️ ' + (result.notice || '')"></div>
+        <div class="status-chip" x-text="'Audience: ' + (PERSONAS.find(p => p[0]===persona)||[,'Professional'])[1]"></div>
 
         <!-- Agent trace -->
         <section class="panel">
@@ -867,6 +873,7 @@
           pcb_critic:   { agent: 'PCB Critic',       role: 'Senior PCB Reviewer' },
         },
         PROFILES: ["Uniform qwen-plus", "Uniform qwen-max", "Budget Turbo", "Senior Review Team"], selectedProfile: "Uniform qwen-plus",
+        PERSONAS: [["professional","Professional"],["student","Student"],["maker","Maker"]], persona: "professional",
         async init() {
           try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
           await this.fetchGuard();
@@ -890,7 +897,7 @@
           try {
             const res = await fetch("/api/run", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ requirements_text: this.input, guidance: this.parseConstraints(), profile: this.selectedProfile })
+              body: JSON.stringify({ requirements_text: this.input, guidance: this.parseConstraints(), profile: this.selectedProfile, persona: this.persona })
             });
             this.result = await res.json();
             this.mode = this.result.mode;
@@ -920,7 +927,8 @@
                 critique: this.acc.critique,
                 arbitration: this.acc.arbitration,
                 pcb_readiness: this.acc.pcb_readiness,
-                profile: this.selectedProfile
+                profile: this.selectedProfile,
+                persona: this.persona
               })
             });
             if (!res.ok) throw new Error("Step failed (" + res.status + ")");
@@ -1157,7 +1165,7 @@
           try {
             const res = await fetch("/api/generate", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ requirements_text: this.input, result: this.result, architecture_svg: this.exportSvg, project_name: this.projectName.trim() || null })
+              body: JSON.stringify({ requirements_text: this.input, result: this.result, architecture_svg: this.exportSvg, project_name: this.projectName.trim() || null, persona: this.persona })
             });
             if (!res.ok) throw new Error("Generation failed (" + res.status + ")");
             this.gen = await res.json();
