@@ -111,6 +111,10 @@
     .stars { color: var(--warn); letter-spacing: 1px; }
     .rec-badge { background: rgba(63,185,80,.15); color: var(--ok); border: 1px solid var(--ok);
       border-radius: 999px; font-size: 11px; padding: 1px 7px; margin-left: 4px; }
+    .proj-name { display: block; margin: 14px 0 4px; font-size: 13px; }
+    .proj-name span { display: block; margin-bottom: 5px; }
+    .proj-name input { width: 100%; background: var(--bg); color: var(--text);
+      border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font: inherit; }
     .step.pending { box-shadow: 0 0 0 1px var(--accent) inset; }
     .auto-toggle { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px;
       color: var(--muted); font-size: 13px; cursor: pointer; }
@@ -670,6 +674,11 @@
             <div class="chip"><b x-text="result.arbitration.todo.length"></b>TODO items</div>
             <div class="chip"><b x-text="result.requirements.questions.length"></b>Open questions</div>
           </div>
+          <label class="proj-name">
+            <span>Project name <span class="muted">(PDF report title — blank = auto)</span></span>
+            <input type="text" x-model="projectName"
+                   placeholder="e.g. 24V Industrial Sensor Board" />
+          </label>
           <div class="row">
             <button class="approve" @click="approve()" :disabled="approved" x-text="approved ? 'Approved ✓' : 'Approve architecture'"></button>
             <button class="primary" @click="generate()" :disabled="!approved || generating"
@@ -743,7 +752,7 @@
         benching: false, bench: null, benchError: "",
         auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration", "pcb_engineer"],
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
-        diagramSvg: null, exportSvg: null, constraintsText: "", correctText: "",
+        diagramSvg: null, exportSvg: null, constraintsText: "", correctText: "", projectName: "",
         clarifyAnswers: {},   // { [questionId]: { picked: [labels], text: "" } }
         societyBubbles: [], societyPlaying: false, societyTab: 'trace', societyScheduled: 0,
         // stage -> display agent/role, for greying-out upcoming pipeline steps (F2)
@@ -769,7 +778,7 @@
         _resetRun() {
           this.result = null; this.approved = false; this.gen = null; this.genError = "";
           this.acc = null; this.pending = null; this.stepIdx = -1;
-          this.stepStopped = false; this.stepNotice = ""; this.diagramSvg = null; this.exportSvg = null;
+          this.stepStopped = false; this.stepNotice = ""; this.diagramSvg = null; this.exportSvg = null; this.projectName = "";
           this.societyBubbles = []; this.societyPlaying = false; this.societyTab = 'trace'; this.societyScheduled = 0;
         },
         async runAuto() {
@@ -988,7 +997,7 @@
           try {
             const res = await fetch("/api/generate", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ requirements_text: this.input, result: this.result, architecture_svg: this.exportSvg })
+              body: JSON.stringify({ requirements_text: this.input, result: this.result, architecture_svg: this.exportSvg, project_name: this.projectName.trim() || null })
             });
             if (!res.ok) throw new Error("Generation failed (" + res.status + ")");
             this.gen = await res.json();

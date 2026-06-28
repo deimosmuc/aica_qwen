@@ -93,6 +93,19 @@ def test_report_context_exposes_candidate_cards_and_legend():
     assert ctx["legend"]
 
 
+def test_report_context_title_override():
+    r = mock_run("x")
+    # An explicit project name wins over the auto-derived title (F1-B).
+    assert _report_context(r, "build me a 24V board", "project",
+                           title="Falcon Sensor Hub")["title"] == "Falcon Sensor Hub"
+    # Blank/whitespace override falls back to the derived title.
+    assert _report_context(r, "build me a 24V board", "project",
+                           title="   ")["title"] == _derive_title("build me a 24V board")
+    # No override -> derived title (unchanged default behaviour).
+    assert _report_context(r, "build me a 24V board", "project")["title"] == \
+        _derive_title("build me a 24V board")
+
+
 def test_report_template_renders_html_with_candidate_cards():
     """Render the Jinja template to HTML (no WeasyPrint) to catch template errors."""
     from app.generators.report import _jinja_env

@@ -121,7 +121,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     try:
         pdf_bytes = generate_report_pdf(
             req.result, req.requirements_text, _PROJECT_NAME,
-            architecture_svg=client_svg,
+            architecture_svg=client_svg, title=req.project_name,
         )
         (project_dir / _REPORT_NAME).write_bytes(pdf_bytes)
         report_url = f"/api/report/{project_id}"
