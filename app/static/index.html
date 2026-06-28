@@ -346,7 +346,7 @@
           <button :class="societyTab==='trace' ? 'tab-active' : ''"
                   @click="societyTab='trace'">📋 Trace</button>
           <button :class="societyTab==='society' ? 'tab-active' : ''"
-                  @click="societyTab='society'; playSociety()">
+                  @click="societyTab='society'">
             💬 Agent Society
           </button>
         </div>
@@ -473,10 +473,10 @@
 
         <!-- Society chat (stepwise — shows approved steps so far) -->
         <div x-show="societyTab==='society'" class="society-chat">
-          <template x-for="(s, i) in societyBubbles" :key="i">
+          <template x-for="(s, i) in revealedTrace()" :key="i">
             <div style="display:flex; flex-direction:column; gap:10px">  <!-- single x-for root (Alpine requires one) -->
             <!-- PCB-Readiness Phase divider -->
-            <template x-if="s.agent === 'PCB Engineer' && !societyBubbles.slice(0, i).some(b => b.agent === 'PCB Engineer')">
+            <template x-if="s.agent === 'PCB Engineer' && !revealedTrace().slice(0, i).some(b => b.agent === 'PCB Engineer')">
               <div style="display:flex;align-items:center;gap:8px;margin:4px 0">
                 <div style="flex:1;height:1px;background:var(--border)"></div>
                 <div style="font-size:11px;color:var(--text-muted);white-space:nowrap">PCB-Readiness Phase</div>
@@ -498,10 +498,10 @@
             </div>
             </div><!-- /single x-for root -->
           </template>
-          <div x-show="!societyBubbles.length && !societyPlaying" class="society-empty">
+          <div x-show="!revealedTrace().length && !isPlaying()" class="society-empty">
             No run yet.
           </div>
-          <div x-show="societyPlaying" class="society-typing">···</div>
+          <div x-show="isPlaying()" class="society-typing">···</div>
         </div><!-- /tab:society (stepwise) -->
 
       </section>
@@ -522,7 +522,7 @@
             <button :class="societyTab==='trace' ? 'tab-active' : ''"
                     @click="societyTab='trace'">📋 Trace</button>
             <button :class="societyTab==='society' ? 'tab-active' : ''"
-                    @click="societyTab='society'; playSociety()">
+                    @click="societyTab='society'">
               💬 Agent Society
             </button>
           </div>
@@ -604,10 +604,10 @@
 
           <!-- Society chat -->
           <div x-show="societyTab==='society'" class="society-chat">
-            <template x-for="(s, i) in societyBubbles" :key="i">
+            <template x-for="(s, i) in revealedTrace()" :key="i">
               <div style="display:flex; flex-direction:column; gap:10px">  <!-- single x-for root (Alpine requires one) -->
               <!-- PCB-Readiness Phase divider -->
-              <template x-if="s.agent === 'PCB Engineer' && !societyBubbles.slice(0, i).some(b => b.agent === 'PCB Engineer')">
+              <template x-if="s.agent === 'PCB Engineer' && !revealedTrace().slice(0, i).some(b => b.agent === 'PCB Engineer')">
                 <div style="display:flex;align-items:center;gap:8px;margin:4px 0">
                   <div style="flex:1;height:1px;background:var(--border)"></div>
                   <div style="font-size:11px;color:var(--text-muted);white-space:nowrap">PCB-Readiness Phase</div>
@@ -629,10 +629,10 @@
               </div>
               </div><!-- /single x-for root -->
             </template>
-            <div x-show="!societyBubbles.length && !societyPlaying" class="society-empty">
+            <div x-show="!revealedTrace().length && !isPlaying()" class="society-empty">
               No run yet — start the pipeline above.
             </div>
-            <div x-show="societyPlaying" class="society-typing">···</div>
+            <div x-show="isPlaying()" class="society-typing">···</div>
           </div><!-- /tab:society -->
 
         </section>
@@ -801,7 +801,7 @@
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
         diagramSvg: null, exportSvg: null, constraintsText: "", correctText: "", projectName: "",
         clarifyAnswers: {},   // { [questionId]: { picked: [labels], text: "" } }
-        societyBubbles: [], societyPlaying: false, societyTab: 'trace', societyScheduled: 0,
+        playedSteps: 0, societyTab: 'trace', _pipelineTimers: [],
         // stage -> display agent/role, for greying-out upcoming pipeline steps (F2)
         STAGE_META: {
           requirements: { agent: 'Requirements Agent', role: 'Senior Systems Engineer' },
@@ -826,7 +826,8 @@
           this.result = null; this.approved = false; this.gen = null; this.genError = "";
           this.acc = null; this.pending = null; this.stepIdx = -1;
           this.stepStopped = false; this.stepNotice = ""; this.diagramSvg = null; this.exportSvg = null; this.projectName = "";
-          this.societyBubbles = []; this.societyPlaying = false; this.societyTab = 'trace'; this.societyScheduled = 0;
+          this._pipelineTimers.forEach(clearTimeout); this._pipelineTimers = [];
+          this.playedSteps = 0; this.societyTab = 'trace';
         },
         async runAuto() {
           this._resetRun(); this.loading = true;
@@ -840,6 +841,7 @@
             this.diagramSvg = await this.buildDiagram(this.result.architecture);
             this.exportSvg = await this.buildExportDiagram(this.result.architecture);
             await this.fetchGuard();
+            this.playPipeline();
           } finally { this.loading = false; }
         },
         async runStep() {
@@ -890,25 +892,23 @@
             a.picked = (a.picked[0] === label) ? [] : [label];   // single: toggle/replace
           }
         },
-        playSociety() {
-          // Reconcile the chat bubbles with the live trace source. In step mode the
-          // trace grows one approved step at a time (acc.trace) and then becomes
-          // result.trace after the final sign-off; in auto mode result.trace is set
-          // at once. Append only the not-yet-shown steps (animated), so repeated
-          // calls — tab re-open, each approval, the acc→result hand-off — stay in
-          // sync without ever duplicating or dropping a bubble. (Fixes F3.)
-          const steps = (this.result && this.result.trace) || (this.acc && this.acc.trace) || [];
-          const shown = this.societyScheduled;
-          if (steps.length <= shown) return;
-          const fresh = steps.slice(shown);
-          this.societyScheduled = shown + fresh.length;
-          this.societyPlaying = true;
-          fresh.forEach((step, k) => {
-            setTimeout(() => {
-              this.societyBubbles.push(step);
-              if (this.societyBubbles.length >= this.societyScheduled) this.societyPlaying = false;
-            }, k * 350);
-          });
+        pipelineTrace() {
+          return (this.result && this.result.trace) || (this.acc && this.acc.trace) || [];
+        },
+        revealedTrace() {
+          return this.pipelineTrace().slice(0, this.playedSteps);
+        },
+        isPlaying() {
+          return this.playedSteps < this.pipelineTrace().length;
+        },
+        // Timed replay (auto-run): reveal trace steps one at a time. Idempotent —
+        // only schedules the not-yet-revealed steps, so repeat calls never duplicate.
+        playPipeline() {
+          const total = this.pipelineTrace().length;
+          const start = this.playedSteps;
+          for (let k = 0; k < total - start; k++) {
+            this._pipelineTimers.push(setTimeout(() => { this.playedSteps = start + k + 1; }, k * 600));
+          }
         },
         avatarColor(agent) {
           const map = {
@@ -1016,7 +1016,7 @@
           const field = stage === "pcb_engineer" ? "pcb_readiness" : stage;
           this.acc[field] = this.pending[field];
           this.acc.trace.push(this.pending.trace_step);
-          if (this.societyTab === 'society') this.playSociety();  // live bubble if watching (F3)
+          this.playedSteps = this.acc.trace.length;  // step mode: reveal approved steps immediately
           const next = this.stepIdx + 1;
           this.pending = null;
           if (next < this.STAGES.length) { this.loadStage(next); return; }
@@ -1027,6 +1027,7 @@
             pcb_readiness: this.acc.pcb_readiness,
             trace: this.acc.trace, needs_approval: true, notice: null
           };
+          this.playedSteps = this.result.trace.length;
           this.mode = this.acc.mode; this.acc = null; this.stepIdx = -1;
           this.buildDiagram(this.result.architecture).then(svg => { this.diagramSvg = svg; });
           this.buildExportDiagram(this.result.architecture).then(svg => { this.exportSvg = svg; });
