@@ -28,6 +28,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.generators import diagram_embed as de
+from app.generators import kicad_power
 from app.generators.pcb_dru import generate_dru
 from app.generators.report import _architecture_svg
 from app.models.schemas import Arbitration, PcbReadiness, Requirements, RunResponse
@@ -355,7 +356,31 @@ def generate_scaffold(
 
     # --- Per-block subsheets --------------------------------------------------
     sheet_tpl = env.get_template("sheet.kicad_sch.j2")
+    power_tpl = env.get_template("power_sheet.kicad_sch.j2")
+    power_block_names = {b.name for b in architecture.blocks if b.category == "power"}
     for s in sheets:
+        is_power = (s["raw_name"] in power_block_names
+                    or s["fname"].lower().startswith("power"))
+        if is_power and architecture.power:
+            body = kicad_power.power_sheet(
+                list(architecture.power), project_name, root_uuid, s["block_uuid"])
+            sheet_sch = power_tpl.render(
+                file_uuid=s["file_uuid"],
+                text_uuid=_det_uuid(project_name, f"text:{s['fname']}"),
+                annotation=_esc("Power rails (placeholder symbols) — wire to your regulators. NEEDS HUMAN REVIEW"),
+                title_block={
+                    "title": s["name"],
+                    "company": title_block["company"],
+                    "rev": title_block["rev"],
+                    "date": title_block["date"],
+                    "comment": _esc(f"{project_name} — power rails, NOT production-ready"),
+                },
+                lib_symbols=body.lib_symbols,
+                instances=body.instances,
+                hier_labels=[],
+            )
+            (sheets_dir / s["fname"]).write_text(sheet_sch, encoding="utf-8")
+            continue
         annotation = "\\n".join(
             _esc(line)
             for line in (

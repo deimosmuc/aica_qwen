@@ -172,3 +172,18 @@ def test_schematic_has_dfx_note(tmp_path):
     sch = (tmp_path / "TestBoard.kicad_sch").read_text(encoding="utf-8")
     assert "DFT / DFM / BRING-UP" in sch
     assert "fiducial" in sch.lower()
+
+
+def test_power_sheet_has_real_power_symbols(tmp_path):
+    out = generate_scaffold(_result(), REQ_TEXT, tmp_path / "proj")
+    power = (out / "sheets" / "power.kicad_sch").read_text(encoding="utf-8")
+    assert '(lib_id "power:' in power
+    assert '(symbol "power:GND"' in power
+    assert '(lib_id "power:+5V")' in power
+    assert '(lib_id "power:GND")' in power
+
+
+def test_non_power_sheets_stay_placeholders(tmp_path):
+    out = generate_scaffold(_result(), REQ_TEXT, tmp_path / "proj")
+    mcu = (out / "sheets" / "mcu.kicad_sch").read_text(encoding="utf-8")
+    assert '(lib_id "power:' not in mcu
