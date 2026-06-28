@@ -9,7 +9,7 @@ from __future__ import annotations
 from app.agents.base import ChatClient, guidance_block
 from app.models.schemas import (
     Arbitration, Architecture, Candidate, ComponentChoice, ConstraintSet,
-    FloorplanZone, NetClass, PackageHint, PcbReadiness, Requirements,
+    DfxItem, FloorplanZone, NetClass, PackageHint, PcbReadiness, Requirements,
 )
 from app.services.impedance import fill_impedance
 
@@ -87,6 +87,14 @@ Output a JSON object with exactly these keys:
   "corner"|"top"|"bottom"|"left"|"right", "separation": array of zone labels/
   categories to keep apart}. Keep sensitive sensors away from power/heat; give
   airflow sensors a board edge; thermally isolate temperature/CO2 sensors.
+- "dfx_checklist": array of Design-for-X provisions for fab + bring-up. Each:
+  {"category": "testability" | "dfm" | "bringup", "item": short string,
+   "status": "present" | "recommended" | "missing", "note": optional short string}.
+  Cover: testability (test points on power rails + critical nets, SWD/JTAG debug access),
+  dfm (fiducials, pin-1/polarity silkscreen, min feature sizes vs fab class, courtyard
+  spacing), bringup (power/status LEDs, power-rail test points, power-up sequencing checks).
+  Use "present" when the provision already follows from the architecture, "recommended"
+  when it should be added, "missing" only when a recommended provision cannot be addressed.
 """
 
 
@@ -130,4 +138,5 @@ class PcbEngineerAgent:
                 for cc in data.get("component_choices", [])
             ],
             floorplan_zones=[FloorplanZone(**fz) for fz in data.get("floorplan_zones", [])],
+            dfx_checklist=[DfxItem(**d) for d in data.get("dfx_checklist", [])],
         )
