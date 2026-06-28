@@ -259,6 +259,10 @@ class GenerateRequest(BaseModel):
     architecture_svg: str | None = Field(
         default=None, description="Client-rendered light-themed ELK block diagram SVG."
     )
+    project_name: str | None = Field(
+        default=None, description="Optional user-chosen project name; used as the PDF "
+        "report title. Blank falls back to a title auto-derived from the request.",
+    )
 
 
 class GenerateResponse(BaseModel):

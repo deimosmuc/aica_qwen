@@ -23,7 +23,7 @@ def test_generate_accepts_valid_client_svg(monkeypatch):
     seen = {}
     import app.api.routes as r
 
-    def fake_pdf(result, text, name, architecture_svg=None):
+    def fake_pdf(result, text, name, architecture_svg=None, title=None):
         seen["svg"] = architecture_svg
         return b"%PDF-1.4 fake"
 
@@ -38,7 +38,7 @@ def test_generate_ignores_malformed_svg(monkeypatch):
     seen = {}
     import app.api.routes as r
 
-    def fake_pdf(result, text, name, architecture_svg=None):
+    def fake_pdf(result, text, name, architecture_svg=None, title=None):
         seen["svg"] = architecture_svg
         return b"%PDF-1.4 fake"
 
@@ -46,3 +46,18 @@ def test_generate_ignores_malformed_svg(monkeypatch):
     resp = client.post("/api/generate", json=_body("<script>nope</script>"))
     assert resp.status_code == 200
     assert seen["svg"] is None
+
+
+def test_generate_passes_project_name_as_report_title(monkeypatch):
+    seen = {}
+    import app.api.routes as r
+
+    def fake_pdf(result, text, name, architecture_svg=None, title=None):
+        seen["title"] = title
+        return b"%PDF-1.4 fake"
+
+    monkeypatch.setattr(r, "generate_report_pdf", fake_pdf)
+    body = {**_body(), "project_name": "Falcon Sensor Hub"}
+    resp = client.post("/api/generate", json=body)
+    assert resp.status_code == 200
+    assert seen["title"] == "Falcon Sensor Hub"

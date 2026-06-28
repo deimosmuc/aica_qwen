@@ -172,17 +172,21 @@ def _derive_title(requirements_text: str) -> str:
     return title[:1].upper() + title[1:]
 
 
-def _report_context(result: RunResponse, requirements_text: str, project_name: str) -> dict:
+def _report_context(result: RunResponse, requirements_text: str, project_name: str,
+                    title: str | None = None) -> dict:
     """Flatten a RunResponse into a flat, template-ready dict.
 
     Everything the Jinja2 template needs is computed here so the template stays
     logic-free. Missing pcb_readiness degrades to safe placeholders.
+
+    ``title`` is the user-chosen project name (F1-B); when blank it falls back to
+    the title auto-derived from the request.
     """
     arch = result.architecture
     pcb = result.pcb_readiness
 
-    # Title: a project-name-like label; description: the full request on one line.
-    title = _derive_title(requirements_text)
+    # Title: an explicit project name wins; otherwise derive one from the request.
+    title = (title or "").strip() or _derive_title(requirements_text)
     description = requirements_text.strip().replace("\n", " ")
     if len(description) > 160:
         description = description[:157].rstrip() + "…"
@@ -498,7 +502,7 @@ def _floorplan_fallback_svg(result: RunResponse) -> str:
 
 def generate_report_pdf(
     result: RunResponse, requirements_text: str, project_name: str,
-    architecture_svg: str | None = None,
+    architecture_svg: str | None = None, title: str | None = None,
 ) -> bytes:
     """Render the PCB Design Brief to PDF bytes.
 
@@ -510,7 +514,7 @@ def generate_report_pdf(
     """
     from weasyprint import HTML  # lazy import; needs Pango/Cairo at runtime
 
-    context = _report_context(result, requirements_text, project_name)
+    context = _report_context(result, requirements_text, project_name, title=title)
     context["architecture_svg"] = architecture_svg or _architecture_svg(result)
     # The client ELK export carries its own legend (also needed by the standalone
     # KiCad bitmap); only the Python fallback relies on the separate HTML legend.
