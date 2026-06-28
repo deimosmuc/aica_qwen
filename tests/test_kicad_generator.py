@@ -1,7 +1,11 @@
 """Milestone 6: the KiCad scaffold generator."""
 import json
 
+import pytest
+
 from app.generators.kicad import generate_scaffold
+from app.services.kicad_cli import KiCadCli
+from app.services.config import Settings
 from app.models.schemas import (
     Arbitration,
     Architecture,
@@ -172,3 +176,68 @@ def test_schematic_has_dfx_note(tmp_path):
     sch = (tmp_path / "TestBoard.kicad_sch").read_text(encoding="utf-8")
     assert "DFT / DFM / BRING-UP" in sch
     assert "fiducial" in sch.lower()
+
+
+def test_power_sheet_has_real_power_symbols(tmp_path):
+    out = generate_scaffold(_result(), REQ_TEXT, tmp_path / "proj")
+    power = (out / "sheets" / "power.kicad_sch").read_text(encoding="utf-8")
+    assert '(lib_id "power:' in power
+    assert '(symbol "power:GND"' in power
+    assert '(lib_id "power:+5V")' in power
+    assert '(lib_id "power:+3V3")' in power
+    assert '(lib_id "power:GND")' in power
+
+
+def test_non_power_sheets_stay_placeholders(tmp_path):
+    out = generate_scaffold(_result(), REQ_TEXT, tmp_path / "proj")
+    mcu = (out / "sheets" / "mcu.kicad_sch").read_text(encoding="utf-8")
+    assert '(lib_id "power:' not in mcu
+
+
+def test_root_blocks_carry_sheet_pins(tmp_path):
+    import re as _re
+    out = generate_scaffold(_result(), REQ_TEXT, tmp_path / "proj")
+    root = (out / "project.kicad_sch").read_text(encoding="utf-8")
+    assert root.count("(pin ") >= 1
+    # KiCad hierarchical sheet pins carry their shape INLINE after the name —
+    # `(pin "NAME" <shape> ...)`. A `(shape ...)` *sub-expression* (as a symbol
+    # pin uses) makes KiCad refuse to load the sheet, so the shape must be inline.
+    assert _re.search(r'\(pin "[^"]+" (input|output|bidirectional|tri_state|passive)\b', root)
+
+
+def test_sheet_pins_have_matching_child_labels(tmp_path):
+    import re as _re
+    out = generate_scaffold(_result(), REQ_TEXT, tmp_path / "proj")
+    root = (out / "project.kicad_sch").read_text(encoding="utf-8")
+    all_children = "".join(p.read_text(encoding="utf-8")
+                           for p in (out / "sheets").glob("*.kicad_sch"))
+    # every sheet-pin name on the root must exist as a hierarchical_label in SOME child
+    for name in set(_re.findall(r'\(pin "([^"]+)"', root)):
+        assert f'(hierarchical_label "{name}"' in all_children, f"unmatched pin {name}"
+
+
+# ERC error types that are EXPECTED/benign for an unwired placeholder scaffold.
+# NOTE: hierarchy mismatch / unmatched-sheet-pin types are deliberately NOT here —
+# those indicate a real bug and MUST fail the gate.
+_EXPECTED_SCAFFOLD_ERC = {
+    "pin_not_connected", "power_pin_not_driven", "label_dangling",
+    "global_label_dangling", "no_connect_dangling",
+}
+
+
+@pytest.mark.skipif(not KiCadCli(Settings()).available, reason="kicad-cli not installed")
+def test_generated_project_opens_and_no_structural_erc_errors(tmp_path):
+    out = generate_scaffold(_result(), REQ_TEXT, tmp_path / "proj")
+    cli = KiCadCli(Settings())
+    svg_dir = tmp_path / "svg"
+    cli.export_svg(out / "project.kicad_sch", svg_dir)            # raises on load failure
+    cli.export_svg(out / "sheets" / "power.kicad_sch", svg_dir)
+    power_svg = (svg_dir / "power.svg")
+    assert power_svg.read_text(encoding="utf-8").count("<path") > 50, "power sheet near-empty"
+    erc = cli.run_erc(out / "project.kicad_sch", tmp_path / "erc.json")
+    viol = [v for s in erc.get("sheets", []) for v in s.get("violations", [])]
+    structural = [v for v in viol if v.get("severity") == "error"
+                  and v.get("type") not in _EXPECTED_SCAFFOLD_ERC]
+    assert structural == [], structural
+    offgrid = [v for v in viol if v.get("type") == "endpoint_off_grid"]
+    assert offgrid == [], offgrid

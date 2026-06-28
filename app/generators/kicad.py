@@ -28,6 +28,8 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.generators import diagram_embed as de
+from app.generators import kicad_power
+from app.generators import kicad_root
 from app.generators.pcb_dru import generate_dru
 from app.generators.report import _architecture_svg
 from app.models.schemas import Arbitration, PcbReadiness, Requirements, RunResponse
@@ -112,6 +114,46 @@ def _route(s: dict, t: dict) -> list[tuple[float, float]]:
         ymid = (b["bottom"] + a["top"]) / 2
         pts = [(a["cx"], a["top"]), (a["cx"], ymid), (b["cx"], ymid), (b["cx"], b["bottom"])]
     return [(round(x, 2), round(y, 2)) for x, y in pts]
+
+
+_GRID = 1.27
+
+
+def _snap(v: float) -> float:
+    # Sheet pins are wire endpoints, so their `at` MUST land on KiCad's 1.27 mm
+    # grid or ERC emits endpoint_off_grid warnings.
+    return round(round(v / _GRID) * _GRID, 2)
+
+
+def _pin_geometry(pins, bx, by, project_name):
+    """Place sheet pins on the four box edges, all snapped to the 1.27 mm grid."""
+    out = []
+    by_side = {"left": [], "right": [], "bottom": [], "top": []}
+    for p in pins:
+        by_side[p.side].append(p)
+    for side, ps in by_side.items():
+        for i, p in enumerate(ps):
+            off = _GRID * 5 * (i + 1)
+            if side == "left":
+                ax, ay, rot, just = _snap(bx), _snap(by + off), 180, "right"
+            elif side == "right":
+                ax, ay, rot, just = _snap(bx + _SHEET_W), _snap(by + off), 0, "left"
+            else:  # bottom (power) / top
+                ax, ay, rot, just = _snap(bx + off), _snap(by + _SHEET_H), 270, "left"
+            out.append({"name": p.name, "shape": p.shape, "at_x": ax, "at_y": ay,
+                        "rot": rot, "justify": just,
+                        "uuid": _det_uuid(project_name, f"pin:{bx}:{by}:{p.name}")})
+    return out
+
+
+def _label_geometry(labels, project_name, fname):
+    """Place the matching child hierarchical labels (column down the sheet)."""
+    out = []
+    for i, l in enumerate(labels):
+        out.append({"name": l.name, "shape": l.shape, "x": _snap(30.0),
+                    "y": _snap(40.0 + i * _GRID * 6), "rot": 0, "justify": "left",
+                    "uuid": _det_uuid(project_name, f"hlabel:{fname}:{l.name}")})
+    return out
 
 
 def _sheet_filename(raw: str, index: int) -> str:
@@ -264,6 +306,15 @@ def generate_scaffold(
         col, row = i % _GRID_COLS, i // _GRID_COLS
         x = _GRID_X0 + col * _GRID_DX
         y = grid_y0 + row * _GRID_DY
+
+        # Hierarchical sheet pins (root) + their matching child labels. Snap the
+        # box origin used for pin geometry so the wire-endpoint pins land on the
+        # 1.27 mm grid (the box itself may be off-grid).
+        pins = kicad_root.sheet_pins_for(block, list(architecture.connections))
+        s_pins = _pin_geometry(pins, _snap(x), _snap(y), project_name)
+        s_hier = _label_geometry(
+            kicad_root.hier_labels_for(pins), project_name, fname)
+
         sheets.append(
             {
                 "name": _esc(block.name),
@@ -278,6 +329,8 @@ def generate_scaffold(
                 "page": i + 2,  # root is page 1
                 "block_uuid": _det_uuid(project_name, f"sheet:{fname}"),
                 "file_uuid": _det_uuid(project_name, f"file:{fname}"),
+                "pins": s_pins,
+                "hier_labels": s_hier,
             }
         )
 
@@ -355,7 +408,31 @@ def generate_scaffold(
 
     # --- Per-block subsheets --------------------------------------------------
     sheet_tpl = env.get_template("sheet.kicad_sch.j2")
+    power_block_names = {b.name for b in architecture.blocks if b.category == "power"}
     for s in sheets:
+        is_power = (s["raw_name"] in power_block_names
+                    or s["fname"].lower().startswith("power"))
+        if is_power and architecture.power:
+            power_tpl = env.get_template("power_sheet.kicad_sch.j2")
+            body = kicad_power.power_sheet(
+                list(architecture.power), project_name, root_uuid, s["block_uuid"])
+            sheet_sch = power_tpl.render(
+                file_uuid=s["file_uuid"],
+                text_uuid=_det_uuid(project_name, f"text:{s['fname']}"),
+                annotation=_esc("Power rails (placeholder symbols) — wire to your regulators. NEEDS HUMAN REVIEW"),
+                title_block={
+                    "title": s["name"],
+                    "company": title_block["company"],
+                    "rev": title_block["rev"],
+                    "date": title_block["date"],
+                    "comment": _esc(f"{project_name} — power rails, NOT production-ready"),
+                },
+                lib_symbols=body.lib_symbols,
+                instances=body.instances,
+                hier_labels=s["hier_labels"],
+            )
+            (sheets_dir / s["fname"]).write_text(sheet_sch, encoding="utf-8")
+            continue
         annotation = "\\n".join(
             _esc(line)
             for line in (
@@ -375,6 +452,7 @@ def generate_scaffold(
                 "date": title_block["date"],
                 "comment": _esc(f"{project_name} — placeholder block, NOT production-ready"),
             },
+            hier_labels=s["hier_labels"],
         )
         (sheets_dir / s["fname"]).write_text(sheet_sch, encoding="utf-8")
 
