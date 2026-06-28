@@ -341,6 +341,22 @@ def generate_scaffold(
                 "uuid": _det_uuid(project_name, "impedance-note"),
             }
 
+    # Compact Design-for-X note (actionable items only; ASCII for the KiCad stroke font).
+    dfx_note = None
+    if result.pcb_readiness is not None:
+        actionable = [d for d in result.pcb_readiness.dfx_checklist
+                      if d.status in ("recommended", "missing")]
+        if actionable:
+            dfx_lines = ["DFT / DFM / BRING-UP"]
+            dfx_lines += [_esc(_trunc(f"- {d.item}", 34)) for d in actionable[:6]]
+            base_y = (impedance_note["y"] if impedance_note else notes["y"]) + 16.0
+            dfx_note = {
+                "text": "\\n".join(dfx_lines),
+                "x": lx,
+                "y": round(base_y, 2),
+                "uuid": _det_uuid(project_name, "dfx-note"),
+            }
+
     # --- Root schematic -------------------------------------------------------
     root_sch = env.get_template("root.kicad_sch.j2").render(
         root_uuid=root_uuid,
@@ -356,6 +372,7 @@ def generate_scaffold(
         legend=legend,
         notes=notes,
         impedance_note=impedance_note,
+        dfx_note=dfx_note,
         sheets=sheets,
     )
     (project_dir / f"{project_name}.kicad_sch").write_text(root_sch, encoding="utf-8")
