@@ -16,7 +16,9 @@ def _parse_sse(body: str):
 
 
 def test_run_stream_mock_mode_streams_steps_then_final(monkeypatch):
-    # No QWEN_API_KEY in the test env -> deterministic mock pipeline.
+    # Force mock mode by replacing get_settings with a key-less Settings, so the
+    # test is deterministic and never calls the live (paid) Qwen API even when a
+    # real key is present in .env.
     import app.api.routes as routes
     from app.services.config import Settings
     monkeypatch.setattr(routes, "get_settings", lambda: Settings(qwen_api_key=""))
