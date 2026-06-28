@@ -1,4 +1,4 @@
-from app.generators.kicad_power import map_rail
+from app.generators.kicad_power import map_rail, power_sheet
 
 
 def test_known_rails_map_to_standard_symbols():
@@ -23,3 +23,27 @@ def test_unknown_rail_falls_back_to_pwr_flag_with_label():
     m = map_rail("MYNET")
     assert m.lib_id == "power:PWR_FLAG"
     assert m.label == "MYNET"
+
+
+def test_power_sheet_has_a_symbol_per_rail():
+    rails = ["MYRAIL", "+5V", "+3V3", "GND"]
+    body = power_sheet(rails, project_name="proj",
+                       root_uuid="11111111-1111-4111-8111-111111111111",
+                       block_uuid="22222222-2222-4222-8222-222222222222")
+    assert '(symbol "power:+5V"' in body.lib_symbols
+    assert '(symbol "power:GND"' in body.lib_symbols
+    assert '(symbol "power:PWR_FLAG"' in body.lib_symbols
+    assert body.instances.count('(lib_id "power:') == len(rails)
+    assert '(global_label "MYRAIL"' in body.instances
+    assert "/11111111-1111-4111-8111-111111111111/22222222-2222-4222-8222-222222222222" in body.instances
+
+
+def test_power_sheet_only_embeds_used_symbols():
+    body = power_sheet(["+5V", "GND"], "p", "r", "b")
+    assert '(symbol "power:+12V"' not in body.lib_symbols
+
+
+def test_power_sheet_is_deterministic():
+    a = power_sheet(["+5V", "GND"], "p", "r", "b")
+    b = power_sheet(["+5V", "GND"], "p", "r", "b")
+    assert a.lib_symbols == b.lib_symbols and a.instances == b.instances
