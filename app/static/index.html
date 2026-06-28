@@ -102,6 +102,15 @@
     .out-grp { margin-bottom: 8px; }
     .out-grp:last-child { margin-bottom: 0; }
     .out-grp b { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+    .pcb-tbl { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+    .pcb-tbl th { text-align: left; color: var(--muted); font-weight: 600; padding: 3px 8px;
+      border-bottom: 1px solid var(--line); }
+    .pcb-tbl td { padding: 3px 8px; border-bottom: 1px solid var(--line); }
+    .pcb-tbl tr:last-child td { border-bottom: none; }
+    .cc-h { font-size: 12px; font-weight: 700; color: var(--accent); margin: 8px 0 2px; }
+    .stars { color: var(--warn); letter-spacing: 1px; }
+    .rec-badge { background: rgba(63,185,80,.15); color: var(--ok); border: 1px solid var(--ok);
+      border-radius: 999px; font-size: 11px; padding: 1px 7px; margin-left: 4px; }
     .step.pending { box-shadow: 0 0 0 1px var(--accent) inset; }
     .auto-toggle { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px;
       color: var(--muted); font-size: 13px; cursor: pointer; }
@@ -294,7 +303,7 @@
         <!-- Existing step trace (approved steps + pending step) -->
         <div x-show="societyTab==='trace'">
           <div class="trace">
-            <template x-for="s in acc.trace" :key="s.agent">
+            <template x-for="s in (acc?.trace || [])" :key="s.agent">
             <div class="step" :class="s.status">
               <div class="dot" :class="s.status"></div>
               <div style="flex:1">
@@ -377,8 +386,11 @@
                     <div class="out-grp" x-show="pending.arbitration.accepted_assumptions.length"><b>Accepted assumptions</b><ul><template x-for="x in pending.arbitration.accepted_assumptions" :key="x"><li x-text="x"></li></template></ul></div>
                   </div>
                 </template>
+                <template x-if="pending.pcb_readiness">
+                  <div x-html="pcbReadinessHtml(pending.pcb_readiness)"></div>
+                </template>
               </div>
-              <div x-show="acc.guidance.length" class="active-cons">
+              <div x-show="acc?.guidance?.length" class="active-cons">
                 <b>Active constraints (honored by every agent)</b>
                 <ul><template x-for="g in acc.guidance" :key="g"><li x-text="g"></li></template></ul>
               </div>
@@ -529,6 +541,9 @@
                           <ul><template x-for="x in result.arbitration.accepted_assumptions" :key="x"><li x-text="x"></li></template></ul></div>
                       </div>
                     </template>
+                    <template x-if="s.agent === 'PCB Engineer' && result.pcb_readiness">
+                      <div class="out" x-html="pcbReadinessHtml(result.pcb_readiness)"></div>
+                    </template>
                   </details>
                 </div>
               </div>
@@ -638,9 +653,17 @@
           </div>
         </section>
 
+        <!-- PCB-Readiness pack (net classes incl. impedance, candidates, floorplan zones) -->
+        <template x-if="result.pcb_readiness">
+          <section class="panel">
+            <h2>5 · PCB-Readiness pack</h2>
+            <div class="out" x-html="pcbReadinessHtml(result.pcb_readiness)"></div>
+          </section>
+        </template>
+
         <!-- Approval -->
         <section class="panel">
-          <h2>5 · Human approval</h2>
+          <h2>6 · Human approval</h2>
           <p class="muted">No KiCad project is generated until you approve. The engineer stays in control.</p>
           <div class="chips">
             <div class="chip"><b x-text="result.arbitration.accepted_assumptions.length"></b>Assumptions</div>
@@ -661,7 +684,7 @@
         <!-- Generated scaffold: validation + preview + download -->
         <template x-if="gen">
           <section class="panel">
-            <h2>6 · KiCad scaffold</h2>
+            <h2>7 · KiCad scaffold</h2>
             <div class="valhead">
               <span class="valbadge"
                 :class="!gen.validation.kicad_cli_available ? 'warn' : (gen.validation.kicad_opens ? 'verified' : 'fail')"
@@ -718,7 +741,7 @@
         generating: false, gen: null, genError: "",
         comparing: false, cmp: null, cmpError: "",
         benching: false, bench: null, benchError: "",
-        auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration"],
+        auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration", "pcb_engineer"],
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
         diagramSvg: null, exportSvg: null, constraintsText: "", correctText: "",
         clarifyAnswers: {},   // { [questionId]: { picked: [labels], text: "" } }
@@ -729,6 +752,7 @@
           architecture: { agent: 'System Architect', role: 'Principal Hardware Architect' },
           critique:     { agent: 'Design Critic',    role: 'Senior Hardware Reviewer' },
           arbitration:  { agent: 'Arbitration',      role: 'Chief Engineer' },
+          pcb_engineer: { agent: 'PCB Engineer',     role: 'PCB Layout Preparation Engineer' },
         },
         PROFILES: ["Uniform qwen-plus", "Uniform qwen-max", "Budget Turbo", "Senior Review Team"], selectedProfile: "Uniform qwen-plus",
         async init() {
@@ -765,7 +789,7 @@
         async runStep() {
           this._resetRun();
           this.acc = { mode: "mock", requirements: null, architecture: null,
-            critique: null, arbitration: null, trace: [], guidance: this.parseConstraints() };
+            critique: null, arbitration: null, pcb_readiness: null, trace: [], guidance: this.parseConstraints() };
           await this.loadStage(0);
         },
         async loadStage(i) {
@@ -780,6 +804,7 @@
                 requirements: this.acc.requirements,
                 architecture: this.acc.architecture,
                 critique: this.acc.critique,
+                arbitration: this.acc.arbitration,
                 profile: this.selectedProfile
               })
             });
@@ -841,6 +866,71 @@
           const color = map[agent] || '#6b7280';
           return `background:${color}`;
         },
+        esc(s) {
+          return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        },
+        stars(score) {
+          const full = Math.max(0, Math.min(5, Math.round(score || 0)));
+          return "★".repeat(full) + "☆".repeat(5 - full);
+        },
+        // Single source of truth for rendering the PCB-Readiness pack (net classes
+        // incl. impedance, constraints, candidates, zones). Used by both the step-by-step
+        // pending block and the auto-run result view via x-html.
+        pcbReadinessHtml(pcb) {
+          if (!pcb) return "";
+          const esc = this.esc.bind(this);
+          const mm = v => (v == null ? "—" : Number(v).toFixed(2) + " mm");
+          let h = "";
+          h += `<div class="out-grp"><b>Layer stack</b><div>${esc(pcb.layerstack)}`;
+          if (pcb.layerstack_reason) h += ` <span class="muted">— ${esc(pcb.layerstack_reason)}</span>`;
+          h += `</div></div>`;
+          if (pcb.netclasses && pcb.netclasses.length) {
+            h += `<div class="out-grp"><b>Net classes</b><table class="pcb-tbl"><thead><tr>`
+               + `<th>Class</th><th>Track</th><th>Clearance</th><th>Impedance</th><th>Nets</th>`
+               + `</tr></thead><tbody>`;
+            pcb.netclasses.forEach(nc => {
+              h += `<tr><td>${esc(nc.name)}</td><td>${mm(nc.min_width_mm)}</td>`
+                 + `<td>${mm(nc.clearance_mm)}</td>`
+                 + `<td>${nc.impedance ? esc(nc.impedance) : "—"}</td>`
+                 + `<td class="muted">${esc((nc.nets || []).join(", "))}</td></tr>`;
+            });
+            h += `</tbody></table></div>`;
+          }
+          const c = pcb.constraints;
+          if (c) {
+            h += `<div class="out-grp"><b>Board constraints</b><div class="muted">`
+               + `min clearance ${mm(c.min_clearance_mm)} · min track ${mm(c.min_track_width_mm)} · `
+               + `via drill ${mm(c.via_drill_mm)} · annular ring ${mm(c.via_annular_ring_mm)}</div></div>`;
+          }
+          if (pcb.component_choices && pcb.component_choices.length) {
+            h += `<div class="out-grp"><b>Component candidates</b>`;
+            pcb.component_choices.forEach(ch => {
+              h += `<div class="cc-h">${esc(ch.component_type)}</div><ul>`;
+              (ch.candidates || []).slice()
+                .sort((a, b) => (b.recommended - a.recommended) || (b.score - a.score))
+                .forEach(cd => {
+                  h += `<li>${cd.recommended ? "<b>" : ""}${esc(cd.part)}${cd.recommended ? "</b>" : ""}`
+                     + ` <span class="muted">${esc(cd.package)}</span>`
+                     + ` <span class="stars">${this.stars(cd.score)}</span>`
+                     + (cd.recommended ? ` <span class="rec-badge">Empfehlung</span>` : ``) + `</li>`;
+                });
+              h += `</ul>`;
+            });
+            h += `</div>`;
+          }
+          if (pcb.floorplan_zones && pcb.floorplan_zones.length) {
+            h += `<div class="out-grp"><b>Floorplan zones</b><ul>`;
+            pcb.floorplan_zones.forEach(z => {
+              h += `<li>${esc(z.label)} <span class="muted">(${esc(z.placement)})</span>`;
+              if (z.separation && z.separation.length)
+                h += ` <span class="muted">— keep apart from ${esc(z.separation.join(", "))}</span>`;
+              h += `</li>`;
+            });
+            h += `</ul></div>`;
+          }
+          return h;
+        },
         clarifyAnswered() {
           return Object.values(this.clarifyAnswers)
             .filter(a => a.picked.length || a.text.trim()).length;
@@ -866,7 +956,9 @@
             this.clarifyToGuidance(this.pending.requirements.clarifications)
                 .forEach(g => this.acc.guidance.push(g));
           }
-          this.acc[stage] = this.pending[stage];
+          // pcb_engineer stage carries its payload on the pcb_readiness field
+          const field = stage === "pcb_engineer" ? "pcb_readiness" : stage;
+          this.acc[field] = this.pending[field];
           this.acc.trace.push(this.pending.trace_step);
           if (this.societyTab === 'society') this.playSociety();  // live bubble if watching (F3)
           const next = this.stepIdx + 1;
@@ -876,6 +968,7 @@
             mode: this.acc.mode,
             requirements: this.acc.requirements, architecture: this.acc.architecture,
             critique: this.acc.critique, arbitration: this.acc.arbitration,
+            pcb_readiness: this.acc.pcb_readiness,
             trace: this.acc.trace, needs_approval: true, notice: null
           };
           this.mode = this.acc.mode; this.acc = null; this.stepIdx = -1;
