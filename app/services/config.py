@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Curated, json_object-capable models the UI may select. "thinking" models
     # are excluded — they don't support json_object output, which the pipeline needs.
     qwen_models: list[str] = ["qwen-plus", "qwen-max", "qwen-turbo"]
+    # Per-call HTTP timeout. qwen-max on complex prompts (large max_tokens) can
+    # take well over a minute; a tight timeout silently drops the run to Mock.
+    qwen_timeout_s: float = 180.0
 
     app_name: str = "AI Circuit Architect"
     app_version: str = "0.1.0"

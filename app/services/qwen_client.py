@@ -33,13 +33,13 @@ class QwenClient:
         self,
         settings: Settings,
         guard: ApiGuard | None = None,
-        timeout: float = 60.0,
+        timeout: float | None = None,
         meter: "RunMeter | None" = None,
     ):
         self._api_key = settings.qwen_api_key
         self._base_url = settings.qwen_base_url.rstrip("/")
         self._model = settings.qwen_model
-        self._timeout = timeout
+        self._timeout = timeout if timeout is not None else settings.qwen_timeout_s
         self._guard = guard or ApiGuard(settings)
         self._meter = meter
 
