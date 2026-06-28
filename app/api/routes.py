@@ -202,7 +202,10 @@ def step(req: StepRequest) -> StepResponse:
     """
     settings = get_settings()
     profile = profile_for(req.profile, req.model, settings)
-    settings = settings.model_copy(update={"qwen_model": profile.models[req.stage]})
+    # The pcb_critic stage maps to the "pcb_critique" model slot (stage vs role name).
+    role = "pcb_critique" if req.stage == "pcb_critic" else req.stage
+    settings = settings.model_copy(
+        update={"qwen_model": profile.models.get(role, settings.qwen_model)})
     try:
         return run_stage(req, settings)
     except ValueError as e:

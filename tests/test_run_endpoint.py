@@ -65,3 +65,15 @@ def test_step_uses_profile_model_for_its_stage(monkeypatch):
                                        "profile": "Senior Review Team"})
     assert r.status_code == 200
     assert captured["model"] == "qwen-max"  # the supervisor model for the critique stage
+
+
+def test_step_pcb_critic_endpoint_resolves_model(monkeypatch):
+    # Regression: /api/step looked up profile.models[stage], but the pcb_critic
+    # stage maps to the "pcb_critique" model slot — must not KeyError.
+    from app.services.config import Settings
+    monkeypatch.setattr(routes, "get_settings", lambda: Settings(qwen_api_key=""))
+    client = TestClient(app)
+    r = client.post("/api/step", json={"stage": "pcb_critic", "requirements_text": "x",
+                                       "profile": "Senior Review Team"})
+    assert r.status_code == 200
+    assert r.json()["pcb_critique"] is not None
