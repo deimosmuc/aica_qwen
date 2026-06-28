@@ -325,8 +325,8 @@ _FP_COLS = 3
 _FP_ROWS = 3
 _FP_ZW = 150
 _FP_ZH = 70
-_FP_GAP = 18
-_FP_PAD = 20
+_FP_GAP = 36   # generous inter-zone room so keep-out / airflow labels are legible
+_FP_PAD = 42   # board margin: a clear band for the vent arrow + side labels
 _PLACEMENT_CELL = {
     "left": (0, 1), "right": (2, 1), "top": (1, 0), "bottom": (1, 2),
     "center": (1, 1), "corner": (0, 0), "edge": (0, 0),
@@ -350,18 +350,6 @@ def _floorplan_svg(result: RunResponse) -> str:
     if not zones:
         return _floorplan_fallback_svg(result)
 
-    width = _FP_COLS * _FP_ZW + (_FP_COLS - 1) * _FP_GAP + _FP_PAD * 2
-    height = _FP_ROWS * _FP_ZH + (_FP_ROWS - 1) * _FP_GAP + _FP_PAD * 2
-
-    parts = [
-        f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">',
-        '<defs><marker id="vent" markerWidth="9" markerHeight="9" refX="7" refY="3" '
-        'orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#0e7490"/></marker></defs>',
-        f'<rect x="{_FP_PAD / 2}" y="{_FP_PAD / 2}" width="{width - _FP_PAD}" '
-        f'height="{height - _FP_PAD}" rx="8" fill="none" stroke="#10b981" '
-        f'stroke-width="1.5" stroke-dasharray="6,3"/>',
-    ]
-
     # Assign each zone a grid cell, packing collisions to the next free cell.
     used: set[tuple[int, int]] = set()
     zone_pos: dict[str, tuple[int, int]] = {}
@@ -375,6 +363,21 @@ def _floorplan_svg(result: RunResponse) -> str:
                     break
         used.add(cell)
         zone_pos[z.label] = cell
+
+    # Size the board to the cells actually used — no empty trailing rows/columns.
+    cols = max((c for c, _ in used), default=0) + 1
+    rows = max((r for _, r in used), default=0) + 1
+    width = cols * _FP_ZW + (cols - 1) * _FP_GAP + _FP_PAD * 2
+    height = rows * _FP_ZH + (rows - 1) * _FP_GAP + _FP_PAD * 2
+
+    parts = [
+        f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">',
+        '<defs><marker id="vent" markerWidth="9" markerHeight="9" refX="7" refY="3" '
+        'orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#0e7490"/></marker></defs>',
+        f'<rect x="{_FP_PAD / 2}" y="{_FP_PAD / 2}" width="{width - _FP_PAD}" '
+        f'height="{height - _FP_PAD}" rx="8" fill="none" stroke="#10b981" '
+        f'stroke-width="1.5" stroke-dasharray="6,3"/>',
+    ]
 
     # Thermal keep-out: fence the heat-sensitive sensor zone(s) — those that
     # declare a separation — with an enclosing dashed boundary (far clearer than a
@@ -393,8 +396,8 @@ def _floorplan_svg(result: RunResponse) -> str:
             f'stroke-width="1.4" stroke-dasharray="5,3"/>'
         )
         parts.append(
-            f'<text x="{x + _FP_ZW / 2:.0f}" y="{y + _FP_ZH + m + 11:.0f}" '
-            f'text-anchor="middle" font-family="sans-serif" font-size="9" '
+            f'<text x="{x + _FP_ZW / 2:.0f}" y="{y + _FP_ZH + m + 13:.0f}" '
+            f'text-anchor="middle" font-family="sans-serif" font-size="10" '
             f'fill="#dc2626">thermal keep-out</text>'
         )
         fenced.append((z, x, y))
@@ -440,7 +443,7 @@ def _floorplan_svg(result: RunResponse) -> str:
         )
         parts.append(
             f'<text x="{lx:.0f}" y="{ly:.0f}" text-anchor="{anchor}" '
-            f'font-family="sans-serif" font-size="9" fill="#0e7490">vent clearance</text>'
+            f'font-family="sans-serif" font-size="10" fill="#0e7490">vent clearance</text>'
         )
 
     parts.append("</svg>")

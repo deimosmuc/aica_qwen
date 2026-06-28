@@ -125,7 +125,7 @@
       <div class="cand {% if c.recommended %}rec{% endif %}">
         <div class="cand-top"><b>{{ c.part }}</b> · {{ c.package }}
           <span class="stars">{{ c.stars }}</span>
-          {% if c.recommended %}<span class="badge">Empfehlung</span>{% endif %}</div>
+          {% if c.recommended %}<span class="badge">Recommended</span>{% endif %}</div>
         {% if c.pros %}<div class="pro">+ {{ c.pros|join("; ") }}</div>{% endif %}
         {% if c.cons %}<div class="con">– {{ c.cons|join("; ") }}</div>{% endif %}
       </div>

@@ -101,7 +101,7 @@ def test_report_template_renders_html_with_candidate_cards():
     ctx["floorplan_svg"] = _floorplan_svg(mock_run("x"))
     html = _jinja_env.get_template("report.html.j2").render(**ctx)
     assert "Component Candidates" in html
-    assert "Empfehlung" in html            # recommended badge present
+    assert "Recommended" in html           # recommended badge present (English only)
     assert "STM32G0B1" in html             # recommended MCU part rendered
     assert 'class="legend"' in html        # category legend rendered
 
