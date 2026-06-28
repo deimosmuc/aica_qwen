@@ -48,7 +48,12 @@
 				)
 			)
 		)
-	)
+{% for p in s.pins %}		(pin "{{ p.name }}" {{ p.shape }}
+			(at {{ p.at_x }} {{ p.at_y }} {{ p.rot }})
+			(effects (font (size 1.27 1.27)) (justify {{ p.justify }}))
+			(uuid "{{ p.uuid }}")
+		)
+{% endfor %}	)
 {% endfor %}{% for l in legend %}	(polyline
 		(pts (xy {{ l.x1 }} {{ l.y1 }}) (xy {{ l.x2 }} {{ l.y2 }}))
 		(stroke (width 0.6) (type solid) (color {{ l.color }}))

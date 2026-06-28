@@ -20,7 +20,13 @@
 		)
 		(uuid "{{ text_uuid }}")
 	)
-	(sheet_instances
+{% for h in hier_labels %}	(hierarchical_label "{{ h.name }}"
+		(shape {{ h.shape }})
+		(at {{ h.x }} {{ h.y }} {{ h.rot }})
+		(effects (font (size 1.27 1.27)) (justify {{ h.justify }}))
+		(uuid "{{ h.uuid }}")
+	)
+{% endfor %}	(sheet_instances
 		(path "/"
 			(page "1")
 		)
