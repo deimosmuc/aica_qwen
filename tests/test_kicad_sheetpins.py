@@ -39,6 +39,16 @@ def test_pins_are_capped_and_deterministic():
     assert len(a) <= 8  # readability cap
 
 
+def test_same_kind_both_directions_collapses_to_bidirectional():
+    conns = [
+        Connection(source="A", target="Hub", type="data"),
+        Connection(source="Hub", target="B", type="data"),
+    ]
+    pins = sheet_pins_for(_block("Hub"), conns)
+    assert all(p.shape == "bidirectional" for p in pins), \
+        "all pins of a kind seen in both directions must be bidirectional"
+
+
 def test_every_pin_has_a_matching_hier_label():
     pins = sheet_pins_for(_block("MCU"), CONNS)
     labels = hier_labels_for(pins)
