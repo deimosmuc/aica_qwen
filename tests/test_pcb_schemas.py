@@ -79,3 +79,31 @@ def test_pcb_readiness_new_fields_default_empty():
 def test_generate_request_architecture_svg_optional():
     req = GenerateRequest(requirements_text="x", result=mock_run("x"))
     assert req.architecture_svg is None
+
+
+def test_dfx_item_defaults():
+    from app.models.schemas import DfxItem
+    d = DfxItem(category="testability", item="SWD test points")
+    assert d.status == "recommended" and d.note == ""
+    d2 = DfxItem(category="dfm", item="3 fiducials", status="present", note="corners")
+    assert d2.status == "present" and d2.note == "corners"
+
+
+def test_pcb_readiness_dfx_defaults_empty():
+    from app.models.schemas import PcbReadiness, ConstraintSet
+    pcb = PcbReadiness(
+        layerstack="2-layer", layerstack_reason="r", netclasses=[],
+        constraints=ConstraintSet(min_clearance_mm=0.2, min_track_width_mm=0.2,
+                                  via_drill_mm=0.3, via_annular_ring_mm=0.1),
+        floorplan_text="", floorplan_ascii="", package_hints=[],
+    )
+    assert pcb.dfx_checklist == []
+
+
+def test_step_request_response_pcb_critic_fields():
+    from app.models.schemas import StepRequest, StepResponse, TraceStep
+    req = StepRequest(stage="pcb_critic", requirements_text="x")
+    assert req.pcb_readiness is None
+    resp = StepResponse(stage="pcb_critic", mode="mock",
+                        trace_step=TraceStep(agent="PCB Critic", role="Senior PCB Reviewer", summary="s"))
+    assert resp.pcb_critique is None

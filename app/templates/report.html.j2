@@ -41,6 +41,14 @@
   .rule-lead { font-size: 9px; color: #374151; margin: 1px 0 6px; line-height: 1.5; }
   .provenance { font-size: 8.5px; color: #0f766e; margin: 5px 0 0; }
   .provenance code { background: #f0fdfa; padding: 0 3px; border-radius: 2px; }
+  .dfx-grp { margin: 4px 0 8px; }
+  .dfx-h { font-size: 9px; font-weight: 700; color: #0f766e; margin-bottom: 2px; }
+  .dfx-list { margin: 0; padding-left: 4px; list-style: none; font-size: 8.5px; }
+  .dfx-list li { padding: 1px 0; }
+  .dfx-mark { font-weight: 700; margin-right: 4px; }
+  .dfx-mark.present { color: #15803d; } .dfx-mark.recommended { color: #0f766e; }
+  .dfx-mark.missing { color: #b91c1c; }
+  .dfx-note { color: #64748b; }
   .disclaimer { margin-top: 12px; padding: 7px 9px; background: #fff7ed;
                 border-left: 3px solid #f59e0b; border-radius: 3px;
                 font-size: 8px; color: #92400e; line-height: 1.5; }
@@ -162,6 +170,21 @@
         {% endfor %}
       </tbody>
     </table>
+  {% endif %}
+
+  {% if dfx_groups %}
+  <div class="section"><div class="bar"></div><div class="t">Design for Test &middot; Manufacturing &middot; Bring-up</div></div>
+  {% for g in dfx_groups %}
+  <div class="dfx-grp">
+    <div class="dfx-h">{{ g.label }}</div>
+    <ul class="dfx-list">
+      {% for it in g["items"] %}
+      <li><span class="dfx-mark {{ it.status }}">{{ it.marker }}</span> {{ it.item }}
+        {% if it.note %}<span class="dfx-note">— {{ it.note }}</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
   {% endif %}
 
   <div class="disclaimer">⚠ AI-generated draft. All constraints and placements require

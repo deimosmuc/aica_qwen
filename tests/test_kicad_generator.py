@@ -162,3 +162,13 @@ def test_special_characters_do_not_break_kicad_syntax(tmp_path):
     root = (out / "project.kicad_sch").read_text(encoding="utf-8")
     assert root.count("(") == root.count(")")
     assert '\\"HV\\"' in root  # the quotes were escaped
+
+
+def test_schematic_has_dfx_note(tmp_path):
+    from app.services.mock import mock_run
+    from app.generators.kicad import generate_scaffold
+    r = mock_run("usb can board")
+    generate_scaffold(r, "usb can board", tmp_path, "TestBoard")
+    sch = (tmp_path / "TestBoard.kicad_sch").read_text(encoding="utf-8")
+    assert "DFT / DFM / BRING-UP" in sch
+    assert "fiducial" in sch.lower()

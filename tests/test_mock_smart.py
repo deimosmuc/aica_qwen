@@ -22,3 +22,17 @@ def test_mock_pcb_has_choices_and_zones():
 def test_mock_rework_keeps_smart_fields():
     pcb = mock_run_rework("x").pcb_readiness
     assert pcb is not None and pcb.component_choices
+
+
+def test_mock_pcb_has_dfx_checklist():
+    pcb = mock_run("x").pcb_readiness
+    cats = {d.category for d in pcb.dfx_checklist}
+    assert {"testability", "dfm", "bringup"} <= cats
+    assert any(d.status == "present" for d in pcb.dfx_checklist)
+    assert any(d.status == "recommended" for d in pcb.dfx_checklist)
+
+
+def test_mock_rework_pcb_critic_flags_dfx():
+    r = mock_run_rework("x")
+    pcb_warn = [t for t in r.trace if t.agent == "PCB Critic" and t.status == "warning"]
+    assert pcb_warn, "expected a warning PCB Critic step in the rework mock"

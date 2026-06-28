@@ -172,6 +172,29 @@ def _derive_title(requirements_text: str) -> str:
     return title[:1].upper() + title[1:]
 
 
+_DFX_ORDER = ["testability", "dfm", "bringup"]
+_DFX_LABELS = {"testability": "Design for Test", "dfm": "Design for Manufacturing",
+               "bringup": "Bring-up"}
+_DFX_MARKERS = {"present": "✓", "recommended": "➜", "missing": "⚠"}
+
+
+def _dfx_groups(result: RunResponse) -> list[dict]:
+    """Group the PCB Design-for-X checklist by category for the report, in fixed order."""
+    pcb = result.pcb_readiness
+    if pcb is None or not pcb.dfx_checklist:
+        return []
+    groups = []
+    for key in _DFX_ORDER:
+        items = [
+            {"item": d.item, "status": d.status, "marker": _DFX_MARKERS.get(d.status, "➜"),
+             "note": d.note}
+            for d in pcb.dfx_checklist if d.category == key
+        ]
+        if items:
+            groups.append({"key": key, "label": _DFX_LABELS[key], "items": items})
+    return groups
+
+
 def _report_context(result: RunResponse, requirements_text: str, project_name: str,
                     title: str | None = None) -> dict:
     """Flatten a RunResponse into a flat, template-ready dict.
@@ -249,6 +272,7 @@ def _report_context(result: RunResponse, requirements_text: str, project_name: s
         "package_hints": package_hints,
         "component_choices": _candidate_cards(result),
         "legend": _legend_entries(result),
+        "dfx_groups": _dfx_groups(result),
         "via_drill_mm": via_drill_mm,
         "via_annular_ring_mm": via_annular_ring_mm,
         "logo_data_uri": _logo_data_uri(),

@@ -148,6 +148,15 @@ class Candidate(BaseModel):
     cons: list[str] = []
 
 
+class DfxItem(BaseModel):
+    """One Design-for-X provision: a testability / DFM / bring-up item."""
+
+    category: Literal["testability", "dfm", "bringup"]
+    item: str
+    status: Literal["present", "recommended", "missing"] = "recommended"
+    note: str = ""
+
+
 class ComponentChoice(BaseModel):
     """A decision-worthy component with a recommended part plus alternatives."""
 
@@ -176,6 +185,7 @@ class PcbReadiness(BaseModel):
     package_hints: list[PackageHint]
     component_choices: list[ComponentChoice] = []
     floorplan_zones: list[FloorplanZone] = []
+    dfx_checklist: list[DfxItem] = []
 
 
 class PcbCritique(BaseModel):
@@ -325,7 +335,7 @@ class Comparison(BaseModel):
 
 # --- Stepwise pipeline (one agent at a time, human sign-off between steps) ----
 
-Stage = Literal["requirements", "architecture", "critique", "arbitration", "pcb_engineer"]
+Stage = Literal["requirements", "architecture", "critique", "arbitration", "pcb_engineer", "pcb_critic"]
 
 
 class StepRequest(BaseModel):
@@ -341,6 +351,7 @@ class StepRequest(BaseModel):
     architecture: Architecture | None = None
     critique: Critique | None = None
     arbitration: Arbitration | None = None
+    pcb_readiness: PcbReadiness | None = None
 
 
 class StepResponse(BaseModel):
@@ -354,6 +365,7 @@ class StepResponse(BaseModel):
     critique: Critique | None = None
     arbitration: Arbitration | None = None
     pcb_readiness: PcbReadiness | None = None
+    pcb_critique: PcbCritique | None = None
 
 
 # --- Preset Bench (cost + quality across presets) ----------------------------

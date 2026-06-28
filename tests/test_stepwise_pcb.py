@@ -104,3 +104,14 @@ def test_pcb_engineer_stepwise_mock_mode():
     assert isinstance(result, StepResponse)
     assert result.pcb_readiness is not None
     assert result.mode == "mock"
+
+
+def test_step_pcb_critic_mock_returns_critique():
+    from app.services.stepwise import run_stage
+    from app.models.schemas import StepRequest
+    from app.services.config import Settings
+    resp = run_stage(StepRequest(stage="pcb_critic", requirements_text="x"),
+                     Settings(qwen_api_key=""))
+    assert resp.stage == "pcb_critic"
+    assert resp.pcb_critique is not None
+    assert resp.trace_step.agent == "PCB Critic"

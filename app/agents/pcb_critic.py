@@ -26,6 +26,9 @@ Review for:
 - Layerstack vs. design complexity (RF on 2-layer is a risk)
 - Package hints: any component type from the architecture missing a hint?
 - Floorplan: obvious conflicts (e.g. RF and switching power supply adjacent)?
+- Design-for-X: review the dfx_checklist — missing test points on power rails / critical
+  nets, no SWD/JTAG debug access, no fiducials, no power/status indication, missing pin-1 /
+  polarity silkscreen. Put must-fix DFX gaps in missing_blocks, nice-to-have ones in warnings.
 
 Rules:
 - Only flag problems supported by the data in front of you.

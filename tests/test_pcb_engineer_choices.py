@@ -50,3 +50,27 @@ def test_missing_new_fields_default_empty():
     arb = Arbitration(approved_architecture=Architecture())
     pcb = PcbEngineerAgent().run(_StubClient(dict(_BASE)), Requirements(), Architecture(), arb)
     assert pcb.component_choices == [] and pcb.floorplan_zones == []
+
+
+def test_parses_dfx_checklist():
+    payload = dict(_BASE, dfx_checklist=[
+        {"category": "testability", "item": "SWD test points", "status": "recommended"},
+        {"category": "dfm", "item": "3 fiducials", "status": "present", "note": "corners"},
+        {"category": "bringup", "item": "PWR + STATUS LED", "status": "present"},
+    ])
+    arb = Arbitration(approved_architecture=Architecture())
+    pcb = PcbEngineerAgent().run(_StubClient(payload), Requirements(), Architecture(), arb)
+    cats = [d.category for d in pcb.dfx_checklist]
+    assert cats == ["testability", "dfm", "bringup"]
+    assert pcb.dfx_checklist[0].status == "recommended"
+
+
+def test_prompt_requests_dfx():
+    low = SYSTEM_PROMPT.lower()
+    assert "dfx_checklist" in low and "fiducial" in low and "test point" in low
+
+
+def test_missing_dfx_defaults_empty():
+    arb = Arbitration(approved_architecture=Architecture())
+    pcb = PcbEngineerAgent().run(_StubClient(dict(_BASE)), Requirements(), Architecture(), arb)
+    assert pcb.dfx_checklist == []
