@@ -537,7 +537,7 @@
                 <div style="flex:1;height:1px;background:var(--border)"></div>
               </div>
             </template>
-            <div :class="s.agent==='Design Critic' ? 'bubble-right' : 'bubble-left'">
+            <div :class="['Design Critic','PCB Critic'].includes(s.agent) ? 'bubble-right' : 'bubble-left'">
               <div class="bubble-avatar" :style="avatarColor(s.agent)"
                    x-text="s.agent.slice(0,3).toUpperCase()"></div>
               <div class="bubble-body">
@@ -692,7 +692,7 @@
                   <div style="flex:1;height:1px;background:var(--border)"></div>
                 </div>
               </template>
-              <div :class="s.agent==='Design Critic' ? 'bubble-right' : 'bubble-left'">
+              <div :class="['Design Critic','PCB Critic'].includes(s.agent) ? 'bubble-right' : 'bubble-left'">
                 <div class="bubble-avatar" :style="avatarColor(s.agent)"
                      x-text="s.agent.slice(0,3).toUpperCase()"></div>
                 <div class="bubble-body">
