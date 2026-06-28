@@ -131,6 +131,18 @@ def _mock_pcb() -> PcbReadiness:
                 Candidate(part="THVD1450", package="SOIC-8", score=4.0,
                           pros=["Cheaper, smaller"], cons=["Non-isolated"]),
             ]),
+            ComponentChoice(component_type="Environmental sensing", category="sensor", candidates=[
+                Candidate(part="Separate PM + CO₂ (SPS30 + SCD41)", package="2 modules",
+                          score=4.4, recommended=True,
+                          pros=["Placement freedom: PM sensor sits at the board edge for intake airflow, "
+                                "CO₂/RH in a thermally quiet, draught-free zone",
+                                "Each sensor lands where it works best — one location can't be both"],
+                          cons=["Two parts: higher BOM and extra footprint"]),
+                Candidate(part="All-in-one (SEN66)", package="single module", score=4.0,
+                          pros=["One footprint, lower BOM", "Extra measurands (VOC/NOx)"],
+                          cons=["A single spot can't be both edge-airflow and thermally quiet — "
+                                "placement forces a compromise on either PM or CO₂ accuracy"]),
+            ]),
         ],
         floorplan_zones=[
             FloorplanZone(label="Power Entry", category="power", blocks=["Power"],

@@ -355,6 +355,8 @@ def _floorplan_svg(result: RunResponse) -> str:
 
     parts = [
         f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">',
+        '<defs><marker id="vent" markerWidth="9" markerHeight="9" refX="7" refY="3" '
+        'orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#0e7490"/></marker></defs>',
         f'<rect x="{_FP_PAD / 2}" y="{_FP_PAD / 2}" width="{width - _FP_PAD}" '
         f'height="{height - _FP_PAD}" rx="8" fill="none" stroke="#10b981" '
         f'stroke-width="1.5" stroke-dasharray="6,3"/>',
@@ -374,30 +376,28 @@ def _floorplan_svg(result: RunResponse) -> str:
         used.add(cell)
         zone_pos[z.label] = cell
 
-    # Keep-out lines first (under the rects).
+    # Thermal keep-out: fence the heat-sensitive sensor zone(s) — those that
+    # declare a separation — with an enclosing dashed boundary (far clearer than a
+    # diagonal between centres). Drawn under the rects so the fence hugs the zone.
+    bx0, by0 = _FP_PAD / 2, _FP_PAD / 2
+    bx1, by1 = width - _FP_PAD / 2, height - _FP_PAD / 2
+    fenced: list = []  # zones that got a keep-out fence → candidates for an airflow arrow
     for z in zones:
-        if not z.separation or z.label not in zone_pos:
+        if z.category != "sensor" or not z.separation or z.label not in zone_pos:
             continue
-        c1 = zone_pos[z.label]
-        x1, y1 = _fp_cell_xy(*c1)
-        cx1, cy1 = x1 + _FP_ZW / 2, y1 + _FP_ZH / 2
-        for tgt in z.separation:
-            tlabel = next(
-                (zz.label for zz in zones if zz.label == tgt or zz.category == tgt), None
-            )
-            if tlabel is None or tlabel not in zone_pos:
-                continue
-            x2, y2 = _fp_cell_xy(*zone_pos[tlabel])
-            cx2, cy2 = x2 + _FP_ZW / 2, y2 + _FP_ZH / 2
-            mx, my = (cx1 + cx2) / 2, (cy1 + cy2) / 2
-            parts.append(
-                f'<line x1="{cx1:.0f}" y1="{cy1:.0f}" x2="{cx2:.0f}" y2="{cy2:.0f}" '
-                f'stroke="#fca5a5" stroke-width="1.4" stroke-dasharray="4,3"/>'
-            )
-            parts.append(
-                f'<text x="{mx:.0f}" y="{my - 4:.0f}" text-anchor="middle" '
-                f'font-family="sans-serif" font-size="9" fill="#dc2626">keep-out</text>'
-            )
+        x, y = _fp_cell_xy(*zone_pos[z.label])
+        m = 6.0
+        parts.append(
+            f'<rect x="{x - m:.0f}" y="{y - m:.0f}" width="{_FP_ZW + 2 * m:.0f}" '
+            f'height="{_FP_ZH + 2 * m:.0f}" rx="10" fill="none" stroke="#dc2626" '
+            f'stroke-width="1.4" stroke-dasharray="5,3"/>'
+        )
+        parts.append(
+            f'<text x="{x + _FP_ZW / 2:.0f}" y="{y + _FP_ZH + m + 11:.0f}" '
+            f'text-anchor="middle" font-family="sans-serif" font-size="9" '
+            f'fill="#dc2626">thermal keep-out</text>'
+        )
+        fenced.append((z, x, y))
 
     # Zone rects + wrapped labels, coloured by category.
     for z in zones:
@@ -411,6 +411,36 @@ def _floorplan_svg(result: RunResponse) -> str:
         parts.append(
             f'<text text-anchor="middle" font-family="sans-serif" font-size="12" '
             f'fill="{s["text"]}" font-weight="600">{spans}</text>'
+        )
+
+    # One airflow arrow + "vent clearance" toward the nearest board edge for any
+    # fenced sensor placed at an edge (e.g. a PM sensor that needs intake airflow).
+    _EDGE = {"edge", "top", "bottom", "left", "right", "corner"}
+    for z, x, y in fenced:
+        if z.placement not in _EDGE:
+            continue
+        cx, cy = x + _FP_ZW / 2, y + _FP_ZH / 2
+        edge = min(
+            {"top": cy - by0, "bottom": by1 - cy, "left": cx - bx0, "right": bx1 - cx}.items(),
+            key=lambda kv: kv[1],
+        )[0]
+        # Start at the zone edge facing the board boundary and vent just past it,
+        # so the arrow never crosses the zone label.
+        if edge == "top":
+            arrow, lx, ly, anchor = (cx, y, cx, by0 - 6), cx + 12, (y + by0) / 2, "start"
+        elif edge == "bottom":
+            arrow, lx, ly, anchor = (cx, y + _FP_ZH, cx, by1 + 6), cx + 12, (y + _FP_ZH + by1) / 2, "start"
+        elif edge == "left":
+            arrow, lx, ly, anchor = (x, cy, bx0 - 6, cy), (x + bx0) / 2, cy - 5, "middle"
+        else:
+            arrow, lx, ly, anchor = (x + _FP_ZW, cy, bx1 + 6, cy), (x + _FP_ZW + bx1) / 2, cy - 5, "middle"
+        parts.append(
+            f'<line x1="{arrow[0]:.0f}" y1="{arrow[1]:.0f}" x2="{arrow[2]:.0f}" '
+            f'y2="{arrow[3]:.0f}" stroke="#0e7490" stroke-width="1.6" marker-end="url(#vent)"/>'
+        )
+        parts.append(
+            f'<text x="{lx:.0f}" y="{ly:.0f}" text-anchor="{anchor}" '
+            f'font-family="sans-serif" font-size="9" fill="#0e7490">vent clearance</text>'
         )
 
     parts.append("</svg>")

@@ -74,7 +74,10 @@ Output a JSON object with exactly these keys:
   interface/peripheral fit, integrated radios, compute/memory, then size/price/
   availability; sensor: measurands/accuracy; power: efficiency/thermal). The
   package MUST be correct for the part (a WROOM module is a castellated PCB module,
-  not a QFN).
+  not a QFN). When sensors have conflicting PLACEMENT needs (e.g. one needs board-
+  edge airflow, another a thermally quiet draught-free zone), make that physical
+  trade-off explicit in the pros/cons — separate parts gain placement freedom, an
+  all-in-one forces a single-location compromise.
 - "floorplan_zones": array of {"label": str, "category": one of the block
   categories, "blocks": array of block names, "placement": one of "edge"|"center"|
   "corner"|"top"|"bottom"|"left"|"right", "separation": array of zone labels/
