@@ -71,3 +71,24 @@ def test_kicad_image_element_is_balanced_and_embeds_data():
     assert "(image" in el and "(data" in el
     assert '(uuid "u-1")' in el
     assert "(at 148.5 42.0)" in el
+
+
+def test_transparent_bg_neutralises_background_rect():
+    svg = ('<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">'
+           '<rect x="0" y="0" width="10" height="10" fill="#ffffff"/>'
+           '<rect x="1" y="1" width="3" height="3" fill="#E6F1FB"/></svg>')
+    out = de.transparent_bg(svg)
+    assert 'fill="none"' in out            # background neutralised
+    assert '#E6F1FB' in out                # category box untouched
+    assert out.count('fill="none"') == 1   # only the first (background) rect
+
+
+def test_transparent_bg_handles_f8fafc_and_no_bg():
+    assert 'fill="none"' in de.transparent_bg('<svg><rect fill="#f8fafc"/></svg>')
+    nobg = '<svg><rect fill="#E6F1FB"/></svg>'
+    assert de.transparent_bg(nobg) == nobg  # nothing to strip
+
+
+def test_svg_to_png_transparent_returns_png():
+    png = de.svg_to_png(_SVG, transparent=True)
+    assert png is not None and png[:8] == b"\x89PNG\r\n\x1a\n"

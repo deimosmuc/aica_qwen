@@ -110,14 +110,14 @@ def test_root_embeds_block_diagram_image(tmp_path):
     assert "(data" in root
 
 
-def test_root_draws_colour_coded_connections(tmp_path):
+def test_root_omits_inter_block_connection_lines(tmp_path):
     result = _result()
     out = generate_scaffold(result, REQ_TEXT, tmp_path / "proj")
     root = (out / "project.kicad_sch").read_text(encoding="utf-8")
-    # mock architecture has power connections → amber polylines, plus a legend.
-    assert "(polyline" in root
-    assert "217 119 6 1" in root  # the 'power' connection colour
-    assert "Power" in root        # legend label
+    # The embedded block-diagram bitmap already shows the connections, so the root
+    # sheet draws bare sub-sheet rectangles — no connection polylines, no colour legend.
+    assert "(polyline" not in root
+    assert "217 119 6 1" not in root  # the 'power' connection colour must be gone
 
 
 def test_client_svg_is_embedded_instead_of_fallback(tmp_path):

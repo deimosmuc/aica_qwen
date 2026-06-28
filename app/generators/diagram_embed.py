@@ -14,6 +14,7 @@ independently testable.
 from __future__ import annotations
 
 import base64
+import re
 
 # A PNG embedded at this DPI, displayed in KiCad with scale 1.0, renders at
 # (pixels / DPI * 25.4) mm. We render at a fixed DPI so the on-sheet size is a
@@ -22,19 +23,37 @@ _RENDER_DPI = 150
 _PX_PER_MM = _RENDER_DPI / 25.4
 
 
-def svg_to_png(svg: str, dpi: int = _RENDER_DPI) -> bytes | None:
-    """Rasterise an SVG string to PNG bytes. Best-effort: ``None`` on any failure."""
+def svg_to_png(svg: str, dpi: int = _RENDER_DPI, transparent: bool = False) -> bytes | None:
+    """Rasterise an SVG string to PNG bytes. Best-effort: ``None`` on any failure.
+
+    ``transparent`` renders with an alpha channel so any unpainted canvas stays
+    see-through (pair with ``transparent_bg`` to drop the SVG's background rect, so
+    the KiCad sheet colour shows through instead of a white box)."""
     try:
         import fitz  # PyMuPDF, already a project dependency
 
         doc = fitz.open(stream=svg.encode("utf-8"), filetype="svg")
         try:
-            pix = doc[0].get_pixmap(dpi=dpi)
+            pix = doc[0].get_pixmap(dpi=dpi, alpha=transparent)
             return pix.tobytes("png")
         finally:
             doc.close()
     except Exception:
         return None
+
+
+# Background-rect fills used by our SVG diagram generators (client export + Python
+# fallback). Neutralising them lets the embedded KiCad bitmap be "freigestellt".
+_BG_FILL_RE = re.compile(r'(<rect\b[^>]*?)fill="#(?:ffffff|fff|f8fafc)"', re.IGNORECASE)
+
+
+def transparent_bg(svg: str) -> str:
+    """Drop the leading full-canvas background rect's fill so the canvas is unpainted.
+
+    Replaces the first background-coloured rect's ``fill`` with ``none`` (category
+    boxes use their own colours, so they are untouched). Returns the SVG unchanged
+    when no background rect is found."""
+    return _BG_FILL_RE.sub(r'\1fill="none"', svg, count=1)
 
 
 def png_pixel_size(png: bytes) -> tuple[int, int] | None:
