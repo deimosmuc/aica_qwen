@@ -239,3 +239,5 @@ def test_generated_project_opens_and_no_structural_erc_errors(tmp_path):
     structural = [v for v in viol if v.get("severity") == "error"
                   and v.get("type") not in _EXPECTED_SCAFFOLD_ERC]
     assert structural == [], structural
+    offgrid = [v for v in viol if v.get("type") == "endpoint_off_grid"]
+    assert offgrid == [], offgrid
