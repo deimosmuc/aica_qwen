@@ -108,12 +108,12 @@ def power_sheet(rails: list[str], project_name: str, root_uuid: str,
     for n, m in enumerate(mapped):
         ref = f"#PWR{n + 1:02d}"
         at_y = _snap(y0 + n * dy)
-        sym_uuid = _det_uuid(project_name, f"pwr-sym:{n}")
-        pin_uuid = _det_uuid(project_name, f"pwr-pin:{n}")
+        sym_uuid = _det_uuid(project_name, f"pwr-sym:{block_uuid}:{n}")
+        pin_uuid = _det_uuid(project_name, f"pwr-pin:{block_uuid}:{n}")
         parts.append(_instance(m, x0, at_y, ref, sym_uuid, pin_uuid,
                                project_name, root_uuid, block_uuid))
         if m.lib_id == "power:PWR_FLAG":
-            lbl_uuid = _det_uuid(project_name, f"pwr-lbl:{n}")
+            lbl_uuid = _det_uuid(project_name, f"pwr-lbl:{block_uuid}:{n}")
             parts.append(_global_label(m.label, _snap(x0 + 6.35), at_y, lbl_uuid))
     return PowerSheetBody(lib_symbols=lib, instances="\n".join(parts))
 

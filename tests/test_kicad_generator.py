@@ -180,6 +180,7 @@ def test_power_sheet_has_real_power_symbols(tmp_path):
     assert '(lib_id "power:' in power
     assert '(symbol "power:GND"' in power
     assert '(lib_id "power:+5V")' in power
+    assert '(lib_id "power:+3V3")' in power
     assert '(lib_id "power:GND")' in power
 
 

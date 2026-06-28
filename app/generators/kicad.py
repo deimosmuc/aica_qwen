@@ -356,12 +356,12 @@ def generate_scaffold(
 
     # --- Per-block subsheets --------------------------------------------------
     sheet_tpl = env.get_template("sheet.kicad_sch.j2")
-    power_tpl = env.get_template("power_sheet.kicad_sch.j2")
     power_block_names = {b.name for b in architecture.blocks if b.category == "power"}
     for s in sheets:
         is_power = (s["raw_name"] in power_block_names
                     or s["fname"].lower().startswith("power"))
         if is_power and architecture.power:
+            power_tpl = env.get_template("power_sheet.kicad_sch.j2")
             body = kicad_power.power_sheet(
                 list(architecture.power), project_name, root_uuid, s["block_uuid"])
             sheet_sch = power_tpl.render(
