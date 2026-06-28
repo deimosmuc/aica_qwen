@@ -374,6 +374,19 @@ def _fp_cell_xy(col: int, row: int) -> tuple[float, float]:
     return _FP_PAD + col * (_FP_ZW + _FP_GAP), _FP_PAD + row * (_FP_ZH + _FP_GAP)
 
 
+def _fp_annotation(text: str, x: float, y: float, color: str, anchor: str = "middle") -> str:
+    """A floorplan hint label on an opaque pill so it stays legible over the board
+    outline / keep-out lines (the bare small text was hard to read)."""
+    w = len(text) * 6.0 + 10
+    rx = x - w / 2 if anchor == "middle" else (x - 4 if anchor == "start" else x - w + 4)
+    return (
+        f'<rect x="{rx:.0f}" y="{y - 10:.0f}" width="{w:.0f}" height="15" rx="4" '
+        f'fill="#ffffff" fill-opacity="0.9" stroke="{color}" stroke-width="0.6"/>'
+        f'<text x="{x:.0f}" y="{y + 1:.0f}" text-anchor="{anchor}" font-family="sans-serif" '
+        f'font-size="11" font-weight="600" fill="{color}">{text}</text>'
+    )
+
+
 def _floorplan_svg(result: RunResponse) -> str:
     """Intelligent floorplan from the PCB Engineer's placement zones.
 
@@ -432,11 +445,8 @@ def _floorplan_svg(result: RunResponse) -> str:
             f'height="{_FP_ZH + 2 * m:.0f}" rx="10" fill="none" stroke="#dc2626" '
             f'stroke-width="1.4" stroke-dasharray="5,3"/>'
         )
-        parts.append(
-            f'<text x="{x + _FP_ZW / 2:.0f}" y="{y + _FP_ZH + m + 13:.0f}" '
-            f'text-anchor="middle" font-family="sans-serif" font-size="10" '
-            f'fill="#dc2626">thermal keep-out</text>'
-        )
+        parts.append(_fp_annotation(
+            "thermal keep-out", x + _FP_ZW / 2, y + _FP_ZH + m + 14, "#dc2626"))
         fenced.append((z, x, y))
 
     # Zone rects + wrapped labels, coloured by category.
@@ -478,10 +488,7 @@ def _floorplan_svg(result: RunResponse) -> str:
             f'<line x1="{arrow[0]:.0f}" y1="{arrow[1]:.0f}" x2="{arrow[2]:.0f}" '
             f'y2="{arrow[3]:.0f}" stroke="#0e7490" stroke-width="1.6" marker-end="url(#vent)"/>'
         )
-        parts.append(
-            f'<text x="{lx:.0f}" y="{ly:.0f}" text-anchor="{anchor}" '
-            f'font-family="sans-serif" font-size="10" fill="#0e7490">vent clearance</text>'
-        )
+        parts.append(_fp_annotation("vent clearance", lx, ly, "#0e7490", anchor))
 
     parts.append("</svg>")
     return "".join(parts)
