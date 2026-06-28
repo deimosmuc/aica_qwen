@@ -22,6 +22,7 @@ class RunRequest(BaseModel):
         default=None, description="Optional Qwen model override; ignored unless allow-listed."
     )
     profile: str | None = Field(default=None, description="Named run profile; overrides `model` when set.")
+    persona: str | None = Field(default=None, description="Audience persona (professional|student|maker); re-tones output.")
 
 
 # --- Requirements Agent ------------------------------------------------------
@@ -273,6 +274,7 @@ class GenerateRequest(BaseModel):
         default=None, description="Optional user-chosen project name; used as the PDF "
         "report title. Blank falls back to a title auto-derived from the request.",
     )
+    persona: str | None = Field(default=None, description="Audience persona for the report label.")
 
 
 class GenerateResponse(BaseModel):
@@ -352,6 +354,7 @@ class StepRequest(BaseModel):
     critique: Critique | None = None
     arbitration: Arbitration | None = None
     pcb_readiness: PcbReadiness | None = None
+    persona: str | None = None
 
 
 class StepResponse(BaseModel):

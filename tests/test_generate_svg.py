@@ -23,7 +23,7 @@ def test_generate_accepts_valid_client_svg(monkeypatch):
     seen = {}
     import app.api.routes as r
 
-    def fake_pdf(result, text, name, architecture_svg=None, title=None):
+    def fake_pdf(result, text, name, architecture_svg=None, title=None, persona=None):
         seen["svg"] = architecture_svg
         return b"%PDF-1.4 fake"
 
@@ -38,7 +38,7 @@ def test_generate_ignores_malformed_svg(monkeypatch):
     seen = {}
     import app.api.routes as r
 
-    def fake_pdf(result, text, name, architecture_svg=None, title=None):
+    def fake_pdf(result, text, name, architecture_svg=None, title=None, persona=None):
         seen["svg"] = architecture_svg
         return b"%PDF-1.4 fake"
 
@@ -52,7 +52,7 @@ def test_generate_passes_project_name_as_report_title(monkeypatch):
     seen = {}
     import app.api.routes as r
 
-    def fake_pdf(result, text, name, architecture_svg=None, title=None):
+    def fake_pdf(result, text, name, architecture_svg=None, title=None, persona=None):
         seen["title"] = title
         return b"%PDF-1.4 fake"
 

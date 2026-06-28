@@ -41,6 +41,7 @@
   .rule-lead { font-size: 9px; color: #374151; margin: 1px 0 6px; line-height: 1.5; }
   .provenance { font-size: 8.5px; color: #0f766e; margin: 5px 0 0; }
   .provenance code { background: #f0fdfa; padding: 0 3px; border-radius: 2px; }
+  .meta-persona { font-size: 8.5px; color: #0f766e; margin: 2px 0 0; }
   .dfx-grp { margin: 4px 0 8px; }
   .dfx-h { font-size: 9px; font-weight: 700; color: #0f766e; margin-bottom: 2px; }
   .dfx-list { margin: 0; padding-left: 4px; list-style: none; font-size: 8.5px; }
@@ -88,6 +89,7 @@
   </div>
 
   <h1>{{ title }}</h1>
+  {% if persona_label %}<div class="meta-persona">Audience: {{ persona_label }}</div>{% endif %}
   <p class="desc">{{ description }}</p>
 
   <div class="stats">

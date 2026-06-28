@@ -35,6 +35,7 @@ from app.services.guard import ApiGuard
 from app.services.kicad_cli import KiCadCli, KiCadCliError
 from app.services.orchestrator import Orchestrator
 from app.services.packaging import ZIP_NAME, create_project_zip
+from app.services.persona import persona_instruction
 from app.services.profiles import profile_for
 from app.services.stepwise import run_stage
 from app.services.validation import validate_project
@@ -84,7 +85,8 @@ def run(req: RunRequest) -> RunResponse:
     """
     settings = get_settings()
     profile = profile_for(req.profile, req.model, settings)
-    return Orchestrator(settings, profile).run(req.requirements_text, req.guidance)
+    guidance = [persona_instruction(req.persona)] + req.guidance
+    return Orchestrator(settings, profile).run(req.requirements_text, guidance)
 
 
 @router.post("/generate", response_model=GenerateResponse)
@@ -121,7 +123,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     try:
         pdf_bytes = generate_report_pdf(
             req.result, req.requirements_text, _PROJECT_NAME,
-            architecture_svg=client_svg, title=req.project_name,
+            architecture_svg=client_svg, title=req.project_name, persona=req.persona,
         )
         (project_dir / _REPORT_NAME).write_bytes(pdf_bytes)
         report_url = f"/api/report/{project_id}"
@@ -206,6 +208,7 @@ def step(req: StepRequest) -> StepResponse:
     role = "pcb_critique" if req.stage == "pcb_critic" else req.stage
     settings = settings.model_copy(
         update={"qwen_model": profile.models.get(role, settings.qwen_model)})
+    req = req.model_copy(update={"guidance": [persona_instruction(req.persona)] + req.guidance})
     try:
         return run_stage(req, settings)
     except ValueError as e:

@@ -240,3 +240,18 @@ def test_report_template_renders_dfx_section():
     html = _jinja_env.get_template("report.html.j2").render(**ctx)
     assert "Design for Test" in html
     assert "fiducials" in html.lower()
+
+
+def test_report_context_persona_label():
+    ctx = _report_context(mock_run("x"), "A board", "project", persona="student")
+    assert ctx["persona_label"] == "Student"
+    ctx2 = _report_context(mock_run("x"), "A board", "project")
+    assert ctx2["persona_label"] == ""
+
+
+def test_report_template_renders_persona_label():
+    from app.generators.report import _jinja_env
+    ctx = _report_context(mock_run("x"), "A 24V board", "project", persona="maker")
+    ctx["architecture_svg"] = "<svg/>"; ctx["floorplan_svg"] = "<svg/>"
+    html = _jinja_env.get_template("report.html.j2").render(**ctx)
+    assert "Audience: Maker" in html

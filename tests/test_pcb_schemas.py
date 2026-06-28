@@ -107,3 +107,12 @@ def test_step_request_response_pcb_critic_fields():
     resp = StepResponse(stage="pcb_critic", mode="mock",
                         trace_step=TraceStep(agent="PCB Critic", role="Senior PCB Reviewer", summary="s"))
     assert resp.pcb_critique is None
+
+
+def test_persona_fields_default_none():
+    from app.models.schemas import RunRequest, StepRequest, GenerateRequest
+    from app.services.mock import mock_run
+    assert RunRequest(requirements_text="x").persona is None
+    assert StepRequest(stage="requirements", requirements_text="x").persona is None
+    assert GenerateRequest(requirements_text="x", result=mock_run("x")).persona is None
+    assert RunRequest(requirements_text="x", persona="student").persona == "student"
