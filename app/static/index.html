@@ -898,6 +898,48 @@
         revealedTrace() {
           return this.pipelineTrace().slice(0, this.playedSteps);
         },
+        railView() {
+          const STATIONS = [
+            { key: 'requirements', label: 'Requirements', agent: 'Requirements Agent', color: '#3b82f6' },
+            { key: 'architecture', label: 'Architect',    agent: 'System Architect',   color: '#8b5cf6' },
+            { key: 'critique',     label: 'Critic',        agent: 'Design Critic',      color: '#ef4444' },
+            { key: 'arbitration',  label: 'Arbitration',   agent: 'Arbitration',        color: '#f59e0b' },
+            { key: 'pcb_engineer', label: 'PCB Eng.',      agent: 'PCB Engineer',       color: '#0d9488' },
+          ];
+          const revealed = this.revealedTrace();
+          const total = this.pipelineTrace().length;
+          const settled = total > 0 && this.playedSteps >= total;
+          const last = revealed.length ? revealed[revealed.length - 1] : null;
+          const seen = new Set(revealed.map(s => s.agent));
+          // active station: step mode -> pending/loading stage; auto replay -> last revealed agent until settled
+          const pendingStage = this.pending ? this.pending.stage
+            : (this.stepBusy && this.stepIdx >= 0 ? this.STAGES[this.stepIdx] : null);
+          let activeKey = pendingStage;
+          if (!activeKey && last && !settled) {
+            const a = STATIONS.find(st => st.agent === last.agent);
+            activeKey = a ? a.key : null;
+          }
+          // rework beat (auto replay only): active step is a warning Critic or a round>1 Architect
+          let addressed = null, packetFrom = null, packetTo = null;
+          if (!pendingStage && last && !settled &&
+              ((last.agent === 'Design Critic' && last.status === 'warning') ||
+               (last.agent === 'System Architect' && last.round > 1))) {
+            addressed = 'System Architect';
+            packetFrom = 'critique';
+            packetTo = 'architecture';
+          }
+          const stations = STATIONS.map(st => {
+            let state = 'upcoming';
+            if (st.key === activeKey) state = 'active';
+            else if (seen.has(st.agent)) state = 'done';
+            return { key: st.key, label: st.label, color: st.color, state,
+                     addressed: st.agent === addressed };
+          });
+          const reached = stations.filter(s => s.state !== 'upcoming').length;
+          const fillPct = STATIONS.length > 1 ? Math.round((reached - 1) / (STATIONS.length - 1) * 100) : 0;
+          return { stations, fillPct: Math.max(0, fillPct), packetFrom, packetTo,
+                   active: this.isPlaying() || !!pendingStage };
+        },
         isPlaying() {
           return this.playedSteps < this.pipelineTrace().length;
         },
