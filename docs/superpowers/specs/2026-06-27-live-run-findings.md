@@ -26,7 +26,17 @@ step flow. **Reproduce in mock mode and fix** (ensure the Society always has a t
 source; populate bubbles from `acc.trace` live during stepping and from `result.trace`
 after).
 
-## F4 🟦 Overall UI is "bieder" (plain) — won't earn bonus points
+## F4 ✅ DONE — Agent Society "mission control" metro pipeline rail
+(2026-06-28, merge `6c4e8fb`.) A live animated metro rail atop the collaboration
+section: stations light in sequence with a forward progress glow, a Design→PCB phase
+divider and a LIVE chip; the Critic→Architect rework shows amber light-block packets
+flowing back + an amber back-glow on the addressed agent (PCB Critic→PCB Engineer
+lights the glow too). Driven by the existing trace via a unified reveal clock shared
+with the society chat (timed replay in auto-run, live in step mode). Frontend-only.
+Spec/plan: `2026-06-28-mission-control-metro-rail-{design,}.md`. Rework choreography
+needs the rework-enabled **Senior Review Team** profile. Original note below.
+
+
 The Agent-Society track rewards making the multi-agent collaboration come alive. The
 current UI is a flat dark panel; the Society tab (the literal hero of the track) is plain
 and currently buggy (F3). Direction to decide (see chat): turn the Agent Society into an
