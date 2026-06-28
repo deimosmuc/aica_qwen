@@ -452,7 +452,7 @@
             </div><!-- /single x-for root -->
           </template>
           <div x-show="!societyBubbles.length && !societyPlaying" class="society-empty">
-            Noch kein Run gestartet.
+            No run yet.
           </div>
           <div x-show="societyPlaying" class="society-typing">···</div>
         </div><!-- /tab:society (stepwise) -->
@@ -583,7 +583,7 @@
               </div><!-- /single x-for root -->
             </template>
             <div x-show="!societyBubbles.length && !societyPlaying" class="society-empty">
-              Noch kein Run — starte die Pipeline oben.
+              No run yet — start the pipeline above.
             </div>
             <div x-show="societyPlaying" class="society-typing">···</div>
           </div><!-- /tab:society -->
@@ -922,7 +922,7 @@
                   h += `<li>${cd.recommended ? "<b>" : ""}${esc(cd.part)}${cd.recommended ? "</b>" : ""}`
                      + ` <span class="muted">${esc(cd.package)}</span>`
                      + ` <span class="stars">${this.stars(cd.score)}</span>`
-                     + (cd.recommended ? ` <span class="rec-badge">Empfehlung</span>` : ``) + `</li>`;
+                     + (cd.recommended ? ` <span class="rec-badge">Recommended</span>` : ``) + `</li>`;
                 });
               h += `</ul>`;
             });
@@ -952,7 +952,7 @@
             const txt = a.text.trim();
             const parts = a.picked.slice();
             if (txt) parts.push(txt);
-            if (parts.length) out.push("GEKLÄRT: " + q.text + " → " + parts.join(", "));
+            if (parts.length) out.push("CLARIFIED: " + q.text + " → " + parts.join(", "));
           });
           return out;
         },
