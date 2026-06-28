@@ -13,6 +13,7 @@ from pathlib import Path
 
 _STANDARD = {"+5V", "+3V3", "+12V", "+24V", "+1V8", "+1V2", "+2V5",
              "GND", "GNDA", "GNDD", "VCC", "VDD", "PWR_FLAG"}
+# Keys MUST already be in _canon() form (UPPER-case, no whitespace) or the lookup is dead.
 _ALIASES = {"+3.3V": "+3V3", "+3.3": "+3V3", "GROUND": "GND", "VSS": "GND",
             "VDC": "VCC"}
 
@@ -97,6 +98,9 @@ def power_sheet(rails: list[str], project_name: str, root_uuid: str,
     frags = _load_fragments()
     mapped = [map_rail(r) for r in rails]
     used = {m.lib_id for m in mapped}
+    missing = used - set(frags)
+    if missing:
+        raise KeyError(f"kicad_power: lib_ids not in vendored file: {missing}")
     lib = "\n".join(frags[lib_id] for lib_id in frags if lib_id in used)
 
     parts: list[str] = []

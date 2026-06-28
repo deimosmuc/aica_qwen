@@ -5,6 +5,8 @@ def test_known_rails_map_to_standard_symbols():
     assert map_rail("+5V").lib_id == "power:+5V"
     assert map_rail("+3V3").lib_id == "power:+3V3"
     assert map_rail("GND").lib_id == "power:GND"
+    assert map_rail("GNDA").lib_id == "power:GNDA"
+    assert map_rail("GNDD").lib_id == "power:GNDD"
 
 
 def test_rail_normalisation():
