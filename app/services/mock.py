@@ -17,6 +17,7 @@ from app.models.schemas import (
     Connection,
     ConstraintSet,
     Critique,
+    DfxItem,
     FloorplanZone,
     NetClass,
     PackageHint,
@@ -153,6 +154,18 @@ def _mock_pcb() -> PcbReadiness:
                           placement="right"),
             FloorplanZone(label="Sensor Front-End", category="sensor", blocks=["Sensor IO"],
                           placement="top", separation=["Power Entry"]),
+        ],
+        dfx_checklist=[
+            DfxItem(category="bringup", item="PWR + STATUS LEDs", status="present",
+                    note="Power-good and heartbeat indication for bring-up."),
+            DfxItem(category="testability", item="SWD/JTAG debug header", status="present"),
+            DfxItem(category="testability", item="Test points on +3V3, +5V, VIN_24V, GND",
+                    status="recommended", note="Probe access for power-up checks."),
+            DfxItem(category="dfm", item="3 fiducials (board corners)", status="recommended"),
+            DfxItem(category="dfm", item="Pin-1 / polarity silkscreen on all ICs and connectors",
+                    status="recommended"),
+            DfxItem(category="bringup", item="Series-resistor option on first power rail",
+                    status="recommended", note="Current-limit for first power-on."),
         ],
     )
 
