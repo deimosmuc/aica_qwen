@@ -36,17 +36,25 @@ from app.services.guard import GuardBlocked
 from app.services.mock import mock_run
 from app.services.qwen_client import QwenClient, QwenError
 
-_STAGE_ORDER = ["requirements", "architecture", "critique", "arbitration", "pcb_engineer"]
+_STAGE_ORDER = ["requirements", "architecture", "critique", "arbitration", "pcb_engineer", "pcb_critic"]
 
 
 def _mock_step(stage: str, notice: str | None = None) -> StepResponse:
     """Return the example-data slice for a stage (Mock Mode or live fallback)."""
     mock = mock_run("")
-    trace_step = mock.trace[_STAGE_ORDER.index(stage)]
+    idx = _STAGE_ORDER.index(stage)
+    trace_step = mock.trace[idx] if idx < len(mock.trace) else TraceStep(
+        agent="PCB Critic", role="Senior PCB Reviewer", status="ok",
+        summary="Reviewed PCB readiness; no blocking issues.")
     resp = StepResponse(stage=stage, mode="mock", trace_step=trace_step, notice=notice)
-    # pcb_engineer stage maps to pcb_readiness on RunResponse
-    field = "pcb_readiness" if stage == "pcb_engineer" else stage
-    setattr(resp, field, getattr(mock, field))
+    if stage == "pcb_critic":
+        # mock_run has no top-level pcb_critique; provide a representative one.
+        resp.pcb_critique = PcbCritique(
+            warnings=["Consider adding test points on the primary power rail."])
+    else:
+        # pcb_engineer stage maps to pcb_readiness on RunResponse; others share the name.
+        field = "pcb_readiness" if stage == "pcb_engineer" else stage
+        setattr(resp, field, getattr(mock, field))
     return resp
 
 
@@ -150,6 +158,23 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
                 ms,
             )
             return StepResponse(stage=req.stage, mode="qwen", trace_step=step, pcb_readiness=pcb)
+
+        if req.stage == "pcb_critic":
+            if req.pcb_readiness is None:
+                raise ValueError("The pcb_critic stage needs the approved pcb_readiness.")
+            t = perf_counter()
+            crit: PcbCritique = PcbCriticAgent().run(
+                client, req.requirements, req.pcb_readiness, req.guidance
+            )
+            ms = int((perf_counter() - t) * 1000)
+            step = _trace(
+                PcbCriticAgent,
+                "warning" if crit.missing_blocks else "ok",
+                f"Reviewed PCB readiness: {len(crit.missing_blocks)} must-fix, "
+                f"{len(crit.warnings)} warnings.",
+                ms,
+            )
+            return StepResponse(stage=req.stage, mode="qwen", trace_step=step, pcb_critique=crit)
 
         raise ValueError(f"Unknown stage: {req.stage}")  # pragma: no cover - guarded by schema
 
