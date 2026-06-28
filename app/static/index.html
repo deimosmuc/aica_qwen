@@ -203,10 +203,10 @@
     .rail-pkt.p1 { animation: rl-flow 2.2s linear infinite; }
     .rail-pkt.p2 { animation: rl-flow 2.2s linear infinite .7s; }
     .rail-pkt.p3 { animation: rl-flow 2.2s linear infinite 1.4s; }
-    @keyframes rl-flow { 0%   { left: 50%; opacity: 0; transform: scale(.6) }
+    @keyframes rl-flow { 0%   { left: var(--s); opacity: 0; transform: scale(.6) }
                          12%  { opacity: 1; transform: scale(1) }
-                         88%  { left: 30%; opacity: 1; transform: scale(1) }
-                         100% { left: 28.5%; opacity: 0; transform: scale(.6) } }
+                         88%  { left: var(--e); opacity: 1; transform: scale(1) }
+                         100% { left: var(--e); opacity: 0; transform: scale(.6) } }
     .rail-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px;
                    font-size: 11px; color: var(--muted); }
     .rail-legend i { display: inline-block; width: 16px; height: 4px; border-radius: 2px;
@@ -346,9 +346,11 @@
           <div class="rail-cap"><span class="rail-live" x-show="railView().active"></span> Agent collaboration · <span x-text="railView().active ? 'LIVE' : 'done'"></span></div>
           <div class="rail-line">
             <div class="rail-track"><div class="rail-fill" :style="`width:${railView().fillPct}%`"></div></div>
-            <div class="rail-phase" style="left:81.5%"></div>
-            <template x-if="railView().packetFrom === 'critique'">
-              <div><div class="rail-pkt p1"></div><div class="rail-pkt p2"></div><div class="rail-pkt p3"></div></div>
+            <div class="rail-phase" style="left:67.6%"></div>
+            <template x-if="railView().packetFrom">
+              <div :style="`--s:${railView().packetStart}%; --e:${railView().packetEnd}%`">
+                <div class="rail-pkt p1"></div><div class="rail-pkt p2"></div><div class="rail-pkt p3"></div>
+              </div>
             </template>
             <div class="rail-stns">
               <template x-for="st in railView().stations" :key="st.key">
@@ -545,7 +547,7 @@
             <div class="rail-cap"><span class="rail-live" x-show="railView().active"></span> Agent collaboration · <span x-text="railView().active ? 'LIVE' : 'done'"></span></div>
             <div class="rail-line">
               <div class="rail-track"><div class="rail-fill" :style="`width:${railView().fillPct}%`"></div></div>
-              <div class="rail-phase" style="left:81.5%"></div>
+              <div class="rail-phase" style="left:67.6%"></div>
               <template x-if="railView().packetFrom === 'critique'">
                 <div><div class="rail-pkt p1"></div><div class="rail-pkt p2"></div><div class="rail-pkt p3"></div></div>
               </template>
@@ -951,6 +953,7 @@
             { key: 'critique',     label: 'Critic',        agent: 'Design Critic',      color: '#ef4444' },
             { key: 'arbitration',  label: 'Arbitration',   agent: 'Arbitration',        color: '#f59e0b' },
             { key: 'pcb_engineer', label: 'PCB Eng.',      agent: 'PCB Engineer',       color: '#0d9488' },
+            { key: 'pcb_critic',   label: 'PCB Critic',   agent: 'PCB Critic',         color: '#ef4444' },
           ];
           const revealed = this.revealedTrace();
           const total = this.pipelineTrace().length;
@@ -973,8 +976,7 @@
               addressed = 'System Architect'; packetFrom = 'critique'; packetTo = 'architecture';
             } else if ((last.agent === 'PCB Critic' && last.status === 'warning') ||
                        (last.agent === 'PCB Engineer' && last.round > 1)) {
-              // PCB Critic is not a rail station -> addressed glow only, no packets
-              addressed = 'PCB Engineer';
+              addressed = 'PCB Engineer'; packetFrom = 'pcb_critic'; packetTo = 'pcb_engineer';
             }
           }
           const stations = STATIONS.map(st => {
@@ -985,8 +987,16 @@
                      addressed: st.agent === addressed };
           });
           const reached = stations.filter(s => s.state !== 'upcoming').length;
-          const fillPct = STATIONS.length > 1 ? Math.round((reached - 1) / (STATIONS.length - 1) * 100) : 0;
+          const N = STATIONS.length;
+          const fillPct = N > 1 ? Math.round((reached - 1) / (N - 1) * 100) : 0;
+          // station centre as a % of the rail width (track spans 6%..94%)
+          const pct = key => {
+            const i = STATIONS.findIndex(s => s.key === key);
+            return N > 1 ? Math.round((6 + 88 * i / (N - 1)) * 10) / 10 : 50;
+          };
           return { stations, fillPct: Math.max(0, fillPct), packetFrom, packetTo,
+                   packetStart: packetFrom ? pct(packetFrom) : null,
+                   packetEnd: packetTo ? pct(packetTo) : null,
                    active: this.isPlaying() || !!pendingStage };
         },
         isPlaying() {
