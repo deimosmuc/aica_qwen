@@ -221,3 +221,22 @@ def test_generate_report_pdf_returns_pdf_bytes():
     assert isinstance(pdf, bytes)
     assert pdf.startswith(b"%PDF-")
     assert len(pdf) > 1000
+
+
+def test_report_context_groups_dfx():
+    ctx = _report_context(mock_run("x"), "A board", "project")
+    groups = ctx["dfx_groups"]
+    keys = [g["key"] for g in groups]
+    assert keys == ["testability", "dfm", "bringup"]
+    for g in groups:
+        for it in g["items"]:
+            assert it["marker"] in ("✓", "➜", "⚠")
+
+
+def test_report_template_renders_dfx_section():
+    from app.generators.report import _jinja_env
+    ctx = _report_context(mock_run("x"), "A 24V board", "project")
+    ctx["architecture_svg"] = "<svg/>"; ctx["floorplan_svg"] = "<svg/>"
+    html = _jinja_env.get_template("report.html.j2").render(**ctx)
+    assert "Design for Test" in html
+    assert "fiducials" in html.lower()
