@@ -234,7 +234,10 @@ def generate_scaffold(
     # Rasterise the same architecture diagram the report uses and embed it as a
     # native KiCad bitmap above the sheet hierarchy. If rasterising is unavailable
     # the image is simply omitted and the grid sits at its normal position.
-    diagram_png = de.svg_to_png(architecture_svg or _architecture_svg(result))
+    # Embed the block diagram with a transparent background so the KiCad sheet
+    # colour shows through (no white box clashing with the paper).
+    diagram_png = de.svg_to_png(
+        de.transparent_bg(architecture_svg or _architecture_svg(result)), transparent=True)
     diagram_image = ""
     grid_y0 = _GRID_Y0
     title_y = 20.0
@@ -278,40 +281,13 @@ def generate_scaffold(
             }
         )
 
-    # --- Inter-block connections (colour-coded graphic polylines) -------------
-    by_name = {s["raw_name"]: s for s in sheets}
+    # Inter-block connection polylines and their colour legend are intentionally
+    # omitted on the root sheet: the embedded block-diagram bitmap already shows the
+    # blocks and their typed connections, so drawing them again between the bare
+    # sub-sheet rectangles is redundant clutter.
     connections: list[dict] = []
-    for i, conn in enumerate(architecture.connections):
-        s, t = by_name.get(conn.source), by_name.get(conn.target)
-        if not s or not t or s is t:
-            continue
-        r, g, b = _CONN_COLOR.get(conn.type, _CONN_COLOR["data"])
-        connections.append(
-            {
-                "pts": _route(s, t),
-                "color": f"{r} {g} {b} 1",
-                "uuid": _det_uuid(project_name, f"conn:{i}"),
-            }
-        )
-
-    # --- Legend + notes (right gutter) ----------------------------------------
-    present = [c.type for c in architecture.connections
-               if c.source in by_name and c.target in by_name]
     legend: list[dict] = []
     lx, ly = 240.0, 22.0
-    for j, t in enumerate(ty for ty in _CONN_ORDER if ty in present):
-        y = ly + j * 6.0
-        r, g, b = _CONN_COLOR[t]
-        legend.append(
-            {
-                "x1": lx, "y1": y, "x2": lx + 7, "y2": y,
-                "color": f"{r} {g} {b} 1",
-                "uuid": _det_uuid(project_name, f"legend:{t}"),
-                "label": _esc(_CONN_LABEL[t]),
-                "label_x": lx + 9, "label_y": round(y + 0.6, 2),
-                "label_uuid": _det_uuid(project_name, f"legendtext:{t}"),
-            }
-        )
 
     note_lines = ["NOTES — not production-ready"]
     note_lines += ["- " + _esc(_trunc(a, 40)) for a in arbitration.accepted_assumptions[:3]]
