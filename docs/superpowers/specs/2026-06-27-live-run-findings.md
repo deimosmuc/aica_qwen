@@ -87,7 +87,15 @@ own small task.
   diagram until then).
 - **F1 (project-name title)** — Part A done (auto-derived title, commit on `main`);
   Part B (editable field) still a small standalone feature.
-- **F7** newly found while triaging F2 — step mode missing the PCB stage.
+- **F7 ✅ DONE** (2026-06-28, branch `fix/step-pcb-stage-and-impedance-gui`) — the
+  frontend `STAGES` now includes `pcb_engineer` (+ `STAGE_META`), the approved
+  arbitration is threaded into the step request, and `approveStep()` maps the
+  `pcb_engineer` stage to the `pcb_readiness` field. Step mode now walks all 5 stages.
+  Bundled the **impedance-GUI gap**: the web UI rendered `pcb_readiness` nowhere
+  (only PDF + KiCad did). A shared `pcbReadinessHtml()` renderer (net-class table
+  **incl. Impedance column**, constraints, candidate cards, floorplan zones) now feeds
+  both the step pending block and a new "PCB-Readiness pack" panel in the auto-run
+  result view. Browser-verified in mock mode (USB 90 Ω diff / RS485 120 Ω diff visible).
 
 ---
 _Add new findings below as they come up during the live run._
