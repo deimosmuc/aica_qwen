@@ -45,6 +45,11 @@
     button.primary { background: var(--accent); border-color: var(--accent); color: #06101f; }
     button.approve { background: var(--ok); border-color: var(--ok); color: #06101f; }
     button:disabled { opacity: .5; cursor: not-allowed; }
+    .secondary-actions { margin-top: 10px; align-items: center; }
+    .secondary-actions .actions-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-right: 2px; }
+    .btn-ghost { background: transparent; border-color: var(--line); color: var(--muted); font-weight: 600; padding: 7px 14px; font-size: 13px; }
+    .btn-ghost:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
+    .guard-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
     .trace { display: grid; gap: 10px; }
     .step { display: flex; gap: 14px; align-items: flex-start; padding: 14px;
       background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
@@ -225,7 +230,8 @@
       <h1>🛠️ AI Circuit Architect</h1>
       <div class="sub">Multi-agent hardware architecture assistant for KiCad</div>
     </div>
-    <div class="guard" x-show="guard" title="API spend guard">
+    <div class="guard" x-show="guard" title="API spend guard — live Qwen spend vs the session cap">
+      <span class="guard-label">API budget</span>
       <span>💰</span>
       <span x-text="'$' + (guard ? guard.spent_usd.toFixed(4) : '0') + ' / $' + (guard ? guard.budget_usd.toFixed(2) : '0')"></span>
       <span class="guard-bar"><span class="guard-fill" :style="`width:${guard ? Math.min(100, 100*guard.spent_usd/guard.budget_usd) : 0}%`"></span></span>
@@ -239,21 +245,16 @@
     <section class="panel">
       <h2>1 · Describe your hardware</h2>
       <textarea x-model="input" placeholder="e.g. A 24V industrial sensor board with an STM32, USB-C for configuration and an RS485 fieldbus interface."></textarea>
-      <div class="row">
+      <div class="row primary-actions">
         <button class="primary" @click="run()" :disabled="loading || stepBusy || !input.trim()"
           x-text="loading ? 'Agents working…' : (auto ? 'Run agents' : 'Run agents (step by step)')"></button>
-        <button @click="compareRun()" :disabled="comparing || !input.trim()"
-          x-text="comparing ? 'Comparing…' : 'Compare: fair (same model)'"></button>
-        <button @click="compareRun({ single_model: 'qwen-max' })" :disabled="comparing || !input.trim()"
-          :title="'Multi-agent @ qwen-plus vs single-agent @ qwen-max'"
-          x-text="comparing ? 'Comparing…' : '🏆 Architecture beats tier'"></button>
-        <button @click="benchRun()" :disabled="benching || !input.trim()"
-          :title="'Run the curated preset trio and compare cost + quality'"
-          x-text="benching ? 'Benching…' : '📊 Preset Bench'"></button>
         <button @click="loadExample()" :disabled="loading || comparing">Load example</button>
         <label class="model-pick">Profile:
           <select x-model="selectedProfile" :disabled="loading || stepBusy || comparing">
-            <template x-for="p in PROFILES" :key="p"><option :value="p" x-text="p"></option></template>
+            <option value="Uniform qwen-plus">Uniform qwen-plus</option>
+            <option value="Uniform qwen-max">Uniform qwen-max</option>
+            <option value="Budget Turbo">Budget Turbo</option>
+            <option value="Senior Review Team">Senior Review Team</option>
           </select>
         </label>
         <label class="model-pick">Audience:
@@ -261,8 +262,19 @@
             <template x-for="p in PERSONAS" :key="p[0]"><option :value="p[0]" x-text="p[1]"></option></template>
           </select>
         </label>
+        <label class="auto-toggle"><input type="checkbox" x-model="auto" /> Auto mode</label>
       </div>
-      <label class="auto-toggle"><input type="checkbox" x-model="auto" /> Auto mode (run all steps at once)</label>
+      <div class="row secondary-actions">
+        <span class="actions-label">Compare &amp; benchmark</span>
+        <button class="btn-ghost" @click="compareRun()" :disabled="comparing || !input.trim()"
+          x-text="comparing ? 'Comparing…' : 'Compare: fair (same model)'"></button>
+        <button class="btn-ghost" @click="compareRun({ single_model: 'qwen-max' })" :disabled="comparing || !input.trim()"
+          :title="'Multi-agent @ qwen-plus vs single-agent @ qwen-max'"
+          x-text="comparing ? 'Comparing…' : '🏆 Architecture beats tier'"></button>
+        <button class="btn-ghost" @click="benchRun()" :disabled="benching || !input.trim()"
+          :title="'Run the curated preset trio and compare cost + quality'"
+          x-text="benching ? 'Benching…' : '📊 Preset Bench'"></button>
+      </div>
       <details class="constraints">
         <summary>Hard constraints / mandated parts (optional)</summary>
         <textarea x-model="constraintsText" rows="3"
@@ -551,7 +563,7 @@
       <div style="display:grid; gap:22px;">
         <!-- Guard notice (e.g. budget hit -> fell back to example data) -->
         <div class="notice" x-show="result.notice" x-text="'⚠️ ' + (result.notice || '')"></div>
-        <div class="status-chip" x-text="'Audience: ' + (PERSONAS.find(p => p[0]===persona)||[,'Professional'])[1]"></div>
+        <div class="status-chip" style="justify-self:start" x-text="'Audience: ' + (PERSONAS.find(p => p[0]===persona)||[,'Professional'])[1]"></div>
 
         <!-- Agent trace -->
         <section class="panel">
@@ -872,7 +884,7 @@
           pcb_engineer: { agent: 'PCB Engineer',     role: 'PCB Layout Preparation Engineer' },
           pcb_critic:   { agent: 'PCB Critic',       role: 'Senior PCB Reviewer' },
         },
-        PROFILES: ["Uniform qwen-plus", "Uniform qwen-max", "Budget Turbo", "Senior Review Team"], selectedProfile: "Uniform qwen-plus",
+        PROFILES: ["Uniform qwen-plus", "Uniform qwen-max", "Budget Turbo", "Senior Review Team"], selectedProfile: "Senior Review Team",
         PERSONAS: [["professional","Professional"],["student","Student"],["maker","Maker"]], persona: "professional",
         async init() {
           try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
