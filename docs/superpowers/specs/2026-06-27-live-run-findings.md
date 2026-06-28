@@ -85,8 +85,10 @@ own small task.
   candidate↔floorplan placement-conflict wording, and the client-side ELK colour/
   clustering/legend + SVG export in `index.html` (the report uses the Python fallback
   diagram until then).
-- **F1 (project-name title)** — Part A done (auto-derived title, commit on `main`);
-  Part B (editable field) still a small standalone feature.
+- **F1 ✅ DONE** — Part A (auto-derived title) + Part B (2026-06-28, branch
+  `fix/editable-project-title`): optional "Project name" field in the approval step
+  overrides the PDF report title; blank falls back to the auto-derived title. The KiCad
+  project filename stays `project`. Backend + endpoint tested; browser-verified.
 - **F7 ✅ DONE** (2026-06-28, branch `fix/step-pcb-stage-and-impedance-gui`) — the
   frontend `STAGES` now includes `pcb_engineer` (+ `STAGE_META`), the approved
   arbitration is threaded into the step request, and `approveStep()` maps the
