@@ -720,7 +720,7 @@
         benching: false, bench: null, benchError: "",
         auto: false, STAGES: ["requirements", "architecture", "critique", "arbitration"],
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
-        diagramSvg: null, constraintsText: "", correctText: "",
+        diagramSvg: null, exportSvg: null, constraintsText: "", correctText: "",
         clarifyAnswers: {},   // { [questionId]: { picked: [labels], text: "" } }
         societyBubbles: [], societyPlaying: false, societyTab: 'trace', societyScheduled: 0,
         // stage -> display agent/role, for greying-out upcoming pipeline steps (F2)
@@ -745,7 +745,7 @@
         _resetRun() {
           this.result = null; this.approved = false; this.gen = null; this.genError = "";
           this.acc = null; this.pending = null; this.stepIdx = -1;
-          this.stepStopped = false; this.stepNotice = ""; this.diagramSvg = null;
+          this.stepStopped = false; this.stepNotice = ""; this.diagramSvg = null; this.exportSvg = null;
           this.societyBubbles = []; this.societyPlaying = false; this.societyTab = 'trace'; this.societyScheduled = 0;
         },
         async runAuto() {
@@ -758,6 +758,7 @@
             this.result = await res.json();
             this.mode = this.result.mode;
             this.diagramSvg = await this.buildDiagram(this.result.architecture);
+            this.exportSvg = await this.buildExportDiagram(this.result.architecture);
             await this.fetchGuard();
           } finally { this.loading = false; }
         },
@@ -879,6 +880,7 @@
           };
           this.mode = this.acc.mode; this.acc = null; this.stepIdx = -1;
           this.buildDiagram(this.result.architecture).then(svg => { this.diagramSvg = svg; });
+          this.buildExportDiagram(this.result.architecture).then(svg => { this.exportSvg = svg; });
         },
         redoStep() {
           if (this.stepIdx < 0 || this.stepBusy) return;
@@ -893,7 +895,7 @@
           try {
             const res = await fetch("/api/generate", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ requirements_text: this.input, result: this.result })
+              body: JSON.stringify({ requirements_text: this.input, result: this.result, architecture_svg: this.exportSvg })
             });
             if (!res.ok) throw new Error("Generation failed (" + res.status + ")");
             this.gen = await res.json();
@@ -940,52 +942,124 @@
         _esc(t) { return String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); },
         _isHub(name) { return /mcu|micro|processor|cpu|controller/i.test(name); },
         _nodeW(name) { return Math.max(112, Math.min(210, name.length * 9 + 24)); },
+        // Light category palette — mirrors CATEGORY_STYLE in app/generators/report.py
+        // so the on-export diagram matches the PDF report and KiCad scaffold.
+        _catStyle: {
+          mcu:          { fill: "#E6F1FB", stroke: "#2563EB", text: "#0C447C" },
+          sensor:       { fill: "#F3E8FF", stroke: "#7C3AED", text: "#5B21B6" },
+          power:        { fill: "#FEF3C7", stroke: "#D97706", text: "#92400E" },
+          connectivity: { fill: "#D7EEF2", stroke: "#0E7490", text: "#0B4A57" },
+          debug:        { fill: "#F1F5F9", stroke: "#64748B", text: "#334155" },
+          status:       { fill: "#DCFCE7", stroke: "#16A34A", text: "#14532D" },
+          other:        { fill: "#F8FAFC", stroke: "#94A3B8", text: "#475569" },
+        },
+        _catLabel: { mcu: "MCU", sensor: "Sensor", power: "Power", connectivity: "Connectivity", debug: "Debug", status: "Status", other: "Other" },
+        _catOrder: ["mcu", "sensor", "power", "connectivity", "debug", "status", "other"],
+        _edgeColors: { power: "#D97706", data: "#2563EB", control: "#7C3AED", debug: "#64748B" },
+        // Serif-free stack for the exported diagram (WeasyPrint/KiCad render it
+        // standalone, with no page CSS to inherit a sans-serif from).
+        _exportFont: "Arial, Helvetica, sans-serif",
+        _catOf(b) { return (b && this._catStyle[b.category]) ? b.category : "other"; },
+
+        // Single source of layout: proper orthogonal routing + crossing
+        // minimisation via ELK. Returns { g, typeById } or null if ELK is absent.
+        async _elkLayout(blocks, conns, NH) {
+          if (typeof ELK === "undefined") return null;
+          try {
+            const elk = new ELK();
+            const typeById = {};
+            const graph = {
+              id: "root",
+              layoutOptions: {
+                "elk.algorithm": "layered", "elk.direction": "RIGHT",
+                "elk.edgeRouting": "ORTHOGONAL",
+                "elk.layered.spacing.nodeNodeBetweenLayers": "70",
+                "elk.spacing.nodeNode": "34",
+                "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
+                "elk.padding": "[top=14,left=14,bottom=14,right=14]"
+              },
+              children: blocks.map(b => ({ id: b.name, width: this._nodeW(b.name), height: NH })),
+              edges: conns.filter(c => c.source && c.target).map((c, i) => {
+                typeById["e" + i] = c.type;
+                return { id: "e" + i, sources: [c.source], targets: [c.target] };
+              })
+            };
+            const g = await elk.layout(graph);
+            return { g, typeById };
+          } catch (err) {
+            console.warn("ELK layout failed, using fallback:", err);
+            return null;
+          }
+        },
+
+        _edgePts(e) {
+          const sec = e.sections && e.sections[0];
+          if (!sec) return null;
+          return [sec.startPoint, ...(sec.bendPoints || []), sec.endPoint]
+            .map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+        },
+
+        // On-screen (dark) diagram.
         async buildDiagram(arch) {
           const blocks = (arch && arch.blocks) || [];
           const conns = (arch && arch.connections) || [];
           if (!blocks.length) return null;
           const NH = 48;
-          // Proper orthogonal routing + crossing minimisation via the ELK engine.
-          if (typeof ELK !== "undefined") {
-            try {
-              const elk = new ELK();
-              const typeById = {};
-              const graph = {
-                id: "root",
-                layoutOptions: {
-                  "elk.algorithm": "layered", "elk.direction": "RIGHT",
-                  "elk.edgeRouting": "ORTHOGONAL",
-                  "elk.layered.spacing.nodeNodeBetweenLayers": "70",
-                  "elk.spacing.nodeNode": "34",
-                  "elk.layered.crossingMinimization.strategy": "LAYER_SWEEP",
-                  "elk.padding": "[top=14,left=14,bottom=14,right=14]"
-                },
-                children: blocks.map(b => ({ id: b.name, width: this._nodeW(b.name), height: NH })),
-                edges: conns.filter(c => c.source && c.target).map((c, i) => {
-                  typeById["e" + i] = c.type;
-                  return { id: "e" + i, sources: [c.source], targets: [c.target] };
-                })
-              };
-              const g = await elk.layout(graph);
-              let s = `<svg viewBox="0 0 ${Math.ceil(g.width)} ${Math.ceil(g.height)}" preserveAspectRatio="xMidYMid meet" class="diagram-svg" xmlns="http://www.w3.org/2000/svg">`;
-              (g.edges || []).forEach(e => {
-                const sec = e.sections && e.sections[0];
-                if (!sec) return;
-                const pts = [sec.startPoint, ...(sec.bendPoints || []), sec.endPoint]
-                  .map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-                s += `<polyline points="${pts}" fill="none" stroke="${this._colors[typeById[e.id]] || "#8b98a5"}" stroke-width="2"/>`;
-              });
-              (g.children || []).forEach(n => {
-                const c = this._isHub(n.id);
-                s += `<rect x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}" width="${n.width}" height="${n.height}" rx="8" fill="${c ? "#21314d" : "#222c38"}" stroke="${c ? "#4f9cf9" : "#2d3a48"}" stroke-width="1.5"/>`;
-                s += `<text x="${(n.x + n.width / 2).toFixed(1)}" y="${(n.y + n.height / 2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="#e6edf3" font-size="13" font-weight="600">${this._esc(n.id)}</text>`;
-              });
-              return s + "</svg>";
-            } catch (err) {
-              console.warn("ELK layout failed, using fallback:", err);
-            }
-          }
-          return this._simpleDiagram(blocks, conns, NH);
+          const laid = await this._elkLayout(blocks, conns, NH);
+          if (!laid) return this._simpleDiagram(blocks, conns, NH);
+          const { g, typeById } = laid;
+          let s = `<svg viewBox="0 0 ${Math.ceil(g.width)} ${Math.ceil(g.height)}" preserveAspectRatio="xMidYMid meet" class="diagram-svg" xmlns="http://www.w3.org/2000/svg">`;
+          (g.edges || []).forEach(e => {
+            const pts = this._edgePts(e);
+            if (pts) s += `<polyline points="${pts}" fill="none" stroke="${this._colors[typeById[e.id]] || "#8b98a5"}" stroke-width="2"/>`;
+          });
+          (g.children || []).forEach(n => {
+            const c = this._isHub(n.id);
+            s += `<rect x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}" width="${n.width}" height="${n.height}" rx="8" fill="${c ? "#21314d" : "#222c38"}" stroke="${c ? "#4f9cf9" : "#2d3a48"}" stroke-width="1.5"/>`;
+            s += `<text x="${(n.x + n.width / 2).toFixed(1)}" y="${(n.y + n.height / 2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="#e6edf3" font-size="13" font-weight="600">${this._esc(n.id)}</text>`;
+          });
+          return s + "</svg>";
+        },
+
+        // Light, category-coloured ELK diagram for the PDF report + KiCad bitmap.
+        // Same layout as the screen diagram; returns null when ELK is unavailable
+        // so the server keeps its Python fallback.
+        async buildExportDiagram(arch) {
+          const blocks = (arch && arch.blocks) || [];
+          const conns = (arch && arch.connections) || [];
+          if (!blocks.length) return null;
+          const NH = 48;
+          const laid = await this._elkLayout(blocks, conns, NH);
+          if (!laid) return null;
+          const { g, typeById } = laid;
+          const catById = {};
+          blocks.forEach(b => { catById[b.name] = this._catOf(b); });
+
+          const present = this._catOrder.filter(c => blocks.some(b => this._catOf(b) === c));
+          const W = Math.ceil(g.width), diagH = Math.ceil(g.height);
+          const LH = present.length ? 30 : 0;
+          const H = diagH + LH;
+
+          let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">`;
+          s += `<rect x="0" y="0" width="${W}" height="${H}" fill="#ffffff"/>`;
+          (g.edges || []).forEach(e => {
+            const pts = this._edgePts(e);
+            if (pts) s += `<polyline points="${pts}" fill="none" stroke="${this._edgeColors[typeById[e.id]] || "#94A3B8"}" stroke-width="2"/>`;
+          });
+          (g.children || []).forEach(n => {
+            const st = this._catStyle[catById[n.id] || "other"];
+            s += `<rect x="${n.x.toFixed(1)}" y="${n.y.toFixed(1)}" width="${n.width}" height="${n.height}" rx="8" fill="${st.fill}" stroke="${st.stroke}" stroke-width="1.5"/>`;
+            s += `<text x="${(n.x + n.width / 2).toFixed(1)}" y="${(n.y + n.height / 2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-family="${this._exportFont}" fill="${st.text}" font-size="13" font-weight="600">${this._esc(n.id)}</text>`;
+          });
+          let lx = 6;
+          const ly = diagH + 9;
+          present.forEach(c => {
+            const st = this._catStyle[c], label = this._catLabel[c];
+            s += `<rect x="${lx}" y="${ly}" width="14" height="12" rx="3" fill="${st.fill}" stroke="${st.stroke}" stroke-width="1.2"/>`;
+            s += `<text x="${lx + 18}" y="${ly + 6}" dominant-baseline="central" font-family="${this._exportFont}" fill="#334155" font-size="11">${this._esc(label)}</text>`;
+            lx += 18 + label.length * 6.5 + 16;
+          });
+          return s + "</svg>";
         },
         _simpleDiagram(blocks, conns, NH) {
           // Fallback (ELK unavailable): hub in the centre, others on a ring, straight links.

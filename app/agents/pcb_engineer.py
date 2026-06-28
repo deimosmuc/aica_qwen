@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from app.agents.base import ChatClient, guidance_block
 from app.models.schemas import (
-    Arbitration, Architecture, ConstraintSet, NetClass,
-    PackageHint, PcbReadiness, Requirements,
+    Arbitration, Architecture, Candidate, ComponentChoice, ConstraintSet,
+    FloorplanZone, NetClass, PackageHint, PcbReadiness, Requirements,
 )
+from app.services.impedance import fill_impedance
 
 NAME = "PCB Engineer"
 ROLE = "PCB Layout Preparation Engineer"
@@ -59,11 +60,33 @@ Rules:
 Output a JSON object with exactly these keys:
 - "layerstack": string ("2-layer" | "4-layer" | "6-layer")
 - "layerstack_reason": string
-- "netclasses": array of {name, min_width_mm, clearance_mm, nets}
+- "netclasses": array of {name, min_width_mm, clearance_mm, nets, impedance}.
+  "impedance" is the target controlled impedance for high-speed interfaces
+  (USB "90 Ω diff", CAN/RS485 "120 Ω diff", Ethernet/HDMI/MIPI/LVDS "100 Ω diff",
+  PCIe "85 Ω diff"); use null for power/low-speed signal classes.
 - "constraints": {min_clearance_mm, min_track_width_mm, via_drill_mm, via_annular_ring_mm}
 - "floorplan_text": string (prose)
 - "floorplan_ascii": string (ASCII sketch, use \\n for newlines)
 - "package_hints": array of {component_type, recommended_package, reason}
+- "component_choices": array of objects for DECISION-WORTHY components only (MCU,
+  sensors, comms/bridge chips, central connectors/converters). Skip no-brainers
+  (passives, standard LEDs). Each: {"component_type": str, "category": one of the
+  block categories, "candidates": array of {"part": str, "package": str,
+  "score": number 0-5 one decimal, "recommended": bool (exactly one true),
+  "pros": array of str, "cons": array of str}}. Emit 1 recommended + up to 2
+  alternatives. Weigh TYPE-SPECIFIC criteria and name them in pros/cons (MCU:
+  interface/peripheral fit, integrated radios, compute/memory, then size/price/
+  availability; sensor: measurands/accuracy; power: efficiency/thermal). The
+  package MUST be correct for the part (a WROOM module is a castellated PCB module,
+  not a QFN). When sensors have conflicting PLACEMENT needs (e.g. one needs board-
+  edge airflow, another a thermally quiet draught-free zone), make that physical
+  trade-off explicit in the pros/cons — separate parts gain placement freedom, an
+  all-in-one forces a single-location compromise.
+- "floorplan_zones": array of {"label": str, "category": one of the block
+  categories, "blocks": array of block names, "placement": one of "edge"|"center"|
+  "corner"|"top"|"bottom"|"left"|"right", "separation": array of zone labels/
+  categories to keep apart}. Keep sensitive sensors away from power/heat; give
+  airflow sensors a board edge; thermally isolate temperature/CO2 sensors.
 """
 
 
@@ -93,9 +116,18 @@ class PcbEngineerAgent:
         return PcbReadiness(
             layerstack=data["layerstack"],
             layerstack_reason=data["layerstack_reason"],
-            netclasses=[NetClass(**nc) for nc in data.get("netclasses", [])],
+            netclasses=fill_impedance([NetClass(**nc) for nc in data.get("netclasses", [])]),
             constraints=ConstraintSet(**data["constraints"]),
             floorplan_text=data.get("floorplan_text", ""),
             floorplan_ascii=data.get("floorplan_ascii", ""),
             package_hints=[PackageHint(**ph) for ph in data.get("package_hints", [])],
+            component_choices=[
+                ComponentChoice(
+                    component_type=cc.get("component_type", ""),
+                    category=cc.get("category", "other"),
+                    candidates=[Candidate(**c) for c in cc.get("candidates", [])],
+                )
+                for cc in data.get("component_choices", [])
+            ],
+            floorplan_zones=[FloorplanZone(**fz) for fz in data.get("floorplan_zones", [])],
         )

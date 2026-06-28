@@ -28,8 +28,11 @@ Rules:
 - Where something is uncertain, add a short note instead of guessing.
 
 Output a JSON object with exactly these keys:
-- "blocks": array of objects, each {"name": str, "sheet": str, "purpose": str}
-  where "sheet" is a lowercase filename ending in ".kicad_sch"
+- "blocks": array of objects, each {"name": str, "sheet": str, "purpose": str,
+  "category": one of "mcu" | "sensor" | "power" | "connectivity" | "debug" | "status" | "other"}
+  where "sheet" is a lowercase filename ending in ".kicad_sch". Assign exactly one
+  category per block; protection (fuse, reverse-polarity, TVS/ESD) counts as "power";
+  use "other" only when nothing fits.
 - "interfaces": array of strings
 - "signals": array of strings (net names, e.g. "USB_D+", "RS485_A")
 - "power": array of strings (power-rail net names, e.g. "VIN_24V", "+3V3", "GND")

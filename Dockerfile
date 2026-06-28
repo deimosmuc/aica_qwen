@@ -11,6 +11,10 @@
 # image lean (~1.3 GB). Everything still degrades gracefully if kicad-cli were absent
 # (structural checks still run; preview shows "render unavailable"), same principle as
 # Mock Mode — the app always works.
+#
+# The PDF "Design Brief" is rendered with WeasyPrint, which needs Pango/Cairo/
+# gdk-pixbuf at runtime (the pip package alone is not enough). Without these libs
+# the report silently degrades to report_url:null, so they are installed here.
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -27,6 +31,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-pip \
         fonts-dejavu-core \
         fontconfig \
+        libpango-1.0-0 \
+        libpangocairo-1.0-0 \
+        libgdk-pixbuf-2.0-0 \
+        libcairo2 \
+        libffi8 \
+        shared-mime-info \
     && apt-get purge -y software-properties-common gpg-agent \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* \

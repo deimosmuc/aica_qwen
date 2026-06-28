@@ -77,6 +77,66 @@ def test_todo_and_assumptions_carry_arbitration_data(tmp_path):
         assert item in assumptions
 
 
+def test_root_has_filled_title_block(tmp_path):
+    out = generate_scaffold(_result(), REQ_TEXT, tmp_path / "proj", generated_date="2026-06-28")
+    root = (out / "project.kicad_sch").read_text(encoding="utf-8")
+    assert "(title_block" in root
+    assert '(company "AI Circuit Architect")' in root
+    assert '(rev "DRAFT")' in root
+    assert '(date "2026-06-28")' in root
+
+
+def test_date_omitted_keeps_output_deterministic_across_days(tmp_path):
+    # Without an explicit date the title block carries no date line, so the same
+    # plan always yields byte-identical files regardless of the wall clock.
+    out = generate_scaffold(_result(), REQ_TEXT, tmp_path / "proj")
+    root = (out / "project.kicad_sch").read_text(encoding="utf-8")
+    assert "(date " not in root
+
+
+def test_subsheets_carry_title_block(tmp_path):
+    out = generate_scaffold(_result(), REQ_TEXT, tmp_path / "proj")
+    for sheet in (out / "sheets").glob("*.kicad_sch"):
+        text = sheet.read_text(encoding="utf-8")
+        assert "(title_block" in text
+        assert '(company "AI Circuit Architect")' in text
+
+
+def test_root_embeds_block_diagram_image(tmp_path):
+    # PyMuPDF is a project dependency, so the bitmap embeds in this environment.
+    out = generate_scaffold(_result(), REQ_TEXT, tmp_path / "proj")
+    root = (out / "project.kicad_sch").read_text(encoding="utf-8")
+    assert "(image" in root
+    assert "(data" in root
+
+
+def test_root_draws_colour_coded_connections(tmp_path):
+    result = _result()
+    out = generate_scaffold(result, REQ_TEXT, tmp_path / "proj")
+    root = (out / "project.kicad_sch").read_text(encoding="utf-8")
+    # mock architecture has power connections → amber polylines, plus a legend.
+    assert "(polyline" in root
+    assert "217 119 6 1" in root  # the 'power' connection colour
+    assert "Power" in root        # legend label
+
+
+def test_client_svg_is_embedded_instead_of_fallback(tmp_path):
+    # A distinctive client SVG must change the embedded bitmap vs. the Python
+    # fallback diagram — i.e. the ELK export actually reaches the schematic.
+    client_svg = (
+        '<svg viewBox="0 0 300 120" xmlns="http://www.w3.org/2000/svg">'
+        '<rect x="0" y="0" width="300" height="120" fill="#ffffff"/>'
+        '<rect x="20" y="20" width="120" height="60" rx="8" fill="#E6F1FB" stroke="#2563EB"/>'
+        '<text x="80" y="55" text-anchor="middle">MCU</text></svg>'
+    )
+    a = generate_scaffold(_result(), REQ_TEXT, tmp_path / "a")
+    b = generate_scaffold(_result(), REQ_TEXT, tmp_path / "b", architecture_svg=client_svg)
+    root_a = (a / "project.kicad_sch").read_text(encoding="utf-8")
+    root_b = (b / "project.kicad_sch").read_text(encoding="utf-8")
+    assert "(image" in root_b and "(data" in root_b
+    assert root_a != root_b  # different diagram → different embedded PNG
+
+
 def test_output_is_deterministic(tmp_path):
     a = generate_scaffold(_result(), REQ_TEXT, tmp_path / "a")
     b = generate_scaffold(_result(), REQ_TEXT, tmp_path / "b")

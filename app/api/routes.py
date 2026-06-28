@@ -8,6 +8,7 @@ preview. No KiCad project is ever generated before approval.
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -42,6 +43,19 @@ router = APIRouter(prefix="/api", tags=["pipeline"])
 
 _PROJECT_NAME = "project"
 _REPORT_NAME = "AI_Circuit_Architect_Report.pdf"
+_MAX_CLIENT_SVG = 200_000
+
+
+def _safe_client_svg(svg: str | None) -> str | None:
+    """Accept a client-rendered architecture SVG only if it looks like an SVG and
+    is within a sane size cap; otherwise drop it so the report falls back to the
+    Python-rendered diagram."""
+    if not svg or not isinstance(svg, str):
+        return None
+    s = svg.strip()
+    if not s.startswith("<svg") or len(s) > _MAX_CLIENT_SVG:
+        return None
+    return s
 
 
 @router.get("/health")
@@ -85,7 +99,12 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     project_id = uuid.uuid4().hex[:8]
     project_dir = Path(settings.output_dir) / project_id
 
-    generate_scaffold(req.result, req.requirements_text, project_dir, _PROJECT_NAME)
+    client_svg = _safe_client_svg(req.architecture_svg)
+    generate_scaffold(
+        req.result, req.requirements_text, project_dir, _PROJECT_NAME,
+        generated_date=date.today().isoformat(),
+        architecture_svg=client_svg,
+    )
 
     kicad = KiCadCli(settings)
     validation = validate_project(project_dir, req.result, kicad, _PROJECT_NAME)
@@ -100,7 +119,10 @@ def generate(req: GenerateRequest) -> GenerateResponse:
 
     report_url: str | None = None
     try:
-        pdf_bytes = generate_report_pdf(req.result, req.requirements_text, _PROJECT_NAME)
+        pdf_bytes = generate_report_pdf(
+            req.result, req.requirements_text, _PROJECT_NAME,
+            architecture_svg=client_svg,
+        )
         (project_dir / _REPORT_NAME).write_bytes(pdf_bytes)
         report_url = f"/api/report/{project_id}"
     except Exception:

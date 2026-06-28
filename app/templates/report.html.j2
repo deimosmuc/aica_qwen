@@ -38,6 +38,9 @@
   table { width: 100%; border-collapse: collapse; font-size: 8.5px; }
   th { background: #f0fdfa; color: #0f766e; text-align: left; padding: 4px 6px; }
   td { padding: 4px 6px; border-bottom: 1px solid #f1f5f9; }
+  .rule-lead { font-size: 9px; color: #374151; margin: 1px 0 6px; line-height: 1.5; }
+  .provenance { font-size: 8.5px; color: #0f766e; margin: 5px 0 0; }
+  .provenance code { background: #f0fdfa; padding: 0 3px; border-radius: 2px; }
   .disclaimer { margin-top: 12px; padding: 7px 9px; background: #fff7ed;
                 border-left: 3px solid #f59e0b; border-radius: 3px;
                 font-size: 8px; color: #92400e; line-height: 1.5; }
@@ -45,6 +48,20 @@
             display: flex; justify-content: space-between; font-size: 7px;
             color: #94a3b8; }
   .page-break { page-break-before: always; }
+  .legend { margin: 4px 0 0; font-size: 8px; color: #475569; }
+  .legend .lg { margin-right: 10px; }
+  .legend .sw { display: inline-block; width: 8px; height: 8px; border: 1px solid;
+                border-radius: 2px; margin-right: 3px; vertical-align: middle; }
+  .cc { border: 1px solid #e2e8f0; border-radius: 5px; margin-bottom: 6px; padding: 5px 7px; }
+  .cc-h { font-size: 9px; font-weight: 700; color: #0f766e; margin-bottom: 3px; }
+  .cand { padding: 3px 0; border-top: 1px solid #f1f5f9; }
+  .cand.rec { background: #f0fdfa; }
+  .cand-top { font-size: 8.5px; }
+  .stars { color: #d97706; margin-left: 4px; letter-spacing: 1px; }
+  .badge { background: #0d9488; color: #fff; border-radius: 3px; padding: 0 4px;
+           font-size: 7px; margin-left: 4px; }
+  .pro { font-size: 8px; color: #15803d; }
+  .con { font-size: 8px; color: #b91c1c; }
 </style>
 </head>
 <body>
@@ -79,16 +96,40 @@
 
   <div class="section"><div class="bar"></div><div class="t">System Architecture</div></div>
   <div class="diagram">{{ architecture_svg|safe }}</div>
+  {% if legend and not diagram_has_legend %}
+  <div class="legend">
+    {% for e in legend %}<span class="lg"><span class="sw"
+      style="background:{{ e.fill }}; border-color:{{ e.stroke }}"></span>{{ e.label }}</span>{% endfor %}
+  </div>
+  {% endif %}
 
   <div class="page-break"></div>
 
+  <div class="section"><div class="bar"></div><div class="t">Design Rules &amp; Stackup</div></div>
+  <p class="rule-lead"><b>Recommended stackup: {{ layerstack }}.</b>{% if layerstack_reason %}
+    {{ layerstack_reason }}{% endif %}</p>
+  <table>
+    <thead><tr><th>Min clearance</th><th>Min track width</th><th>Via drill</th>
+      <th>Via annular ring</th></tr></thead>
+    <tbody>
+      <tr><td>{{ "%.2f"|format(min_clearance_mm) }} mm</td>
+          <td>{{ "%.2f"|format(min_track_width_mm) }} mm</td>
+          <td>{{ "%.2f"|format(via_drill_mm) }} mm</td>
+          <td>{{ "%.2f"|format(via_annular_ring_mm) }} mm</td></tr>
+    </tbody>
+  </table>
+  <p class="provenance">↳ Exported to <code>pcb_constraints.kicad_dru</code> — import directly
+    into KiCad → Board Setup → Design Rules.</p>
+
   <div class="section"><div class="bar"></div><div class="t">Net Class Constraints</div></div>
   <table>
-    <thead><tr><th>Class</th><th>Track (mm)</th><th>Clearance (mm)</th><th>Nets</th></tr></thead>
+    <thead><tr><th>Class</th><th>Track (mm)</th><th>Clearance (mm)</th>
+      <th>Impedance</th><th>Nets</th></tr></thead>
     <tbody>
       {% for nc in net_classes %}
       <tr><td>{{ nc.name }}</td><td>{{ "%.2f"|format(nc.min_width_mm) }}</td>
-          <td>{{ "%.2f"|format(nc.clearance_mm) }}</td><td>{{ nc.nets }}</td></tr>
+          <td>{{ "%.2f"|format(nc.clearance_mm) }}</td><td>{{ nc.impedance }}</td>
+          <td>{{ nc.nets }}</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -96,23 +137,38 @@
   <div class="section"><div class="bar"></div><div class="t">Floorplan Sketch</div></div>
   <div class="diagram">{{ floorplan_svg|safe }}</div>
 
-  <div class="section"><div class="bar"></div><div class="t">Package Hints</div></div>
-  <table>
-    <thead><tr><th>Component</th><th>Recommended Package</th></tr></thead>
-    <tbody>
-      {% for ph in package_hints %}
-      <tr><td>{{ ph.component_type }}</td><td>{{ ph.recommended_package }}</td></tr>
+  <div class="section"><div class="bar"></div><div class="t">Component Candidates</div></div>
+  {% if component_choices %}
+    {% for ch in component_choices %}
+    <div class="cc">
+      <div class="cc-h">{{ ch.component_type }}</div>
+      {% for c in ch.candidates %}
+      <div class="cand {% if c.recommended %}rec{% endif %}">
+        <div class="cand-top"><b>{{ c.part }}</b> · {{ c.package }}
+          <span class="stars">{{ c.stars }}</span>
+          {% if c.recommended %}<span class="badge">Recommended</span>{% endif %}</div>
+        {% if c.pros %}<div class="pro">+ {{ c.pros|join("; ") }}</div>{% endif %}
+        {% if c.cons %}<div class="con">– {{ c.cons|join("; ") }}</div>{% endif %}
+      </div>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
+    {% endfor %}
+  {% else %}
+    <table>
+      <thead><tr><th>Component</th><th>Recommended Package</th></tr></thead>
+      <tbody>
+        {% for ph in package_hints %}
+        <tr><td>{{ ph.component_type }}</td><td>{{ ph.recommended_package }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
 
   <div class="disclaimer">⚠ AI-generated draft. All constraints and placements require
     review and sign-off by a qualified PCB designer before manufacturing.</div>
 
   <div class="footer">
-    <div>Via drill {{ "%.2f"|format(via_drill_mm) }} mm · annular ring
-      {{ "%.2f"|format(via_annular_ring_mm) }} mm · constraints exported to
-      pcb_constraints.kicad_dru</div>
+    <div>AI-prepared draft · review and sign-off required before manufacturing</div>
     <div>AI Circuit Architect</div>
   </div>
 </body>

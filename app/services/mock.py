@@ -10,11 +10,14 @@ from app.models.schemas import (
     Arbitration,
     Architecture,
     Block,
+    Candidate,
     ClarifyOption,
     ClarifyingQuestion,
+    ComponentChoice,
     Connection,
     ConstraintSet,
     Critique,
+    FloorplanZone,
     NetClass,
     PackageHint,
     PcbReadiness,
@@ -22,6 +25,7 @@ from app.models.schemas import (
     RunResponse,
     TraceStep,
 )
+from app.services.impedance import fill_impedance
 
 
 def _mock_pcb() -> PcbReadiness:
@@ -33,7 +37,7 @@ def _mock_pcb() -> PcbReadiness:
             "signal integrity. A 4-layer stackup (Signal / GND / PWR / Signal) "
             "provides proper reference planes for both differential pairs."
         ),
-        netclasses=[
+        netclasses=fill_impedance([
             NetClass(
                 name="PWR",
                 min_width_mm=0.5,
@@ -58,7 +62,7 @@ def _mock_pcb() -> PcbReadiness:
                 clearance_mm=0.25,
                 nets=["RS485_A", "RS485_B"],
             ),
-        ],
+        ]),
         constraints=ConstraintSet(
             min_clearance_mm=0.2,
             min_track_width_mm=0.15,
@@ -112,6 +116,44 @@ def _mock_pcb() -> PcbReadiness:
                 reason="THT justified for high-current power connectors: superior mechanical retention",
             ),
         ],
+        component_choices=[
+            ComponentChoice(component_type="MCU", category="mcu", candidates=[
+                Candidate(part="STM32G0B1", package="LQFP-48", score=4.5, recommended=True,
+                          pros=["Enough UART/I²C for RS485 + sensors", "Mainstream, well-stocked"],
+                          cons=["No integrated radio"]),
+                Candidate(part="ESP32-C3", package="QFN-32", score=3.8,
+                          pros=["Integrated WiFi/BLE"],
+                          cons=["Radio unused here", "Tighter peripheral count"]),
+            ]),
+            ComponentChoice(component_type="RS485 transceiver", category="connectivity", candidates=[
+                Candidate(part="Isolated MAX14937", package="SOIC-16W", score=4.6, recommended=True,
+                          pros=["Galvanic isolation for a noisy fieldbus"],
+                          cons=["Higher BOM cost"]),
+                Candidate(part="THVD1450", package="SOIC-8", score=4.0,
+                          pros=["Cheaper, smaller"], cons=["Non-isolated"]),
+            ]),
+            ComponentChoice(component_type="Environmental sensing", category="sensor", candidates=[
+                Candidate(part="Separate PM + CO₂ (SPS30 + SCD41)", package="2 modules",
+                          score=4.4, recommended=True,
+                          pros=["Placement freedom: PM sensor sits at the board edge for intake airflow, "
+                                "CO₂/RH in a thermally quiet, draught-free zone",
+                                "Each sensor lands where it works best — one location can't be both"],
+                          cons=["Two parts: higher BOM and extra footprint"]),
+                Candidate(part="All-in-one (SEN66)", package="single module", score=4.0,
+                          pros=["One footprint, lower BOM", "Extra measurands (VOC/NOx)"],
+                          cons=["A single spot can't be both edge-airflow and thermally quiet — "
+                                "placement forces a compromise on either PM or CO₂ accuracy"]),
+            ]),
+        ],
+        floorplan_zones=[
+            FloorplanZone(label="Power Entry", category="power", blocks=["Power"],
+                          placement="left", separation=["Sensor Front-End"]),
+            FloorplanZone(label="MCU Core", category="mcu", blocks=["MCU"], placement="center"),
+            FloorplanZone(label="Fieldbus", category="connectivity", blocks=["RS485", "USB Service"],
+                          placement="right"),
+            FloorplanZone(label="Sensor Front-End", category="sensor", blocks=["Sensor IO"],
+                          placement="top", separation=["Power Entry"]),
+        ],
     )
 
 
@@ -164,12 +206,18 @@ def mock_run(requirements_text: str) -> RunResponse:
 
     architecture = Architecture(
         blocks=[
-            Block(name="Power", sheet="power.kicad_sch", purpose="24 V input, 5 V and 3V3 rails"),
-            Block(name="MCU", sheet="mcu.kicad_sch", purpose="STM32 core, clock, reset, decoupling"),
-            Block(name="USB Service", sheet="usb_service.kicad_sch", purpose="USB-C connector and ESD"),
-            Block(name="RS485", sheet="rs485.kicad_sch", purpose="RS485 transceiver and bus protection"),
-            Block(name="Sensor IO", sheet="sensor_io.kicad_sch", purpose="Sensor front-end placeholders"),
-            Block(name="Debug", sheet="debug.kicad_sch", purpose="SWD header and status LEDs"),
+            Block(name="Power", sheet="power.kicad_sch", purpose="24 V input, 5 V and 3V3 rails",
+                  category="power"),
+            Block(name="MCU", sheet="mcu.kicad_sch", purpose="STM32 core, clock, reset, decoupling",
+                  category="mcu"),
+            Block(name="USB Service", sheet="usb_service.kicad_sch", purpose="USB-C connector and ESD",
+                  category="connectivity"),
+            Block(name="RS485", sheet="rs485.kicad_sch", purpose="RS485 transceiver and bus protection",
+                  category="connectivity"),
+            Block(name="Sensor IO", sheet="sensor_io.kicad_sch", purpose="Sensor front-end placeholders",
+                  category="sensor"),
+            Block(name="Debug", sheet="debug.kicad_sch", purpose="SWD header and status LEDs",
+                  category="debug"),
         ],
         interfaces=["USB-C", "RS485", "SWD"],
         signals=["USB_D+", "USB_D-", "RS485_A", "RS485_B", "I2C_SCL", "I2C_SDA", "SWDIO", "SWCLK", "NRST"],

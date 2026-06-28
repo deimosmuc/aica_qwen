@@ -74,11 +74,19 @@ own small task.
   reconcile-based `playSociety()` that appends only not-yet-shown steps (live during
   stepping, across the acc→result hand-off, no duplicates on re-open). Browser-verified
   via real click path: bubbles 1→2→3→4 live, Design-Critic right-aligned with ↺ Rework.
-- **F1, F5, F6 → deferred to the "Smart Diagrams + Component Candidates" feature.** F5/F6
-  reference `FloorplanZone.separation`, airflow arrows and candidate cards that **do not
-  exist in code yet** — they are refinement notes for that unbuilt feature
-  (see `2026-06-27-smart-diagrams-and-component-candidates-design.md`), not bugs in
-  shipped code. F1 (project-name title) is a small standalone feature.
+- **F5, F6 → addressed at the data/render level by Smart Diagrams Phase 1**
+  (2026-06-28, branch `feat/smart-diagrams-phase1`, plan
+  `2026-06-28-smart-diagrams-candidates-phase1.md`). The PCB Engineer now emits
+  `floorplan_zones` (with `separation` keep-out intent) and `component_choices`
+  (recommended part + alternatives, pros/cons, star score); the report renders a
+  category-coloured clustered block diagram, candidate cards, a zone floorplan with
+  dashed keep-out lines, and a legend. **Still Phase 2 (visual polish, needs Robert's
+  eye):** F5's exact L-bracket keep-out fence + single airflow arrow, F6's explicit
+  candidate↔floorplan placement-conflict wording, and the client-side ELK colour/
+  clustering/legend + SVG export in `index.html` (the report uses the Python fallback
+  diagram until then).
+- **F1 (project-name title)** — Part A done (auto-derived title, commit on `main`);
+  Part B (editable field) still a small standalone feature.
 - **F7** newly found while triaging F2 — step mode missing the PCB stage.
 
 ---

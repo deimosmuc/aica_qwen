@@ -32,6 +32,99 @@ _PAD = 12
 _ASSETS_DIR = Path(__file__).resolve().parent.parent / "static" / "assets"
 _LOGO_PATH = _ASSETS_DIR / "logo.png"
 
+# Single source of truth for category colours (light theme). Mirrors the design
+# spec; shared by the block diagram, the floorplan and the legend.
+CATEGORY_STYLE = {
+    "mcu":          {"fill": "#E6F1FB", "stroke": "#2563EB", "text": "#0C447C"},
+    "sensor":       {"fill": "#F3E8FF", "stroke": "#7C3AED", "text": "#5B21B6"},
+    "power":        {"fill": "#FEF3C7", "stroke": "#D97706", "text": "#92400E"},
+    "connectivity": {"fill": "#D7EEF2", "stroke": "#0E7490", "text": "#0B4A57"},
+    "debug":        {"fill": "#F1F5F9", "stroke": "#64748B", "text": "#334155"},
+    "status":       {"fill": "#DCFCE7", "stroke": "#16A34A", "text": "#14532D"},
+    "other":        {"fill": "#F8FAFC", "stroke": "#94A3B8", "text": "#475569"},
+}
+_CATEGORY_LABELS = {
+    "mcu": "MCU", "sensor": "Sensor", "power": "Power", "connectivity": "Connectivity",
+    "debug": "Debug", "status": "Status", "other": "Other",
+}
+_CATEGORY_ORDER = ["mcu", "sensor", "power", "connectivity", "debug", "status", "other"]
+
+
+def _category_style(category: str) -> dict:
+    return CATEGORY_STYLE.get(category, CATEGORY_STYLE["other"])
+
+
+def _legend_entries(result: RunResponse) -> list[dict]:
+    """Category legend rows for the categories actually present in the design."""
+    present = {b.category for b in result.architecture.blocks}
+    out = []
+    for cat in _CATEGORY_ORDER:
+        if cat in present:
+            s = _category_style(cat)
+            out.append({"label": _CATEGORY_LABELS[cat], "fill": s["fill"], "stroke": s["stroke"]})
+    return out
+
+
+def _wrap_label(text: str, max_chars: int = 14) -> list[str]:
+    """Greedy word-wrap so a block label fits its box; never returns empty."""
+    words = text.split()
+    if not words:
+        return [text]
+    lines, cur = [], ""
+    for w in words:
+        cand = f"{cur} {w}".strip()
+        if len(cand) > max_chars and cur:
+            lines.append(cur)
+            cur = w
+        else:
+            cur = cand
+    if cur:
+        lines.append(cur)
+    # hard-split any single word still too long
+    out: list[str] = []
+    for ln in lines:
+        while len(ln) > max_chars:
+            out.append(ln[:max_chars])
+            ln = ln[max_chars:]
+        out.append(ln)
+    return out
+
+
+def _stars(score: float) -> str:
+    full = max(0, min(5, int(round(score))))
+    return "★" * full + "☆" * (5 - full)
+
+
+def _candidate_cards(result: RunResponse) -> list[dict]:
+    """Flatten component_choices into template-ready cards (recommended first)."""
+    pcb = result.pcb_readiness
+    if pcb is None:
+        return []
+    cards = []
+    for ch in pcb.component_choices:
+        cands = sorted(ch.candidates, key=lambda c: (not c.recommended, -c.score))
+        cards.append({
+            "component_type": ch.component_type,
+            "category": ch.category,
+            "candidates": [
+                {"part": c.part, "package": c.package, "score": round(c.score, 1),
+                 "stars": _stars(c.score), "recommended": c.recommended,
+                 "pros": c.pros, "cons": c.cons}
+                for c in cands
+            ],
+        })
+    return cards
+
+
+def _label_tspans(text: str, cx: float, cy: float, max_chars: int, line_h: int) -> str:
+    """Centred, word-wrapped <tspan> lines for an SVG box label."""
+    lines = _wrap_label(text, max_chars)
+    start_y = cy - (len(lines) - 1) * line_h / 2 + 4
+    return "".join(
+        f'<tspan x="{cx:.0f}" y="{start_y + k * line_h:.0f}">{escape(ln)}</tspan>'
+        for k, ln in enumerate(lines)
+    )
+
 
 def _logo_data_uri() -> str:
     """Return the bundled logo as a base64 PNG data URI, or "" if it is missing.
@@ -112,6 +205,7 @@ def _report_context(result: RunResponse, requirements_text: str, project_name: s
                 "min_width_mm": nc.min_width_mm,
                 "clearance_mm": nc.clearance_mm,
                 "nets": ", ".join(nc.nets),
+                "impedance": nc.impedance or "—",
             }
             for nc in pcb.netclasses
         ]
@@ -120,14 +214,18 @@ def _report_context(result: RunResponse, requirements_text: str, project_name: s
             for ph in pcb.package_hints
         ]
         layerstack = pcb.layerstack
+        layerstack_reason = pcb.layerstack_reason
         min_clearance_mm = pcb.constraints.min_clearance_mm
+        min_track_width_mm = pcb.constraints.min_track_width_mm
         via_drill_mm = pcb.constraints.via_drill_mm
         via_annular_ring_mm = pcb.constraints.via_annular_ring_mm
     else:
         net_classes = []
         package_hints = []
         layerstack = "—"
+        layerstack_reason = ""
         min_clearance_mm = 0.0
+        min_track_width_mm = 0.0
         via_drill_mm = 0.0
         via_annular_ring_mm = 0.0
 
@@ -137,12 +235,16 @@ def _report_context(result: RunResponse, requirements_text: str, project_name: s
         "project_name": project_name,
         "iso_date": date.today().isoformat(),
         "layerstack": layerstack,
+        "layerstack_reason": layerstack_reason,
         "net_class_count": len(net_classes),
         "min_clearance_mm": min_clearance_mm,
+        "min_track_width_mm": min_track_width_mm,
         "open_todo_count": len(result.arbitration.todo),
         "summary_bullets": bullets,
         "net_classes": net_classes,
         "package_hints": package_hints,
+        "component_choices": _candidate_cards(result),
+        "legend": _legend_entries(result),
         "via_drill_mm": via_drill_mm,
         "via_annular_ring_mm": via_annular_ring_mm,
         "logo_data_uri": _logo_data_uri(),
@@ -160,26 +262,32 @@ def _placeholder_svg(message: str) -> str:
 
 
 def _architecture_svg(result: RunResponse) -> str:
-    """Deterministic block-diagram SVG from architecture blocks + connections.
+    """Category-clustered block-diagram SVG (Python fallback for the report).
 
-    Blocks are laid out on a fixed grid (``_COLS`` per row). Connections are drawn
-    as straight lines between block centres; ``type == "power"`` renders dashed.
+    Blocks are grouped by functional category and laid out on a fixed grid.
+    Connections route as orthogonal polylines (no diagonals); ``type == "power"``
+    renders dashed. Boxes are coloured by category via ``CATEGORY_STYLE``.
     """
     blocks = result.architecture.blocks
     if not blocks:
         return _placeholder_svg("Architecture diagram unavailable")
 
-    # Assign each block a grid cell and remember its centre by name.
+    # Cluster: same-category blocks sit together; MCU first (lands centre-left).
+    def _cat_key(b):
+        return _CATEGORY_ORDER.index(b.category) if b.category in _CATEGORY_ORDER else len(_CATEGORY_ORDER)
+
+    ordered = sorted(blocks, key=_cat_key)
+
     centres: dict[str, tuple[float, float]] = {}
     cells = []
-    for i, block in enumerate(blocks):
+    for i, block in enumerate(ordered):
         row, col = divmod(i, _COLS)
         x = _PAD + col * (_BOX_W + _GAP_X)
         y = _PAD + row * (_BOX_H + _GAP_Y)
         centres[block.name] = (x + _BOX_W / 2, y + _BOX_H / 2)
-        cells.append((x, y, block.name))
+        cells.append((x, y, block))
 
-    rows = (len(blocks) + _COLS - 1) // _COLS
+    rows = (len(ordered) + _COLS - 1) // _COLS
     width = _PAD * 2 + _COLS * _BOX_W + (_COLS - 1) * _GAP_X
     height = _PAD * 2 + rows * _BOX_H + (rows - 1) * _GAP_Y
 
@@ -189,99 +297,224 @@ def _architecture_svg(result: RunResponse) -> str:
         'orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#94a3b8"/></marker></defs>',
     ]
 
-    # Connections first (so boxes paint over the line ends).
+    # Orthogonal edges first (so boxes paint over the line ends).
     for conn in result.architecture.connections:
         if conn.source not in centres or conn.target not in centres:
             continue
         x1, y1 = centres[conn.source]
         x2, y2 = centres[conn.target]
+        ymid = (y1 + y2) / 2
         dash = ' stroke-dasharray="6,3"' if conn.type == "power" else ""
+        pts = f"{x1:.0f},{y1:.0f} {x1:.0f},{ymid:.0f} {x2:.0f},{ymid:.0f} {x2:.0f},{y2:.0f}"
         parts.append(
-            f'<line x1="{x1:.0f}" y1="{y1:.0f}" x2="{x2:.0f}" y2="{y2:.0f}" '
-            f'stroke="#94a3b8" stroke-width="1.2"{dash} marker-end="url(#arr)"/>'
+            f'<polyline points="{pts}" fill="none" stroke="#94a3b8" '
+            f'stroke-width="1.2"{dash} marker-end="url(#arr)"/>'
         )
 
-    # Boxes + labels.
-    for x, y, name in cells:
+    # Boxes + wrapped labels, coloured by category.
+    for x, y, block in cells:
+        s = _category_style(block.category)
         parts.append(
             f'<rect x="{x}" y="{y}" width="{_BOX_W}" height="{_BOX_H}" rx="6" '
-            f'fill="#eff6ff" stroke="#93c5fd" stroke-width="1.2"/>'
+            f'fill="{s["fill"]}" stroke="{s["stroke"]}" stroke-width="1.2"/>'
         )
+        spans = _label_tspans(block.name, x + _BOX_W / 2, y + _BOX_H / 2, 16, 14)
         parts.append(
-            f'<text x="{x + _BOX_W / 2:.0f}" y="{y + _BOX_H / 2 + 4:.0f}" '
-            f'text-anchor="middle" font-family="sans-serif" font-size="13" '
-            f'fill="#1e40af" font-weight="600">{escape(name)}</text>'
+            f'<text text-anchor="middle" font-family="sans-serif" font-size="12" '
+            f'fill="{s["text"]}" font-weight="600">{spans}</text>'
         )
 
     parts.append("</svg>")
     return "".join(parts)
 
 
-def _floorplan_svg(result: RunResponse) -> str:
-    """Deterministic placement-zone sketch from architecture blocks.
+_FP_COLS = 3
+_FP_ROWS = 3
+_FP_ZW = 150
+_FP_ZH = 70
+_FP_GAP = 36   # generous inter-zone room so keep-out / airflow labels are legible
+_FP_PAD = 42   # board margin: a clear band for the vent arrow + side labels
+_PLACEMENT_CELL = {
+    "left": (0, 1), "right": (2, 1), "top": (1, 0), "bottom": (1, 2),
+    "center": (1, 1), "corner": (0, 0), "edge": (0, 0),
+}
 
-    Blocks are packed into a board outline on a fixed grid. The first column is
-    treated as the power/input edge; a dashed keepout line separates it from the
-    rest to hint at isolation. This is an illustrative sketch, not a real layout.
+
+def _fp_cell_xy(col: int, row: int) -> tuple[float, float]:
+    return _FP_PAD + col * (_FP_ZW + _FP_GAP), _FP_PAD + row * (_FP_ZH + _FP_GAP)
+
+
+def _floorplan_svg(result: RunResponse) -> str:
+    """Intelligent floorplan from the PCB Engineer's placement zones.
+
+    Each zone is a coloured rounded rect placed per its coarse ``placement``
+    keyword on a 3x3 board grid; ``separation`` draws a dashed keep-out line to
+    the zones it must stay apart from. Falls back to a category-clustered grid of
+    the architecture blocks when no zones are present (no blind 1:1 copy).
     """
+    pcb = result.pcb_readiness
+    zones = pcb.floorplan_zones if pcb else []
+    if not zones:
+        return _floorplan_fallback_svg(result)
+
+    # Assign each zone a grid cell, packing collisions to the next free cell.
+    used: set[tuple[int, int]] = set()
+    zone_pos: dict[str, tuple[int, int]] = {}
+    for z in zones:
+        cell = _PLACEMENT_CELL.get(z.placement, (1, 1))
+        if cell in used:
+            for idx in range(_FP_COLS * _FP_ROWS):
+                cand = (idx % _FP_COLS, idx // _FP_COLS)
+                if cand not in used:
+                    cell = cand
+                    break
+        used.add(cell)
+        zone_pos[z.label] = cell
+
+    # Size the board to the cells actually used — no empty trailing rows/columns.
+    cols = max((c for c, _ in used), default=0) + 1
+    rows = max((r for _, r in used), default=0) + 1
+    width = cols * _FP_ZW + (cols - 1) * _FP_GAP + _FP_PAD * 2
+    height = rows * _FP_ZH + (rows - 1) * _FP_GAP + _FP_PAD * 2
+
+    parts = [
+        f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">',
+        '<defs><marker id="vent" markerWidth="9" markerHeight="9" refX="7" refY="3" '
+        'orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#0e7490"/></marker></defs>',
+        f'<rect x="{_FP_PAD / 2}" y="{_FP_PAD / 2}" width="{width - _FP_PAD}" '
+        f'height="{height - _FP_PAD}" rx="8" fill="none" stroke="#10b981" '
+        f'stroke-width="1.5" stroke-dasharray="6,3"/>',
+    ]
+
+    # Thermal keep-out: fence the heat-sensitive sensor zone(s) — those that
+    # declare a separation — with an enclosing dashed boundary (far clearer than a
+    # diagonal between centres). Drawn under the rects so the fence hugs the zone.
+    bx0, by0 = _FP_PAD / 2, _FP_PAD / 2
+    bx1, by1 = width - _FP_PAD / 2, height - _FP_PAD / 2
+    fenced: list = []  # zones that got a keep-out fence → candidates for an airflow arrow
+    for z in zones:
+        if z.category != "sensor" or not z.separation or z.label not in zone_pos:
+            continue
+        x, y = _fp_cell_xy(*zone_pos[z.label])
+        m = 6.0
+        parts.append(
+            f'<rect x="{x - m:.0f}" y="{y - m:.0f}" width="{_FP_ZW + 2 * m:.0f}" '
+            f'height="{_FP_ZH + 2 * m:.0f}" rx="10" fill="none" stroke="#dc2626" '
+            f'stroke-width="1.4" stroke-dasharray="5,3"/>'
+        )
+        parts.append(
+            f'<text x="{x + _FP_ZW / 2:.0f}" y="{y + _FP_ZH + m + 13:.0f}" '
+            f'text-anchor="middle" font-family="sans-serif" font-size="10" '
+            f'fill="#dc2626">thermal keep-out</text>'
+        )
+        fenced.append((z, x, y))
+
+    # Zone rects + wrapped labels, coloured by category.
+    for z in zones:
+        x, y = _fp_cell_xy(*zone_pos[z.label])
+        s = _category_style(z.category)
+        parts.append(
+            f'<rect x="{x}" y="{y}" width="{_FP_ZW}" height="{_FP_ZH}" rx="8" '
+            f'fill="{s["fill"]}" stroke="{s["stroke"]}" stroke-width="1.4"/>'
+        )
+        spans = _label_tspans(z.label, x + _FP_ZW / 2, y + _FP_ZH / 2, 18, 15)
+        parts.append(
+            f'<text text-anchor="middle" font-family="sans-serif" font-size="12" '
+            f'fill="{s["text"]}" font-weight="600">{spans}</text>'
+        )
+
+    # One airflow arrow + "vent clearance" toward the nearest board edge for any
+    # fenced sensor placed at an edge (e.g. a PM sensor that needs intake airflow).
+    _EDGE = {"edge", "top", "bottom", "left", "right", "corner"}
+    for z, x, y in fenced:
+        if z.placement not in _EDGE:
+            continue
+        cx, cy = x + _FP_ZW / 2, y + _FP_ZH / 2
+        edge = min(
+            {"top": cy - by0, "bottom": by1 - cy, "left": cx - bx0, "right": bx1 - cx}.items(),
+            key=lambda kv: kv[1],
+        )[0]
+        # Start at the zone edge facing the board boundary and vent just past it,
+        # so the arrow never crosses the zone label.
+        if edge == "top":
+            arrow, lx, ly, anchor = (cx, y, cx, by0 - 6), cx + 12, (y + by0) / 2, "start"
+        elif edge == "bottom":
+            arrow, lx, ly, anchor = (cx, y + _FP_ZH, cx, by1 + 6), cx + 12, (y + _FP_ZH + by1) / 2, "start"
+        elif edge == "left":
+            arrow, lx, ly, anchor = (x, cy, bx0 - 6, cy), (x + bx0) / 2, cy - 5, "middle"
+        else:
+            arrow, lx, ly, anchor = (x + _FP_ZW, cy, bx1 + 6, cy), (x + _FP_ZW + bx1) / 2, cy - 5, "middle"
+        parts.append(
+            f'<line x1="{arrow[0]:.0f}" y1="{arrow[1]:.0f}" x2="{arrow[2]:.0f}" '
+            f'y2="{arrow[3]:.0f}" stroke="#0e7490" stroke-width="1.6" marker-end="url(#vent)"/>'
+        )
+        parts.append(
+            f'<text x="{lx:.0f}" y="{ly:.0f}" text-anchor="{anchor}" '
+            f'font-family="sans-serif" font-size="10" fill="#0e7490">vent clearance</text>'
+        )
+
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def _floorplan_fallback_svg(result: RunResponse) -> str:
+    """Category-clustered grid of the architecture blocks (no zones available)."""
     blocks = result.architecture.blocks
     if not blocks:
         return _placeholder_svg("Floorplan sketch unavailable")
 
+    def _cat_key(b):
+        return _CATEGORY_ORDER.index(b.category) if b.category in _CATEGORY_ORDER else len(_CATEGORY_ORDER)
+
+    ordered = sorted(blocks, key=_cat_key)
     cols = 3
-    zone_w = 150
-    zone_h = 70
-    gap = 16
-    pad = 20
-    rows = (len(blocks) + cols - 1) // cols
-    inner_w = cols * zone_w + (cols - 1) * gap
-    inner_h = rows * zone_h + (rows - 1) * gap
-    width = inner_w + pad * 2
-    height = inner_h + pad * 2
+    rows = (len(ordered) + cols - 1) // cols
+    width = cols * _FP_ZW + (cols - 1) * _FP_GAP + _FP_PAD * 2
+    height = rows * _FP_ZH + (rows - 1) * _FP_GAP + _FP_PAD * 2
 
     parts = [
         f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">',
-        # Board outline.
-        f'<rect x="{pad / 2}" y="{pad / 2}" width="{width - pad}" '
-        f'height="{height - pad}" rx="8" fill="none" stroke="#10b981" '
+        f'<rect x="{_FP_PAD / 2}" y="{_FP_PAD / 2}" width="{width - _FP_PAD}" '
+        f'height="{height - _FP_PAD}" rx="8" fill="none" stroke="#10b981" '
         f'stroke-width="1.5" stroke-dasharray="6,3"/>',
-        # Isolation keepout between the first column and the rest.
-        f'<line x1="{pad + zone_w + gap / 2:.0f}" y1="{pad / 2}" '
-        f'x2="{pad + zone_w + gap / 2:.0f}" y2="{height - pad / 2}" '
-        f'stroke="#fca5a5" stroke-width="1" stroke-dasharray="4,3"/>',
     ]
-
-    for i, block in enumerate(blocks):
+    for i, b in enumerate(ordered):
         row, col = divmod(i, cols)
-        x = pad + col * (zone_w + gap)
-        y = pad + row * (zone_h + gap)
+        x = _FP_PAD + col * (_FP_ZW + _FP_GAP)
+        y = _FP_PAD + row * (_FP_ZH + _FP_GAP)
+        s = _category_style(b.category)
         parts.append(
-            f'<rect x="{x}" y="{y}" width="{zone_w}" height="{zone_h}" rx="6" '
-            f'fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.2"/>'
+            f'<rect x="{x}" y="{y}" width="{_FP_ZW}" height="{_FP_ZH}" rx="6" '
+            f'fill="{s["fill"]}" stroke="{s["stroke"]}" stroke-width="1.2"/>'
         )
+        spans = _label_tspans(b.name, x + _FP_ZW / 2, y + _FP_ZH / 2, 18, 15)
         parts.append(
-            f'<text x="{x + zone_w / 2:.0f}" y="{y + zone_h / 2 + 4:.0f}" '
-            f'text-anchor="middle" font-family="sans-serif" font-size="12" '
-            f'fill="#5b21b6" font-weight="600">{escape(block.name)}</text>'
+            f'<text text-anchor="middle" font-family="sans-serif" font-size="12" '
+            f'fill="{s["text"]}" font-weight="600">{spans}</text>'
         )
-
     parts.append("</svg>")
     return "".join(parts)
 
 
 def generate_report_pdf(
-    result: RunResponse, requirements_text: str, project_name: str
+    result: RunResponse, requirements_text: str, project_name: str,
+    architecture_svg: str | None = None,
 ) -> bytes:
     """Render the PCB Design Brief to PDF bytes.
 
     WeasyPrint is imported lazily so this module loads even where its system
     libraries are absent; callers that cannot tolerate failure should guard the
-    call (the /generate handler does).
+    call (the /generate handler does). When the client passes its ELK-routed
+    ``architecture_svg`` it is embedded as-is; otherwise the Python fallback
+    diagram is rendered.
     """
     from weasyprint import HTML  # lazy import; needs Pango/Cairo at runtime
 
     context = _report_context(result, requirements_text, project_name)
-    context["architecture_svg"] = _architecture_svg(result)
+    context["architecture_svg"] = architecture_svg or _architecture_svg(result)
+    # The client ELK export carries its own legend (also needed by the standalone
+    # KiCad bitmap); only the Python fallback relies on the separate HTML legend.
+    context["diagram_has_legend"] = architecture_svg is not None
     context["floorplan_svg"] = _floorplan_svg(result)
 
     html = _jinja_env.get_template("report.html.j2").render(**context)

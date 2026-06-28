@@ -4,6 +4,13 @@
 	(generator_version "9.0")
 	(uuid "{{ file_uuid }}")
 	(paper "A4")
+	(title_block
+		(title "{{ title_block.title }}")
+{% if title_block.date %}		(date "{{ title_block.date }}")
+{% endif %}		(rev "{{ title_block.rev }}")
+		(company "{{ title_block.company }}")
+		(comment 1 "{{ title_block.comment }}")
+	)
 	(lib_symbols)
 	(text "{{ annotation }}"
 		(at 25.4 25.4 0)

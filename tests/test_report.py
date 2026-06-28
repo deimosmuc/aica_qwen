@@ -28,6 +28,84 @@ def test_derive_title_strips_instruction_preamble():
     assert _derive_title("create a circuit") == "Circuit"
 
 
+from app.generators.report import CATEGORY_STYLE, _category_style, _legend_entries
+
+
+def test_category_style_covers_all_categories():
+    for cat in ["mcu", "sensor", "power", "connectivity", "debug", "status", "other"]:
+        s = CATEGORY_STYLE[cat]
+        assert set(s) == {"fill", "stroke", "text"}
+        assert all(v.startswith("#") for v in s.values())
+
+
+def test_category_style_unknown_falls_back_to_other():
+    assert _category_style("banana") == CATEGORY_STYLE["other"]
+
+
+def test_legend_entries_lists_present_categories():
+    result = mock_run("x")
+    result.architecture.blocks[0].category = "power"
+    result.architecture.blocks[1].category = "mcu"
+    entries = _legend_entries(result)
+    labels = [e["label"] for e in entries]
+    assert "Power" in labels and "MCU" in labels
+    assert all({"label", "fill", "stroke"} <= set(e) for e in entries)
+
+
+from app.generators.report import (
+    _architecture_svg, _floorplan_svg, _wrap_label,
+)
+
+
+def test_wrap_label_breaks_long_text():
+    lines = _wrap_label("Sensor Front-End Conditioning Block", 14)
+    assert len(lines) >= 2 and all(len(ln) <= 14 for ln in lines)
+    assert _wrap_label("MCU", 14) == ["MCU"]
+
+
+def test_architecture_svg_colours_by_category_no_diagonals():
+    svg = _architecture_svg(mock_run("x"))
+    assert "#E6F1FB" in svg   # mcu fill
+    assert "#FEF3C7" in svg   # power fill
+    assert "<polyline" in svg  # orthogonal edges, not diagonal centre-to-centre lines
+
+
+def test_floorplan_renders_zones_with_separation():
+    svg = _floorplan_svg(mock_run("x"))
+    assert "Power Entry" in svg or "MCU Core" in svg
+    assert "stroke-dasharray" in svg   # dashed keep-out line for separation
+
+
+def test_floorplan_falls_back_without_zones():
+    r = mock_run("x")
+    r.pcb_readiness.floorplan_zones = []
+    svg = _floorplan_svg(r)
+    assert svg.startswith("<svg")
+
+
+def test_report_context_exposes_candidate_cards_and_legend():
+    ctx = _report_context(mock_run("x"), "A board", "project")
+    cards = ctx["component_choices"]
+    assert cards and cards[0]["component_type"]
+    rec = [c for c in cards[0]["candidates"] if c["recommended"]]
+    assert len(rec) == 1 and 0 <= rec[0]["score"] <= 5
+    assert rec[0]["stars"].count("★") >= 1
+    assert ctx["legend"]
+
+
+def test_report_template_renders_html_with_candidate_cards():
+    """Render the Jinja template to HTML (no WeasyPrint) to catch template errors."""
+    from app.generators.report import _jinja_env
+    ctx = _report_context(mock_run("x"), "A 24V board", "project")
+    ctx["architecture_svg"] = _architecture_svg(mock_run("x"))
+    ctx["floorplan_svg"] = _floorplan_svg(mock_run("x"))
+    html = _jinja_env.get_template("report.html.j2").render(**ctx)
+    assert "Component Candidates" in html
+    assert "Recommended" in html           # recommended badge present (English only)
+    assert "STM32G0B1" in html             # recommended MCU part rendered
+    assert 'class="legend"' in html        # category legend rendered
+
+
 def test_report_context_core_fields():
     result = mock_run("A 24V industrial board with an STM32 and RS485.")
     ctx = _report_context(result, "A 24V industrial board with an STM32 and RS485.", "project")
@@ -103,6 +181,8 @@ def test_floorplan_svg_has_outline_and_zones():
 
 def test_floorplan_svg_placeholder_when_empty():
     result = mock_run("x")
+    # Placeholder only when there is nothing to draw: no zones AND no blocks.
+    result.pcb_readiness.floorplan_zones = []
     result.architecture.blocks = []
     svg = _floorplan_svg(result)
     assert svg.startswith("<svg")

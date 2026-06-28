@@ -4,16 +4,29 @@
 	(generator_version "9.0")
 	(uuid "{{ root_uuid }}")
 	(paper "A4")
+	(title_block
+		(title "{{ title_block.title }}")
+{% if title_block.date %}		(date "{{ title_block.date }}")
+{% endif %}		(rev "{{ title_block.rev }}")
+		(company "{{ title_block.company }}")
+		(comment 1 "{{ title_block.comment }}")
+	)
 	(lib_symbols)
 	(text "{{ title }}\n{{ subtitle }}"
-		(at 25.4 20 0)
+		(at {{ title_x }} {{ title_y }} 0)
 		(effects
 			(font (size 1.27 1.27))
 			(justify left bottom)
 		)
 		(uuid "{{ title_uuid }}")
 	)
-{% for s in sheets %}	(sheet
+{% if diagram_image %}{{ diagram_image }}
+{% endif %}{% for c in connections %}	(polyline
+		(pts {% for p in c.pts %}(xy {{ p[0] }} {{ p[1] }}) {% endfor %})
+		(stroke (width 0.3) (type solid) (color {{ c.color }}))
+		(uuid "{{ c.uuid }}")
+	)
+{% endfor %}{% for s in sheets %}	(sheet
 		(at {{ s.x }} {{ s.y }})
 		(size 40 30)
 		(fields_autoplaced yes)
@@ -36,7 +49,27 @@
 			)
 		)
 	)
-{% endfor %}	(sheet_instances
+{% endfor %}{% for l in legend %}	(polyline
+		(pts (xy {{ l.x1 }} {{ l.y1 }}) (xy {{ l.x2 }} {{ l.y2 }}))
+		(stroke (width 0.6) (type solid) (color {{ l.color }}))
+		(uuid "{{ l.uuid }}")
+	)
+	(text "{{ l.label }}"
+		(at {{ l.label_x }} {{ l.label_y }} 0)
+		(effects (font (size 1 1)) (justify left))
+		(uuid "{{ l.label_uuid }}")
+	)
+{% endfor %}{% if notes %}	(text "{{ notes.text }}"
+		(at {{ notes.x }} {{ notes.y }} 0)
+		(effects (font (size 1 1)) (justify left top))
+		(uuid "{{ notes.uuid }}")
+	)
+{% endif %}{% if impedance_note %}	(text "{{ impedance_note.text }}"
+		(at {{ impedance_note.x }} {{ impedance_note.y }} 0)
+		(effects (font (size 1 1)) (justify left top))
+		(uuid "{{ impedance_note.uuid }}")
+	)
+{% endif %}	(sheet_instances
 		(path "/"
 			(page "1")
 		)
