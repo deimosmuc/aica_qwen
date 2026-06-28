@@ -25,6 +25,7 @@ from app.models.schemas import (
     RunResponse,
     TraceStep,
 )
+from app.services.impedance import fill_impedance
 
 
 def _mock_pcb() -> PcbReadiness:
@@ -36,7 +37,7 @@ def _mock_pcb() -> PcbReadiness:
             "signal integrity. A 4-layer stackup (Signal / GND / PWR / Signal) "
             "provides proper reference planes for both differential pairs."
         ),
-        netclasses=[
+        netclasses=fill_impedance([
             NetClass(
                 name="PWR",
                 min_width_mm=0.5,
@@ -61,7 +62,7 @@ def _mock_pcb() -> PcbReadiness:
                 clearance_mm=0.25,
                 nets=["RS485_A", "RS485_B"],
             ),
-        ],
+        ]),
         constraints=ConstraintSet(
             min_clearance_mm=0.2,
             min_track_width_mm=0.15,

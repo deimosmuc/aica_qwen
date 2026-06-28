@@ -38,6 +38,9 @@
   table { width: 100%; border-collapse: collapse; font-size: 8.5px; }
   th { background: #f0fdfa; color: #0f766e; text-align: left; padding: 4px 6px; }
   td { padding: 4px 6px; border-bottom: 1px solid #f1f5f9; }
+  .rule-lead { font-size: 9px; color: #374151; margin: 1px 0 6px; line-height: 1.5; }
+  .provenance { font-size: 8.5px; color: #0f766e; margin: 5px 0 0; }
+  .provenance code { background: #f0fdfa; padding: 0 3px; border-radius: 2px; }
   .disclaimer { margin-top: 12px; padding: 7px 9px; background: #fff7ed;
                 border-left: 3px solid #f59e0b; border-radius: 3px;
                 font-size: 8px; color: #92400e; line-height: 1.5; }
@@ -102,13 +105,31 @@
 
   <div class="page-break"></div>
 
+  <div class="section"><div class="bar"></div><div class="t">Design Rules &amp; Stackup</div></div>
+  <p class="rule-lead"><b>Recommended stackup: {{ layerstack }}.</b>{% if layerstack_reason %}
+    {{ layerstack_reason }}{% endif %}</p>
+  <table>
+    <thead><tr><th>Min clearance</th><th>Min track width</th><th>Via drill</th>
+      <th>Via annular ring</th></tr></thead>
+    <tbody>
+      <tr><td>{{ "%.2f"|format(min_clearance_mm) }} mm</td>
+          <td>{{ "%.2f"|format(min_track_width_mm) }} mm</td>
+          <td>{{ "%.2f"|format(via_drill_mm) }} mm</td>
+          <td>{{ "%.2f"|format(via_annular_ring_mm) }} mm</td></tr>
+    </tbody>
+  </table>
+  <p class="provenance">↳ Exported to <code>pcb_constraints.kicad_dru</code> — import directly
+    into KiCad → Board Setup → Design Rules.</p>
+
   <div class="section"><div class="bar"></div><div class="t">Net Class Constraints</div></div>
   <table>
-    <thead><tr><th>Class</th><th>Track (mm)</th><th>Clearance (mm)</th><th>Nets</th></tr></thead>
+    <thead><tr><th>Class</th><th>Track (mm)</th><th>Clearance (mm)</th>
+      <th>Impedance</th><th>Nets</th></tr></thead>
     <tbody>
       {% for nc in net_classes %}
       <tr><td>{{ nc.name }}</td><td>{{ "%.2f"|format(nc.min_width_mm) }}</td>
-          <td>{{ "%.2f"|format(nc.clearance_mm) }}</td><td>{{ nc.nets }}</td></tr>
+          <td>{{ "%.2f"|format(nc.clearance_mm) }}</td><td>{{ nc.impedance }}</td>
+          <td>{{ nc.nets }}</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -147,9 +168,7 @@
     review and sign-off by a qualified PCB designer before manufacturing.</div>
 
   <div class="footer">
-    <div>Via drill {{ "%.2f"|format(via_drill_mm) }} mm · annular ring
-      {{ "%.2f"|format(via_annular_ring_mm) }} mm · constraints exported to
-      pcb_constraints.kicad_dru</div>
+    <div>AI-prepared draft · review and sign-off required before manufacturing</div>
     <div>AI Circuit Architect</div>
   </div>
 </body>

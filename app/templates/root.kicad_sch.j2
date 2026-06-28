@@ -64,6 +64,11 @@
 		(effects (font (size 1 1)) (justify left top))
 		(uuid "{{ notes.uuid }}")
 	)
+{% endif %}{% if impedance_note %}	(text "{{ impedance_note.text }}"
+		(at {{ impedance_note.x }} {{ impedance_note.y }} 0)
+		(effects (font (size 1 1)) (justify left top))
+		(uuid "{{ impedance_note.uuid }}")
+	)
 {% endif %}	(sheet_instances
 		(path "/"
 			(page "1")

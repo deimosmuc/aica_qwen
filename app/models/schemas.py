@@ -121,6 +121,7 @@ class NetClass(BaseModel):
     min_width_mm: float
     clearance_mm: float
     nets: list[str] = []
+    impedance: str | None = None  # target controlled impedance, e.g. "90 Ω diff"
 
 
 class ConstraintSet(BaseModel):

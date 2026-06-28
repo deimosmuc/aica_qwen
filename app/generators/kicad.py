@@ -323,6 +323,24 @@ def generate_scaffold(
         "uuid": _det_uuid(project_name, "notes"),
     }
 
+    # Controlled-impedance interfaces anchored on the schematic (KiCad's stroke
+    # font has no Ω glyph, so spell it "ohm" here; the report keeps the symbol).
+    impedance_note = None
+    if result.pcb_readiness is not None:
+        controlled = [nc for nc in result.pcb_readiness.netclasses if nc.impedance]
+        if controlled:
+            imp_lines = ["CONTROLLED IMPEDANCE"]
+            imp_lines += [
+                _esc(f"{_trunc(nc.name, 14)}: {nc.impedance}".replace("Ω", "ohm"))
+                for nc in controlled
+            ]
+            impedance_note = {
+                "text": "\\n".join(imp_lines),
+                "x": lx,
+                "y": round(notes["y"] + len(note_lines) * 2.0 + 7.0, 2),
+                "uuid": _det_uuid(project_name, "impedance-note"),
+            }
+
     # --- Root schematic -------------------------------------------------------
     root_sch = env.get_template("root.kicad_sch.j2").render(
         root_uuid=root_uuid,
@@ -337,6 +355,7 @@ def generate_scaffold(
         connections=connections,
         legend=legend,
         notes=notes,
+        impedance_note=impedance_note,
         sheets=sheets,
     )
     (project_dir / f"{project_name}.kicad_sch").write_text(root_sch, encoding="utf-8")

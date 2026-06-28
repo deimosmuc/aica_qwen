@@ -205,6 +205,7 @@ def _report_context(result: RunResponse, requirements_text: str, project_name: s
                 "min_width_mm": nc.min_width_mm,
                 "clearance_mm": nc.clearance_mm,
                 "nets": ", ".join(nc.nets),
+                "impedance": nc.impedance or "—",
             }
             for nc in pcb.netclasses
         ]
@@ -213,14 +214,18 @@ def _report_context(result: RunResponse, requirements_text: str, project_name: s
             for ph in pcb.package_hints
         ]
         layerstack = pcb.layerstack
+        layerstack_reason = pcb.layerstack_reason
         min_clearance_mm = pcb.constraints.min_clearance_mm
+        min_track_width_mm = pcb.constraints.min_track_width_mm
         via_drill_mm = pcb.constraints.via_drill_mm
         via_annular_ring_mm = pcb.constraints.via_annular_ring_mm
     else:
         net_classes = []
         package_hints = []
         layerstack = "—"
+        layerstack_reason = ""
         min_clearance_mm = 0.0
+        min_track_width_mm = 0.0
         via_drill_mm = 0.0
         via_annular_ring_mm = 0.0
 
@@ -230,8 +235,10 @@ def _report_context(result: RunResponse, requirements_text: str, project_name: s
         "project_name": project_name,
         "iso_date": date.today().isoformat(),
         "layerstack": layerstack,
+        "layerstack_reason": layerstack_reason,
         "net_class_count": len(net_classes),
         "min_clearance_mm": min_clearance_mm,
+        "min_track_width_mm": min_track_width_mm,
         "open_todo_count": len(result.arbitration.todo),
         "summary_bullets": bullets,
         "net_classes": net_classes,
