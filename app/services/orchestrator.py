@@ -7,6 +7,7 @@ run on a stronger model than the junior sub-agents.
 """
 from __future__ import annotations
 
+from collections.abc import Generator, Iterator
 from time import perf_counter
 
 from pydantic import ValidationError
@@ -109,7 +110,9 @@ class Orchestrator:
             ),
         )
 
-    def _design_and_review_stream(self, requirements: Requirements, guidance: list[str]):
+    def _design_and_review_stream(
+        self, requirements: Requirements, guidance: list[str],
+    ) -> Generator[StreamEvent, None, tuple[Architecture, Critique, list[TraceStep]]]:
         """Design + review with optional Critic->Architect rework. Yields one
         StreamEvent per finished step; returns (architecture, critique, steps)."""
         steps: list[TraceStep] = []
@@ -141,7 +144,10 @@ class Orchestrator:
 
         return architecture, critique, steps
 
-    def _pcb_design_and_review_stream(self, requirements, architecture, arbitration, guidance: list[str]):
+    def _pcb_design_and_review_stream(
+        self, requirements: Requirements, architecture: Architecture,
+        arbitration: Arbitration, guidance: list[str],
+    ) -> Generator[StreamEvent, None, tuple[PcbReadiness, PcbCritique, list[TraceStep]]]:
         """PCB Engineer + PCB Critic rework loop. Yields one StreamEvent per
         finished step; returns (pcb, pcb_critique, steps)."""
         steps: list[TraceStep] = []
@@ -172,7 +178,7 @@ class Orchestrator:
 
         return pcb, pcb_critique, steps
 
-    def run_stream(self, requirements_text: str, guidance: list[str] | None = None):
+    def run_stream(self, requirements_text: str, guidance: list[str] | None = None) -> Iterator[StreamEvent]:
         """Stream the pipeline: one `stage` StreamEvent per finished agent, then
         a single `final` event with the full RunResponse. On a guard/Qwen/
         validation failure, emit an `error` event then a `final` with the
@@ -247,7 +253,7 @@ class Orchestrator:
         )
         yield StreamEvent(type="final", result=result)
 
-    def _error_then_fallback(self, requirements_text: str, notice: str):
+    def _error_then_fallback(self, requirements_text: str, notice: str) -> Iterator[StreamEvent]:
         result = mock_run(requirements_text)
         result.notice = notice
         yield StreamEvent(type="error", notice=notice)
