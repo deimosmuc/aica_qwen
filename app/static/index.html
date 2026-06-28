@@ -203,10 +203,10 @@
     .rail-pkt.p1 { animation: rl-flow 2.2s linear infinite; }
     .rail-pkt.p2 { animation: rl-flow 2.2s linear infinite .7s; }
     .rail-pkt.p3 { animation: rl-flow 2.2s linear infinite 1.4s; }
-    @keyframes rl-flow { 0% { opacity: 0; transform: scale(.6) }
-                         12% { opacity: 1; transform: scale(1) }
-                         88% { opacity: 1; transform: scale(1) }
-                         100% { opacity: 0; transform: scale(.6) } }
+    @keyframes rl-flow { 0%   { left: 50%; opacity: 0; transform: scale(.6) }
+                         12%  { opacity: 1; transform: scale(1) }
+                         88%  { left: 30%; opacity: 1; transform: scale(1) }
+                         100% { left: 28.5%; opacity: 0; transform: scale(.6) } }
     .rail-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 16px;
                    font-size: 11px; color: var(--muted); }
     .rail-legend i { display: inline-block; width: 16px; height: 4px; border-radius: 2px;
@@ -342,6 +342,29 @@
     <template x-if="acc">
       <section class="panel">
         <h2>2 · Agent collaboration — step by step</h2>
+        <div class="rail" x-show="railView().stations.length">
+          <div class="rail-cap"><span class="rail-live" x-show="railView().active"></span> Agent collaboration · <span x-text="railView().active ? 'LIVE' : 'done'"></span></div>
+          <div class="rail-line">
+            <div class="rail-track"><div class="rail-fill" :style="`width:${railView().fillPct}%`"></div></div>
+            <div class="rail-phase" style="left:81.5%"></div>
+            <template x-if="railView().packetFrom === 'critique'">
+              <div><div class="rail-pkt p1"></div><div class="rail-pkt p2"></div><div class="rail-pkt p3"></div></div>
+            </template>
+            <div class="rail-stns">
+              <template x-for="st in railView().stations" :key="st.key">
+                <div class="rail-stn" :class="st.addressed ? 'addressed' : st.state">
+                  <div class="rail-dot" :style="`background:${st.state==='upcoming' ? '#3a4a5a' : st.color}`"></div>
+                  <div class="rail-lbl" x-text="st.label"></div>
+                </div>
+              </template>
+            </div>
+          </div>
+          <div class="rail-legend">
+            <span><i style="background:linear-gradient(90deg,var(--ok),var(--accent))"></i>Progress / hand-off →</span>
+            <span><i style="background:#ffd56b"></i>← Critic feedback</span>
+            <span><span class="o" style="display:inline-block;margin-right:6px;vertical-align:middle"></span>addressed / reacting</span>
+          </div>
+        </div>
         <div class="tab-row">
           <button :class="societyTab==='trace' ? 'tab-active' : ''"
                   @click="societyTab='trace'">📋 Trace</button>
@@ -518,6 +541,29 @@
         <!-- Agent trace -->
         <section class="panel">
           <h2>2 · Agent collaboration</h2>
+          <div class="rail" x-show="railView().stations.length">
+            <div class="rail-cap"><span class="rail-live" x-show="railView().active"></span> Agent collaboration · <span x-text="railView().active ? 'LIVE' : 'done'"></span></div>
+            <div class="rail-line">
+              <div class="rail-track"><div class="rail-fill" :style="`width:${railView().fillPct}%`"></div></div>
+              <div class="rail-phase" style="left:81.5%"></div>
+              <template x-if="railView().packetFrom === 'critique'">
+                <div><div class="rail-pkt p1"></div><div class="rail-pkt p2"></div><div class="rail-pkt p3"></div></div>
+              </template>
+              <div class="rail-stns">
+                <template x-for="st in railView().stations" :key="st.key">
+                  <div class="rail-stn" :class="st.addressed ? 'addressed' : st.state">
+                    <div class="rail-dot" :style="`background:${st.state==='upcoming' ? '#3a4a5a' : st.color}`"></div>
+                    <div class="rail-lbl" x-text="st.label"></div>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div class="rail-legend">
+              <span><i style="background:linear-gradient(90deg,var(--ok),var(--accent))"></i>Progress / hand-off →</span>
+              <span><i style="background:#ffd56b"></i>← Critic feedback</span>
+              <span><span class="o" style="display:inline-block;margin-right:6px;vertical-align:middle"></span>addressed / reacting</span>
+            </div>
+          </div>
           <div class="tab-row">
             <button :class="societyTab==='trace' ? 'tab-active' : ''"
                     @click="societyTab='trace'">📋 Trace</button>
@@ -921,12 +967,15 @@
           }
           // rework beat (auto replay only): active step is a warning Critic or a round>1 Architect
           let addressed = null, packetFrom = null, packetTo = null;
-          if (!pendingStage && last && !settled &&
-              ((last.agent === 'Design Critic' && last.status === 'warning') ||
-               (last.agent === 'System Architect' && last.round > 1))) {
-            addressed = 'System Architect';
-            packetFrom = 'critique';
-            packetTo = 'architecture';
+          if (!pendingStage && last && !settled) {
+            if ((last.agent === 'Design Critic' && last.status === 'warning') ||
+                (last.agent === 'System Architect' && last.round > 1)) {
+              addressed = 'System Architect'; packetFrom = 'critique'; packetTo = 'architecture';
+            } else if ((last.agent === 'PCB Critic' && last.status === 'warning') ||
+                       (last.agent === 'PCB Engineer' && last.round > 1)) {
+              // PCB Critic is not a rail station -> addressed glow only, no packets
+              addressed = 'PCB Engineer';
+            }
           }
           const stations = STATIONS.map(st => {
             let state = 'upcoming';
