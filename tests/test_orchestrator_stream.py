@@ -65,6 +65,23 @@ def test_stream_emits_stage_events_then_final(monkeypatch):
     assert [e.step.agent for e in stage] == [s.agent for s in final[0].result.trace]
 
 
+def test_stream_emits_stage_start_before_each_stage(monkeypatch):
+    calls = {"arch": 0, "crit": 0}
+    _patch_agents(monkeypatch, lambda n: Critique(), calls)
+    events = list(orch_mod.Orchestrator(Settings(qwen_api_key="sk-test"),
+                                        profile=PROFILES["Uniform qwen-plus"]).run_stream("board"))
+    starts = [e for e in events if e.type == "stage_start"]
+    stage = [e for e in events if e.type == "stage"]
+    assert len(starts) == len(stage) == 6
+    # each stage_start carries the agent name and an empty summary
+    assert all(e.step is not None and e.step.summary == "" for e in starts)
+    # stage_start immediately precedes its matching stage, same agent
+    seq = [e for e in events if e.type in ("stage_start", "stage")]
+    for i in range(0, len(seq), 2):
+        assert seq[i].type == "stage_start" and seq[i + 1].type == "stage"
+        assert seq[i].step.agent == seq[i + 1].step.agent
+
+
 def test_stream_rework_emits_round_two_steps(monkeypatch):
     calls = {"arch": 0, "crit": 0}
     _patch_agents(monkeypatch, lambda n: Critique(missing_blocks=["DUMMY_CLOCK"]) if n == 1 else Critique(), calls)

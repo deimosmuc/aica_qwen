@@ -56,6 +56,15 @@ class Orchestrator:
         )
 
     @staticmethod
+    def _stage_start(agent_cls) -> StreamEvent:
+        """Event emitted right before an agent runs, so the UI can show a live
+        '…typing' bubble for the agent currently working."""
+        return StreamEvent(
+            type="stage_start",
+            step=TraceStep(agent=agent_cls.name, role=agent_cls.role, summary=""),
+        )
+
+    @staticmethod
     def _arch_step(architecture: Architecture, round_no: int, ms: int) -> TraceStep:
         if round_no == 1:
             summary = (
@@ -116,10 +125,12 @@ class Orchestrator:
         """Design + review with optional Critic->Architect rework. Yields one
         StreamEvent per finished step; returns (architecture, critique, steps)."""
         steps: list[TraceStep] = []
+        yield self._stage_start(SystemArchitectAgent)
         t = perf_counter()
         architecture = SystemArchitectAgent().run(self._client_for("architecture"), requirements, guidance)
         step = self._arch_step(architecture, 1, int((perf_counter() - t) * 1000))
         steps.append(step); yield StreamEvent(type="stage", step=step)
+        yield self._stage_start(DesignCriticAgent)
         t = perf_counter()
         critique = DesignCriticAgent().run(self._client_for("critique"), requirements, architecture, guidance)
         step = self._critic_step(critique, 1, int((perf_counter() - t) * 1000))
@@ -133,10 +144,12 @@ class Orchestrator:
                 *critique.missing_blocks,
                 *critique.recommendations,
             ]
+            yield self._stage_start(SystemArchitectAgent)
             t = perf_counter()
             architecture = SystemArchitectAgent().run(self._client_for("architecture"), requirements, rework_guidance)
             step = self._arch_step(architecture, round_no, int((perf_counter() - t) * 1000))
             steps.append(step); yield StreamEvent(type="stage", step=step)
+            yield self._stage_start(DesignCriticAgent)
             t = perf_counter()
             critique = DesignCriticAgent().run(self._client_for("critique"), requirements, architecture, rework_guidance)
             step = self._critic_step(critique, round_no, int((perf_counter() - t) * 1000))
@@ -151,10 +164,12 @@ class Orchestrator:
         """PCB Engineer + PCB Critic rework loop. Yields one StreamEvent per
         finished step; returns (pcb, pcb_critique, steps)."""
         steps: list[TraceStep] = []
+        yield self._stage_start(PcbEngineerAgent)
         t = perf_counter()
         pcb = PcbEngineerAgent().run(self._client_for("pcb_engineer"), requirements, architecture, arbitration, guidance)
         step = self._pcb_step(pcb, 1, int((perf_counter() - t) * 1000))
         steps.append(step); yield StreamEvent(type="stage", step=step)
+        yield self._stage_start(PcbCriticAgent)
         t = perf_counter()
         pcb_critique = PcbCriticAgent().run(self._client_for("pcb_critique"), requirements, pcb, guidance)
         step = self._pcb_critic_step(pcb_critique, 1, int((perf_counter() - t) * 1000))
@@ -167,10 +182,12 @@ class Orchestrator:
                 "Revise the PCB recommendations to address these review findings:",
                 *pcb_critique.missing_blocks,
             ]
+            yield self._stage_start(PcbEngineerAgent)
             t = perf_counter()
             pcb = PcbEngineerAgent().run(self._client_for("pcb_engineer"), requirements, architecture, arbitration, rework_guidance)
             step = self._pcb_step(pcb, round_no, int((perf_counter() - t) * 1000))
             steps.append(step); yield StreamEvent(type="stage", step=step)
+            yield self._stage_start(PcbCriticAgent)
             t = perf_counter()
             pcb_critique = PcbCriticAgent().run(self._client_for("pcb_critique"), requirements, pcb, rework_guidance)
             step = self._pcb_critic_step(pcb_critique, round_no, int((perf_counter() - t) * 1000))
@@ -194,6 +211,7 @@ class Orchestrator:
         guidance = guidance or []
         steps: list[TraceStep] = []
         try:
+            yield self._stage_start(RequirementsAgent)
             t = perf_counter()
             requirements = RequirementsAgent().run(self._client_for("requirements"), requirements_text, guidance)
             req_step = TraceStep(
@@ -210,6 +228,7 @@ class Orchestrator:
             architecture, critique, design_steps = yield from self._design_and_review_stream(requirements, guidance)
             steps.extend(design_steps)
 
+            yield self._stage_start(ArbitrationAgent)
             t = perf_counter()
             arbitration = ArbitrationAgent().run(self._client_for("arbitration"), requirements, architecture, critique, guidance)
             arb_step = TraceStep(

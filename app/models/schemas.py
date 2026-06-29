@@ -270,14 +270,16 @@ class RunResponse(BaseModel):
 class StreamEvent(BaseModel):
     """One server-sent event from the streaming pipeline.
 
-    `stage` fires as each agent finishes, carrying just that agent's TraceStep
-    (the live rail + Society chat need nothing more). `final` carries the
-    complete RunResponse the non-streaming path returns today. `error` carries
-    the same honest notice used by the blocking fallback and is always followed
-    by a `final` event whose result is the example-data fallback.
+    `stage_start` fires just before an agent begins, carrying a TraceStep with
+    that agent's name/role and an empty summary (drives the live "…typing"
+    bubble). `stage` fires as each agent finishes, carrying that agent's full
+    TraceStep. `final` carries the complete RunResponse the non-streaming path
+    returns today. `error` carries the same honest notice used by the blocking
+    fallback and is always followed by a `final` event whose result is the
+    example-data fallback.
     """
 
-    type: Literal["stage", "final", "error"]
+    type: Literal["stage_start", "stage", "final", "error"]
     step: TraceStep | None = None
     result: RunResponse | None = None
     notice: str | None = None
