@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Circuit Architect</title>
+  <link rel="icon" type="image/x-icon" href="/static/assets/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/assets/favicon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/assets/favicon-180.png" />
   <script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.3/lib/elk.bundled.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
@@ -1117,24 +1121,41 @@
           const revealed = this.revealedTrace();
           const total = this.pipelineTrace().length;
           const settled = total > 0 && this.playedSteps >= total && !this.streamActive;
+          // the agent currently working (live stream): a stage_start fired but its
+          // result step hasn't landed yet. This is what keeps the rail in sync with
+          // the live conversation instead of trailing one hand-off behind.
+          const typing = this.streamActive ? this.streamTyping : null;
           const last = revealed.length ? revealed[revealed.length - 1] : null;
           const seen = new Set(revealed.map(s => s.agent));
-          // active station: step mode -> pending/loading stage; auto replay -> last revealed agent until settled
+          // active station: step mode -> pending/loading stage;
+          // live stream -> the agent currently typing; else the last revealed agent
           const pendingStage = this.pending ? this.pending.stage
             : (this.stepBusy && this.stepIdx >= 0 ? this.STAGES[this.stepIdx] : null);
           let activeKey = pendingStage;
-          if (!activeKey && last && !settled) {
-            const a = STATIONS.find(st => st.agent === last.agent);
+          const focusAgent = typing ? typing.agent : (!settled && last ? last.agent : null);
+          if (!activeKey && focusAgent) {
+            const a = STATIONS.find(st => st.agent === focusAgent);
             activeKey = a ? a.key : null;
           }
-          // rework beat (auto replay only): active step is a warning Critic or a round>1 Architect
+          // rework beat: an engineer/architect is reworking after critic feedback.
+          // Live: the critic's warning is the last *completed* step while the
+          // architect/engineer is typing again. Replay: the warning/round>1 step
+          // is itself the last revealed step.
           let addressed = null, packetFrom = null, packetTo = null;
-          if (!pendingStage && last && !settled) {
-            if ((last.agent === 'Design Critic' && last.status === 'warning') ||
-                (last.agent === 'System Architect' && last.round > 1)) {
+          if (!pendingStage) {
+            const reworkArch = typing
+              ? (typing.agent === 'System Architect' && last &&
+                 last.agent === 'Design Critic' && last.status === 'warning')
+              : (!settled && last && ((last.agent === 'Design Critic' && last.status === 'warning') ||
+                 (last.agent === 'System Architect' && last.round > 1)));
+            const reworkPcb = typing
+              ? (typing.agent === 'PCB Engineer' && last &&
+                 last.agent === 'PCB Critic' && last.status === 'warning')
+              : (!settled && last && ((last.agent === 'PCB Critic' && last.status === 'warning') ||
+                 (last.agent === 'PCB Engineer' && last.round > 1)));
+            if (reworkArch) {
               addressed = 'System Architect'; packetFrom = 'critique'; packetTo = 'architecture';
-            } else if ((last.agent === 'PCB Critic' && last.status === 'warning') ||
-                       (last.agent === 'PCB Engineer' && last.round > 1)) {
+            } else if (reworkPcb) {
               addressed = 'PCB Engineer'; packetFrom = 'pcb_critic'; packetTo = 'pcb_engineer';
             }
           }
