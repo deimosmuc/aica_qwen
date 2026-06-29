@@ -31,6 +31,9 @@ Rules:
   "select": "multi" only when multiple options can legitimately be combined.
 
 Output a JSON object with exactly these keys:
+- "title": a concise project name of 2-4 words derived from the request, suitable
+  as a document title (e.g. "Bat Detection Device", "Solar Soil Sensor"). Title
+  case, no trailing punctuation, no leading verbs like "Design" or "Build".
 - "requirements": array of strings (the structured functional requirements)
 - "constraints": array of strings (environmental, mechanical, regulatory, etc.)
 - "questions": array of strings (plain clarification questions; may be empty if you use clarifications)

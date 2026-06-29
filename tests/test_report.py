@@ -94,14 +94,15 @@ def test_report_context_exposes_candidate_cards_and_legend():
 
 
 def test_report_context_title_override():
-    r = mock_run("x")
-    # An explicit project name wins over the auto-derived title (F1-B).
+    r = mock_run("x")  # mock requirements carry a concise title ("Industrial Sensor Board")
+    # An explicit project name wins over everything (F1-B).
     assert _report_context(r, "build me a 24V board", "project",
                            title="Falcon Sensor Hub")["title"] == "Falcon Sensor Hub"
-    # Blank/whitespace override falls back to the derived title.
+    # Blank user title -> the agent's concise title wins next.
     assert _report_context(r, "build me a 24V board", "project",
-                           title="   ")["title"] == _derive_title("build me a 24V board")
-    # No override -> derived title (unchanged default behaviour).
+                           title="   ")["title"] == r.requirements.title
+    # No user title and no agent title -> heuristic fallback from the raw request.
+    r.requirements.title = ""
     assert _report_context(r, "build me a 24V board", "project")["title"] == \
         _derive_title("build me a 24V board")
 

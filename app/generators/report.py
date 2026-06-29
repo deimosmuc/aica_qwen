@@ -204,13 +204,17 @@ def _report_context(result: RunResponse, requirements_text: str, project_name: s
     logic-free. Missing pcb_readiness degrades to safe placeholders.
 
     ``title`` is the user-chosen project name (F1-B); when blank it falls back to
-    the title auto-derived from the request.
+    the concise title the Requirements Agent derived, and finally to a title
+    heuristically derived from the raw request.
     """
     arch = result.architecture
     pcb = result.pcb_readiness
 
-    # Title: an explicit project name wins; otherwise derive one from the request.
-    title = (title or "").strip() or _derive_title(requirements_text)
+    # Title: an explicit project name wins; otherwise the agent's concise title;
+    # otherwise a name heuristically derived from the raw request.
+    title = ((title or "").strip()
+             or (result.requirements.title or "").strip()
+             or _derive_title(requirements_text))
     description = requirements_text.strip().replace("\n", " ")
     if len(description) > 160:
         description = description[:157].rstrip() + "…"

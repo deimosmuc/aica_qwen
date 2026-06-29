@@ -313,6 +313,33 @@
       <p class="spinner" x-show="loading"
          x-text="streamStageLabel ? ('Live: ' + streamStageLabel + ' working… (' + streamTrace.length + ' done)') : 'The agent team is analysing, designing, reviewing and arbitrating…'"></p>
 
+      <!-- Live metro rail (auto mode): the agent society pipeline animates while it runs -->
+      <div class="rail" x-show="streamActive" style="margin-top:14px">
+        <div class="rail-cap"><span class="rail-live" x-show="railView().active"></span> Agent collaboration · <span x-text="railView().active ? 'LIVE' : 'done'"></span></div>
+        <div class="rail-line">
+          <div class="rail-track"><div class="rail-fill" :style="`width:${railView().fillPct}%`"></div></div>
+          <div class="rail-phase" style="left:67.6%"></div>
+          <template x-if="railView().packetFrom">
+            <div :style="`--s:${railView().packetStart}%; --e:${railView().packetEnd}%`">
+              <div class="rail-pkt p1"></div><div class="rail-pkt p2"></div><div class="rail-pkt p3"></div>
+            </div>
+          </template>
+          <div class="rail-stns">
+            <template x-for="st in railView().stations" :key="st.key">
+              <div class="rail-stn" :class="st.addressed ? 'addressed' : st.state">
+                <div class="rail-dot" :style="`background:${st.state==='upcoming' ? '#3a4a5a' : st.color}`"></div>
+                <div class="rail-lbl" x-text="st.label"></div>
+              </div>
+            </template>
+          </div>
+        </div>
+        <div class="rail-legend">
+          <span><i style="background:linear-gradient(90deg,var(--ok),var(--accent))"></i>Progress / hand-off →</span>
+          <span><i style="background:#ffd56b"></i>← Critic feedback</span>
+          <span><span class="o" style="display:inline-block;margin-right:6px;vertical-align:middle"></span>addressed / reacting</span>
+        </div>
+      </div>
+
       <!-- Live agent conversation (auto mode): bubbles build up as each agent reports -->
       <div x-show="streamActive" class="society-chat live-feed">
         <div class="live-feed-head"><span class="live-dot"></span> Agents collaborating live</div>

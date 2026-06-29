@@ -172,6 +172,7 @@ def _mock_pcb() -> PcbReadiness:
 
 def mock_run(requirements_text: str) -> RunResponse:
     requirements = Requirements(
+        title="Industrial Sensor Board",
         requirements=[
             "24 V industrial supply input",
             "STM32 microcontroller as main processor",

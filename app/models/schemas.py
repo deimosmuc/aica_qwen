@@ -47,6 +47,9 @@ class ClarifyingQuestion(BaseModel):
 
 
 class Requirements(BaseModel):
+    # Concise project name (2-4 words) the agent derives from the request; used
+    # as the report title when the user leaves the project-name field blank.
+    title: str = ""
     requirements: list[str] = []
     constraints: list[str] = []
     questions: list[str] = []
