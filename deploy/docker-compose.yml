@@ -1,0 +1,39 @@
+# Production stack for the ECS server: pulls the pre-built image from GHCR and
+# puts Caddy (HTTPS + Basic Auth) in front of it.
+#
+# Files expected next to this one on the server:
+#   - Caddyfile
+#   - app.env     (real secrets: APP_IMAGE, QWEN_API_KEY, GUARD_*)   -- NOT in git
+#   - caddy.env   (BASIC_AUTH_USER, BASIC_AUTH_HASH)                 -- NOT in git
+#
+# Start with:  docker compose pull && docker compose up -d
+
+services:
+  app:
+    image: ${APP_IMAGE}          # e.g. ghcr.io/<user>/<repo>:latest (set in app.env)
+    env_file:
+      - ./app.env
+    volumes:
+      - ./outputs:/app/outputs   # generated KiCad projects persist on the host
+    expose:
+      - "8000"                   # internal only — reachable by Caddy, not the public
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    env_file:
+      - ./caddy.env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data         # persists the Let's Encrypt certificates
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

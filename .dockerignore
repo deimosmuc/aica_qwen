@@ -1,0 +1,38 @@
+# Keep the build context small AND keep secrets out of the image.
+# The real .env (with the live Qwen key) must NEVER reach the build context.
+
+# Secrets
+.env
+deploy/*.env
+
+# Python local
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Generated at runtime (mounted as a volume instead)
+outputs/*
+
+# Dev-only / tooling
+.git
+.gitignore
+.github
+.claude/
+.superpowers/
+.worktrees/
+.idea/
+.vscode/
+tests/
+docs/
+kicad_test/
+
+# Docs & deploy artifacts not needed inside the image
+*.md
+deploy/
+Dockerfile
+docker-compose.yml
+.dockerignore
+start_app_qwen.bat

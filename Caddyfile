@@ -1,0 +1,17 @@
+# Reverse proxy for the AI Circuit Architect demo.
+# Caddy automatically obtains AND renews a Let's Encrypt certificate for the
+# domain below — no certbot, no cron jobs.
+#
+# Basic-Auth credentials come from environment variables (set in deploy/caddy.env
+# on the server). NOTHING secret is stored in this committed file.
+#
+# Generate the password hash with:
+#   docker run --rm caddy caddy hash-password --plaintext '<juror-password>'
+
+qwen.rocu.de {
+	basic_auth {
+		{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+	}
+
+	reverse_proxy app:8000
+}

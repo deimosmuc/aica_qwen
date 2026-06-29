@@ -8,6 +8,9 @@ venv/
 
 # Env / secrets
 .env
+# Server-side secret files (live only on the ECS box; *.example stays committed)
+deploy/app.env
+deploy/caddy.env
 
 # Generated outputs
 outputs/*
