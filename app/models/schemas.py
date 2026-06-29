@@ -237,6 +237,10 @@ class TraceStep(BaseModel):
     duration_ms: int | None = None
     # Review round this step belongs to (1 = initial; >1 = rework round).
     round: int = 1
+    # This step's own structured output (model_dump of the agent's result for
+    # THIS round), so the UI can expand "key findings" per step — including the
+    # round-specific state and the PCB Critic, which has no field on RunResponse.
+    findings: dict | None = None
 
 
 # --- Full pipeline response --------------------------------------------------

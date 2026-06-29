@@ -212,6 +212,9 @@
     .rail-dot { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--panel-2);
                 position: relative; transition: box-shadow .3s; }
     .rail-stn.upcoming .rail-dot { opacity: .38; }
+    /* Completed stations are calm so only the active/reacting one stands out —
+       otherwise the brand-coloured (esp. red Critic) dots read as "active". */
+    .rail-stn.done .rail-dot { opacity: .5; }
     .rail-stn.active .rail-dot { box-shadow: 0 0 0 4px var(--accent); animation: rl-pulse 1.3s infinite; }
     @keyframes rl-pulse { 0%,100% { box-shadow: 0 0 0 4px var(--accent) } 50% { box-shadow: 0 0 0 7px transparent } }
     .rail-stn.addressed .rail-dot { animation: rl-glow 1.6s ease-in-out infinite; }
@@ -357,6 +360,12 @@
                 <span x-show="s.status==='warning'" class="chip-rework">↺ Rework</span>
               </div>
               <div class="bubble-text" x-text="s.summary.slice(0,160) + (s.summary.length > 160 ? '…' : '')"></div>
+              <template x-if="s.findings && findingsHtml(s.agent, s.findings)">
+                <details class="agent-out">
+                  <summary>Key findings</summary>
+                  <div class="out" x-html="findingsHtml(s.agent, s.findings)"></div>
+                </details>
+              </template>
             </div>
           </div>
         </template>
@@ -630,6 +639,12 @@
                 </div>
                 <div class="bubble-text"
                      x-text="s.summary.slice(0,120) + (s.summary.length > 120 ? '…' : '')"></div>
+                <template x-if="s.findings && findingsHtml(s.agent, s.findings)">
+                  <details class="agent-out">
+                    <summary>Key findings</summary>
+                    <div class="out" x-html="findingsHtml(s.agent, s.findings)"></div>
+                  </details>
+                </template>
               </div>
             </div>
             </div><!-- /single x-for root -->
@@ -699,62 +714,9 @@
                   <span class="round" x-show="s.round > 1" x-text="'· round ' + s.round" style="color: var(--warn); font-size: 12px;"></span>
                   <span class="ms" x-show="s.duration_ms" x-text="fmtMs(s.duration_ms)"></span>
                   <div class="summary" x-text="s.summary"></div>
-                  <details class="agent-out">
+                  <details class="agent-out" x-show="s.findings && findingsHtml(s.agent, s.findings)">
                     <summary>Show output</summary>
-                    <template x-if="s.agent === 'Requirements Agent'">
-                      <div class="out">
-                        <div class="out-grp" x-show="result.requirements.requirements.length"><b>Requirements</b>
-                          <ul><template x-for="x in result.requirements.requirements" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.requirements.constraints.length"><b>Constraints</b>
-                          <ul><template x-for="x in result.requirements.constraints" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.requirements.questions.length"><b>Clarification questions</b>
-                          <ul><template x-for="x in result.requirements.questions" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.requirements.assumptions.length"><b>Assumptions</b>
-                          <ul><template x-for="x in result.requirements.assumptions" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="muted" x-text="'Confidence: ' + Math.round(result.requirements.confidence*100) + '%'"></div>
-                      </div>
-                    </template>
-                    <template x-if="s.agent === 'System Architect'">
-                      <div class="out">
-                        <div class="out-grp"><b>Blocks</b>
-                          <ul><template x-for="b in result.architecture.blocks" :key="b.name"><li><span x-text="b.name"></span> — <span x-text="b.purpose"></span> <span class="muted" x-text="'(' + b.sheet + ')'"></span></li></template></ul></div>
-                        <div class="out-grp" x-show="result.architecture.interfaces.length"><b>Interfaces</b>
-                          <ul><template x-for="x in result.architecture.interfaces" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.architecture.signals.length"><b>Signals</b>
-                          <ul><template x-for="x in result.architecture.signals" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.architecture.power.length"><b>Power</b>
-                          <ul><template x-for="x in result.architecture.power" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.architecture.placeholder_components.length"><b>Placeholders</b>
-                          <ul><template x-for="x in result.architecture.placeholder_components" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.architecture.notes.length"><b>Notes</b>
-                          <ul><template x-for="x in result.architecture.notes" :key="x"><li x-text="x"></li></template></ul></div>
-                      </div>
-                    </template>
-                    <template x-if="s.agent === 'Design Critic'">
-                      <div class="out">
-                        <div class="out-grp" x-show="result.critique.warnings.length"><b>Warnings</b>
-                          <ul><template x-for="x in result.critique.warnings" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.critique.risks.length"><b>Risks</b>
-                          <ul><template x-for="x in result.critique.risks" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.critique.missing_blocks.length"><b>Missing blocks</b>
-                          <ul><template x-for="x in result.critique.missing_blocks" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.critique.recommendations.length"><b>Recommendations</b>
-                          <ul><template x-for="x in result.critique.recommendations" :key="x"><li x-text="x"></li></template></ul></div>
-                      </div>
-                    </template>
-                    <template x-if="s.agent === 'Arbitration'">
-                      <div class="out">
-                        <div class="out-grp" x-show="result.arbitration.todo.length"><b>TODO</b>
-                          <ul><template x-for="x in result.arbitration.todo" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.arbitration.human_review.length"><b>Needs human review</b>
-                          <ul><template x-for="x in result.arbitration.human_review" :key="x"><li x-text="x"></li></template></ul></div>
-                        <div class="out-grp" x-show="result.arbitration.accepted_assumptions.length"><b>Accepted assumptions</b>
-                          <ul><template x-for="x in result.arbitration.accepted_assumptions" :key="x"><li x-text="x"></li></template></ul></div>
-                      </div>
-                    </template>
-                    <template x-if="s.agent === 'PCB Engineer' && result.pcb_readiness">
-                      <div class="out" x-html="pcbReadinessHtml(result.pcb_readiness)"></div>
-                    </template>
+                    <div class="out" x-html="findingsHtml(s.agent, s.findings)"></div>
                   </details>
                 </div>
               </div>
@@ -785,6 +747,12 @@
                   </div>
                   <div class="bubble-text"
                        x-text="s.summary.slice(0,120) + (s.summary.length > 120 ? '…' : '')"></div>
+                  <template x-if="s.findings && findingsHtml(s.agent, s.findings)">
+                    <details class="agent-out">
+                      <summary>Key findings</summary>
+                      <div class="out" x-html="findingsHtml(s.agent, s.findings)"></div>
+                    </details>
+                  </template>
                 </div>
               </div>
               </div><!-- /single x-for root -->
@@ -1258,6 +1226,53 @@
             h += `</ul></div>`;
           }
           return h;
+        },
+        // Render a single agent step's own "key findings" (this round's structured
+        // output) as HTML for the society bubbles / trace tab. Returns "" when there
+        // is nothing to show, so callers can hide the toggle.
+        findingsHtml(agent, data) {
+          if (!data) return "";
+          const esc = this.esc.bind(this);
+          const grp = (label, items, fmt) => {
+            const list = (items || []).filter(x => x != null && x !== "");
+            if (!list.length) return "";
+            return `<div class="out-grp"><b>${esc(label)}</b><ul>`
+                 + list.map(x => `<li>${(fmt ? fmt(x) : esc(x))}</li>`).join("")
+                 + `</ul></div>`;
+          };
+          let h = "";
+          if (agent === "Requirements Agent") {
+            h += grp("Requirements", data.requirements);
+            h += grp("Constraints", data.constraints);
+            h += grp("Clarification questions", data.questions);
+            h += grp("Assumptions", data.assumptions);
+            if (typeof data.confidence === "number")
+              h += `<div class="muted">Confidence: ${Math.round(data.confidence * 100)}%</div>`;
+          } else if (agent === "System Architect") {
+            h += grp("Blocks", data.blocks, b =>
+              `${esc(b.name)} — ${esc(b.purpose)} <span class="muted">(${esc(b.sheet)})</span>`);
+            h += grp("Interfaces", data.interfaces);
+            h += grp("Signals", data.signals);
+            h += grp("Power", data.power);
+            h += grp("Placeholders", data.placeholder_components);
+            h += grp("Notes", data.notes);
+          } else if (agent === "Design Critic") {
+            h += grp("Warnings", data.warnings);
+            h += grp("Risks", data.risks);
+            h += grp("Missing blocks", data.missing_blocks);
+            h += grp("Recommendations", data.recommendations);
+          } else if (agent === "Arbitration") {
+            h += grp("TODO", data.todo);
+            h += grp("Needs human review", data.human_review);
+            h += grp("Accepted assumptions", data.accepted_assumptions);
+          } else if (agent === "PCB Engineer") {
+            h += this.pcbReadinessHtml(data);
+          } else if (agent === "PCB Critic") {
+            h += grp("Must fix", data.missing_blocks);
+            h += grp("Warnings", data.warnings);
+            h += grp("Risks", data.risks);
+          }
+          return h.trim();
         },
         clarifyAnswered() {
           return Object.values(this.clarifyAnswers)

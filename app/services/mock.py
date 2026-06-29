@@ -21,6 +21,7 @@ from app.models.schemas import (
     FloorplanZone,
     NetClass,
     PackageHint,
+    PcbCritique,
     PcbReadiness,
     Requirements,
     RunResponse,
@@ -284,21 +285,28 @@ def mock_run(requirements_text: str) -> RunResponse:
     )
 
     pcb = _mock_pcb()
+    pcb_critique = PcbCritique(missing_blocks=[], warnings=[], risks=[])
 
     trace = [
         TraceStep(agent="Requirements Agent", role="Senior Systems Engineer", status="ok",
-                  summary="Structured 5 requirements, raised 2 clarification questions."),
+                  summary="Structured 5 requirements, raised 2 clarification questions.",
+                  findings=requirements.model_dump()),
         TraceStep(agent="System Architect", role="Principal Hardware Architect", status="ok",
-                  summary="Proposed 6 functional blocks across hierarchical sheets."),
+                  summary="Proposed 6 functional blocks across hierarchical sheets.",
+                  findings=architecture.model_dump()),
         TraceStep(agent="Design Critic", role="Senior Hardware Reviewer", status="warning",
-                  summary="Flagged missing surge protection and RS485 isolation risk."),
+                  summary="Flagged missing surge protection and RS485 isolation risk.",
+                  findings=critique.model_dump()),
         TraceStep(agent="Arbitration", role="Chief Engineer", status="ok",
-                  summary="Approved architecture; logged 2 TODOs and 2 human-review items."),
+                  summary="Approved architecture; logged 2 TODOs and 2 human-review items.",
+                  findings=arbitration.model_dump(exclude={"approved_architecture"})),
         TraceStep(agent="PCB Engineer", role="PCB Layout Preparation Engineer", status="ok",
                   summary="4-layer stackup. 4 net classes (PWR 0.5 mm, USB 0.15 mm, RS485 0.2 mm). "
-                          "Floorplan: PWR isolated top-left, MCU central, RS485 right edge."),
+                          "Floorplan: PWR isolated top-left, MCU central, RS485 right edge.",
+                  findings=pcb.model_dump()),
         TraceStep(agent="PCB Critic", role="Senior PCB Reviewer", status="ok",
-                  summary="All PCB constraints validated. Via drill 0.4 mm adequate for current budget."),
+                  summary="All PCB constraints validated. Via drill 0.4 mm adequate for current budget.",
+                  findings=pcb_critique.model_dump()),
     ]
 
     return RunResponse(
@@ -324,6 +332,13 @@ def mock_run_rework(requirements_text: str) -> RunResponse:
     round1_arch = base.architecture.model_copy(
         update={"blocks": [b for b in base.architecture.blocks if b.name != "Debug"]}
     )
+    # Round-1 critique: flags the missing Debug/LED block (drives the rework).
+    round1_critique = Critique(
+        warnings=base.critique.warnings,
+        risks=base.critique.risks,
+        missing_blocks=["Debug/SWD header and status LEDs are missing."],
+        recommendations=base.critique.recommendations,
+    )
     # Round-2: the full architecture, Critic now clean.
     round2_critique = Critique(
         warnings=base.critique.warnings,
@@ -345,27 +360,44 @@ def mock_run_rework(requirements_text: str) -> RunResponse:
     )
     pcb_round2 = _mock_pcb()  # corrected version
 
+    pcb_critique_round1 = PcbCritique(
+        missing_blocks=["Via drill 0.2 mm too small for 500 mA on VIN_24V — increase to ≥ 0.4 mm."],
+        warnings=["PWR net class via drill below the current-carrying minimum."],
+        risks=["Undersized vias can overheat under sustained 500 mA load."],
+    )
+    pcb_critique_round2 = PcbCritique(missing_blocks=[], warnings=[], risks=[])
+
     trace = [
         TraceStep(agent="Requirements Agent", role="Senior Systems Engineer", status="ok", round=1,
-                  summary="Structured 5 requirements, raised 2 clarification questions."),
+                  summary="Structured 5 requirements, raised 2 clarification questions.",
+                  findings=base.requirements.model_dump()),
         TraceStep(agent="System Architect", role="Principal Hardware Architect", status="ok", round=1,
-                  summary=f"Proposed {len(round1_arch.blocks)} functional blocks across hierarchical sheets."),
+                  summary=f"Proposed {len(round1_arch.blocks)} functional blocks across hierarchical sheets.",
+                  findings=round1_arch.model_dump()),
         TraceStep(agent="Design Critic", role="Senior Hardware Reviewer", status="warning", round=1,
-                  summary="Flagged 1 missing block (Debug/SWD + status LEDs)."),
+                  summary="Flagged 1 missing block (Debug/SWD + status LEDs).",
+                  findings=round1_critique.model_dump()),
         TraceStep(agent="System Architect", role="Principal Hardware Architect", status="ok", round=2,
-                  summary=f"Revised: added the Debug block — now {len(base.architecture.blocks)} blocks."),
+                  summary=f"Revised: added the Debug block — now {len(base.architecture.blocks)} blocks.",
+                  findings=base.architecture.model_dump()),
         TraceStep(agent="Design Critic", role="Senior Hardware Reviewer", status="ok", round=2,
-                  summary="Re-reviewed: no missing blocks remain."),
+                  summary="Re-reviewed: no missing blocks remain.",
+                  findings=round2_critique.model_dump()),
         TraceStep(agent="Arbitration", role="Chief Engineer", status="ok", round=2,
-                  summary="Approved architecture; logged 2 TODOs and 2 human-review items."),
+                  summary="Approved architecture; logged 2 TODOs and 2 human-review items.",
+                  findings=base.arbitration.model_dump(exclude={"approved_architecture"})),
         TraceStep(agent="PCB Engineer", role="PCB Layout Preparation Engineer", status="ok", round=1,
-                  summary="4-layer stackup. Via drill 0.2 mm proposed (error — too small for 500 mA PWR net)."),
+                  summary="4-layer stackup. Via drill 0.2 mm proposed (error — too small for 500 mA PWR net).",
+                  findings=pcb_round1.model_dump()),
         TraceStep(agent="PCB Critic", role="Senior PCB Reviewer", status="warning", round=1,
-                  summary="Via drill 0.2 mm too small for 500 mA on VIN_24V. Must increase to ≥ 0.4 mm."),
+                  summary="Via drill 0.2 mm too small for 500 mA on VIN_24V. Must increase to ≥ 0.4 mm.",
+                  findings=pcb_critique_round1.model_dump()),
         TraceStep(agent="PCB Engineer", role="PCB Layout Preparation Engineer", status="ok", round=2,
-                  summary="Corrected: via drill increased to 0.4 mm. .kicad_dru and PCB_READINESS.md generated."),
+                  summary="Corrected: via drill increased to 0.4 mm. .kicad_dru and PCB_READINESS.md generated.",
+                  findings=pcb_round2.model_dump()),
         TraceStep(agent="PCB Critic", role="Senior PCB Reviewer", status="ok", round=2,
-                  summary="Re-reviewed: all PCB constraints valid. Via drill 0.4 mm adequate."),
+                  summary="Re-reviewed: all PCB constraints valid. Via drill 0.4 mm adequate.",
+                  findings=pcb_critique_round2.model_dump()),
     ]
 
     return RunResponse(

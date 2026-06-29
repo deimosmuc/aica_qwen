@@ -24,6 +24,7 @@ from app.models.schemas import (
     RunResponse, StreamEvent, TraceStep,
 )
 from app.services.config import Settings
+from app.services.diag import field_summary, log_validation_error
 from app.services.guard import ApiGuard, GuardBlocked
 from app.services.metering import RunMeter
 from app.services.mock import mock_run, mock_run_rework
@@ -79,6 +80,7 @@ class Orchestrator:
         return TraceStep(
             agent=SystemArchitectAgent.name, role=SystemArchitectAgent.role,
             status="ok", duration_ms=ms, round=round_no, summary=summary,
+            findings=architecture.model_dump(),
         )
 
     @staticmethod
@@ -91,6 +93,7 @@ class Orchestrator:
                 f"Live Qwen (round {round_no}): flagged {len(critique.warnings)} warnings, "
                 f"{len(critique.risks)} risks, {len(critique.missing_blocks)} missing blocks."
             ),
+            findings=critique.model_dump(),
         )
 
     @staticmethod
@@ -103,6 +106,7 @@ class Orchestrator:
                 f"{len(pcb.netclasses)} net classes, "
                 f"{len(pcb.package_hints)} package hints."
             ),
+            findings=pcb.model_dump(),
         )
 
     @staticmethod
@@ -117,6 +121,7 @@ class Orchestrator:
                 f"{len(critique.warnings)} warnings, "
                 f"{len(critique.risks)} risks."
             ),
+            findings=critique.model_dump(),
         )
 
     def _design_and_review_stream(
@@ -222,6 +227,7 @@ class Orchestrator:
                     f"raised {len(requirements.questions)} clarification questions "
                     f"(confidence {requirements.confidence:.0%})."
                 ),
+                findings=requirements.model_dump(),
             )
             steps.append(req_step); yield StreamEvent(type="stage", step=req_step)
 
@@ -238,6 +244,7 @@ class Orchestrator:
                     f"Live Qwen: approved the architecture; logged {len(arbitration.todo)} TODOs "
                     f"and {len(arbitration.human_review)} human-review items."
                 ),
+                findings=arbitration.model_dump(exclude={"approved_architecture"}),
             )
             steps.append(arb_step); yield StreamEvent(type="stage", step=arb_step)
 
@@ -259,9 +266,10 @@ class Orchestrator:
                 requirements_text, f"Qwen was unreachable ({e}). Showing example data instead.")
             return
         except ValidationError as e:
+            log_validation_error(e, model=self.settings.qwen_model)
             yield from self._error_then_fallback(
                 requirements_text,
-                f"Qwen returned a malformed answer ({e.error_count()} field error(s)). "
+                f"Qwen returned a malformed answer — {field_summary(e)}. "
                 "Showing example data instead.")
             return
 
