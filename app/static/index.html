@@ -1015,6 +1015,9 @@
             this.mode = ev.result.mode;
             this.playedSteps = ev.result.trace.length;
             this.streamStageLabel = "";
+            // Stay on the Agent Society view the user was just watching live,
+            // instead of snapping back to the Trace tab (the default).
+            this.societyTab = "society";
             this.diagramSvg = await this.buildDiagram(this.result.architecture);
             this.exportSvg = await this.buildExportDiagram(this.result.architecture);
             await this.fetchGuard();
