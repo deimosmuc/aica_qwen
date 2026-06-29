@@ -143,6 +143,14 @@
     .chips { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
     .chip { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-size: 13px; }
     .chip b { font-size: 16px; margin-right: 6px; color: var(--text); }
+    button.chip { font: inherit; font-size: 13px; cursor: pointer; color: var(--text);
+      display: inline-flex; align-items: center; gap: 0; }
+    button.chip:hover:not(:disabled) { border-color: var(--muted); }
+    button.chip.chip-open { border-color: var(--accent); color: var(--accent); }
+    button.chip.chip-open b { color: var(--accent); }
+    button.chip .chip-caret { margin-left: 8px; font-size: 11px; opacity: .6; }
+    .chip-panel { width: 100%; margin-top: 4px; }
+    .chip-panel .out { margin-top: 0; }
     .status-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px;
       font-size: 12px; font-weight: 600; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
     .status-chip .live { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
@@ -844,10 +852,47 @@
         <section class="panel">
           <h2>6 · Human approval</h2>
           <p class="muted">No KiCad project is generated until you approve. The engineer stays in control.</p>
-          <div class="chips">
-            <div class="chip"><b x-text="result.arbitration.accepted_assumptions.length"></b>Assumptions</div>
-            <div class="chip"><b x-text="result.arbitration.todo.length"></b>TODO items</div>
-            <div class="chip"><b x-text="result.requirements.questions.length"></b>Open questions</div>
+          <div class="chips" x-data="{ open: '' }">
+            <button type="button" class="chip" :class="open==='asm' ? 'chip-open' : ''"
+                    @click="open = open==='asm' ? '' : 'asm'">
+              <b x-text="result.arbitration.accepted_assumptions.length"></b>Assumptions
+              <span class="chip-caret" x-text="open==='asm' ? '▲' : '▼'"></span>
+            </button>
+            <button type="button" class="chip" :class="open==='todo' ? 'chip-open' : ''"
+                    @click="open = open==='todo' ? '' : 'todo'">
+              <b x-text="result.arbitration.todo.length"></b>TODO items
+              <span class="chip-caret" x-text="open==='todo' ? '▲' : '▼'"></span>
+            </button>
+            <button type="button" class="chip" :class="open==='q' ? 'chip-open' : ''"
+                    @click="open = open==='q' ? '' : 'q'">
+              <b x-text="result.requirements.questions.length"></b>Open questions
+              <span class="chip-caret" x-text="open==='q' ? '▲' : '▼'"></span>
+            </button>
+            <div class="chip-panel" x-show="open">
+              <div class="out">
+                <template x-if="open==='asm'">
+                  <div>
+                    <ul x-show="result.arbitration.accepted_assumptions.length">
+                      <template x-for="x in result.arbitration.accepted_assumptions" :key="x"><li x-text="x"></li></template></ul>
+                    <span class="muted" x-show="!result.arbitration.accepted_assumptions.length">No accepted assumptions.</span>
+                  </div>
+                </template>
+                <template x-if="open==='todo'">
+                  <div>
+                    <ul x-show="result.arbitration.todo.length">
+                      <template x-for="x in result.arbitration.todo" :key="x"><li x-text="x"></li></template></ul>
+                    <span class="muted" x-show="!result.arbitration.todo.length">No open TODO items.</span>
+                  </div>
+                </template>
+                <template x-if="open==='q'">
+                  <div>
+                    <ul x-show="result.requirements.questions.length">
+                      <template x-for="x in result.requirements.questions" :key="x"><li x-text="x"></li></template></ul>
+                    <span class="muted" x-show="!result.requirements.questions.length">No open questions.</span>
+                  </div>
+                </template>
+              </div>
+            </div>
           </div>
           <label class="proj-name">
             <span>Project name <span class="muted">(PDF report title — blank = auto)</span></span>
@@ -921,11 +966,12 @@
   <script>
     function architect() {
       return {
-        input: "Design the electronics for a bat-detection device. The ultrasonic bat calls should be captured and their frequency spectrum streamed to a host PC over Wi-Fi and/or USB.",
+        input: "Design the electronics for a bat-detection device. The ultrasonic bat calls should be captured with an ultrasonic MEMS microphone and their frequency spectrum streamed to a host PC over Wi-Fi and/or USB.",
         EXAMPLES: [
-          ["Bat detector (Wi-Fi / USB)", "Design the electronics for a bat-detection device. The ultrasonic bat calls should be captured and their frequency spectrum streamed to a host PC over Wi-Fi and/or USB."],
+          ["Bat detector (Wi-Fi / USB)", "Design the electronics for a bat-detection device. The ultrasonic bat calls should be captured with an ultrasonic MEMS microphone and their frequency spectrum streamed to a host PC over Wi-Fi and/or USB."],
           ["Solar soil sensor (LoRa)", "Design a solar-powered soil-moisture sensor node that reports to a gateway over LoRa and runs for months on a single battery."],
           ["Thermocouple logger (USB-C)", "Design a USB-C powered 4-channel thermocouple data logger with an SD card, an OLED display, and over-current protection."],
+          ["Allsky camera (USB-C)", "Design a USB-C powered allsky camera."],
           ["Heart-rate wearable (BLE)", "Design a wearable BLE heart-rate monitor with a motion sensor, haptic feedback, and USB-C charging."],
         ],
         exampleIdx: "",
