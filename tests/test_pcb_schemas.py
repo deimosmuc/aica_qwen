@@ -5,6 +5,24 @@ def test_netclass_fields():
     assert nc.name == "PWR"
     assert nc.nets == ["GND", "+3V3"]
 
+def test_netclass_coerces_non_string_impedance():
+    # Live Qwen sometimes returns impedance as a number (or small object) rather
+    # than a string; one descriptive field must not collapse the whole run.
+    nc = NetClass.model_validate(
+        {"name": "USB", "min_width_mm": 0.2, "clearance_mm": 0.2, "impedance": 90}
+    )
+    assert nc.impedance == "90 Ω"
+    nc2 = NetClass.model_validate(
+        {"name": "DDR", "min_width_mm": 0.1, "clearance_mm": 0.1,
+         "impedance": {"single": "50", "diff": "90"}}
+    )
+    assert isinstance(nc2.impedance, str) and "50" in nc2.impedance
+    nc3 = NetClass.model_validate(
+        {"name": "GND", "min_width_mm": 0.3, "clearance_mm": 0.3, "impedance": None}
+    )
+    assert nc3.impedance is None
+
+
 def test_constraint_set_fields():
     cs = ConstraintSet(min_clearance_mm=0.2, min_track_width_mm=0.2,
                        via_drill_mm=0.3, via_annular_ring_mm=0.1)

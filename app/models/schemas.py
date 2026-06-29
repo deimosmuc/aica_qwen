@@ -154,6 +154,30 @@ class NetClass(BaseModel):
     nets: list[str] = []
     impedance: str | None = None  # target controlled impedance, e.g. "90 Ω diff"
 
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_impedance(cls, data):
+        # Live Qwen sometimes returns impedance as a number (e.g. 90) or a small
+        # object instead of a string. Coerce it so this one descriptive field
+        # can't collapse the whole run to example data (same salvage philosophy
+        # as the Requirements clarifications sanitizer and DfxItem above).
+        if not isinstance(data, dict) or "impedance" not in data:
+            return data
+        imp = data["impedance"]
+        if imp is None or isinstance(imp, str):
+            return data
+        if isinstance(imp, bool):
+            data["impedance"] = None
+        elif isinstance(imp, (int, float)):
+            data["impedance"] = f"{imp} Ω"
+        elif isinstance(imp, dict):
+            data["impedance"] = ", ".join(f"{k}: {v}" for k, v in imp.items()) or None
+        elif isinstance(imp, list):
+            data["impedance"] = ", ".join(str(x) for x in imp) or None
+        else:
+            data["impedance"] = str(imp)
+        return data
+
 
 class ConstraintSet(BaseModel):
     min_clearance_mm: float
