@@ -89,6 +89,23 @@ def test_dfx_item_defaults():
     assert d2.status == "present" and d2.note == "corners"
 
 
+def test_dfx_item_coerces_out_of_set_enums():
+    # Live Qwen sometimes returns a status/category outside the allowed set
+    # (e.g. status "ok", category "manufacturing"). A single non-critical field
+    # must not crash the run — it should be mapped onto the nearest valid value.
+    from app.models.schemas import DfxItem
+    d = DfxItem.model_validate({"category": "manufacturing", "item": "x", "status": "ok"})
+    assert d.status == "present"
+    assert d.category == "dfm"
+
+
+def test_dfx_item_unknown_enum_falls_back_to_default():
+    from app.models.schemas import DfxItem
+    d = DfxItem.model_validate({"category": "wat", "item": "x", "status": "weird"})
+    assert d.status == "recommended"
+    assert d.category == "dfm"
+
+
 def test_pcb_readiness_dfx_defaults_empty():
     from app.models.schemas import PcbReadiness, ConstraintSet
     pcb = PcbReadiness(

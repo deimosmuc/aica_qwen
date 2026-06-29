@@ -182,10 +182,44 @@ class Candidate(BaseModel):
 class DfxItem(BaseModel):
     """One Design-for-X provision: a testability / DFM / bring-up item."""
 
-    category: Literal["testability", "dfm", "bringup"]
+    category: Literal["testability", "dfm", "bringup"] = "dfm"
     item: str
     status: Literal["present", "recommended", "missing"] = "recommended"
     note: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_enums(cls, data):
+        # Live Qwen sometimes returns an out-of-set status/category here (e.g.
+        # status "ok"/"n/a", category "manufacturing"). This single non-critical
+        # field must not collapse the whole run to example data — map it onto the
+        # nearest valid value instead (same salvage philosophy as the Requirements
+        # clarifications sanitizer above). Unknown values fall back to the default.
+        if not isinstance(data, dict):
+            return data
+        status_map = {
+            "present": "present", "ok": "present", "done": "present", "yes": "present",
+            "pass": "present", "passed": "present", "complete": "present",
+            "completed": "present", "implemented": "present", "included": "present",
+            "missing": "missing", "absent": "missing", "no": "missing",
+            "fail": "missing", "failed": "missing", "none": "missing",
+            "recommended": "recommended", "suggested": "recommended",
+            "advised": "recommended", "optional": "recommended", "todo": "recommended",
+            "tbd": "recommended", "na": "recommended", "n/a": "recommended",
+        }
+        category_map = {
+            "testability": "testability", "test": "testability", "testing": "testability",
+            "dft": "testability", "test-points": "testability", "testpoints": "testability",
+            "dfm": "dfm", "manufacturing": "dfm", "manufacturability": "dfm",
+            "assembly": "dfm", "dfa": "dfm", "production": "dfm",
+            "bringup": "bringup", "bring-up": "bringup", "bring up": "bringup",
+            "debug": "bringup", "commissioning": "bringup", "power-on": "bringup",
+        }
+        if "status" in data:
+            data["status"] = status_map.get(str(data.get("status") or "").strip().lower(), "recommended")
+        if "category" in data:
+            data["category"] = category_map.get(str(data.get("category") or "").strip().lower(), "dfm")
+        return data
 
 
 class ComponentChoice(BaseModel):
