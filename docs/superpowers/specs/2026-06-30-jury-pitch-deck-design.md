@@ -62,7 +62,10 @@ Key narrative: **the gap widens with complexity** (Medical +5, Battery IoT +4). 
 - Animations/transitions beyond simple builds (the deck must read statically on Devpost).
 - Speaker notes script for the video narration — separate deliverable if wanted later.
 
+## Showcase design (locked)
+
+**Bat detector (Wi-Fi / USB)** — the built-in example at `app/static/index.html:1105`: *"Design the electronics for a bat-detection device. The ultrasonic bat calls should be captured with an ultrasonic MEMS microphone and their frequency spectrum streamed to a host PC over Wi-Fi and/or USB."* Memorable for the jury **and** reproducible in the video via the "Load example" button. Drive it in Mock Mode with the **Senior Review Team** profile so a visible rework round renders, and confirm ERC 0 for the slide-7 artifacts.
+
 ## Open items to resolve during implementation
 
-- Which Mock-Mode design to drive for the screenshots (slides 5–7) — pick one that shows a visible rework round (Senior Review Team profile) and a clean ERC. Likely the wifi-sensor-node or a fresh complex run.
-- Whether the close slide's "project link" is the public GitHub URL (depends on the repo being pushed) or the deployed Devpost URL.
+- Whether the close slide's "project link" is the public GitHub URL (depends on the repo being pushed) or the deployed Devpost URL. Use a placeholder until both are final.
