@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
-from app.agents.requirements import RequirementsAgent
-from app.services.config import Settings
-from app.services.qwen_client import QwenClient
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app.agents.requirements import RequirementsAgent  # noqa: E402
+from app.services.config import Settings  # noqa: E402
+from app.services.qwen_client import QwenClient  # noqa: E402
 
 
 def main() -> int:

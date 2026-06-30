@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
-from app.services.config import Settings
-from app.services.orchestrator import Orchestrator
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app.services.config import Settings  # noqa: E402
+from app.services.orchestrator import Orchestrator  # noqa: E402
 
 
 def main() -> int:
