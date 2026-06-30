@@ -7,6 +7,7 @@ preview. No KiCad project is ever generated before approval.
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import date
 from pathlib import Path
@@ -40,6 +41,8 @@ from app.services.persona import persona_instruction
 from app.services.profiles import profile_for
 from app.services.stepwise import run_stage
 from app.services.validation import validate_project
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["pipeline"])
 
@@ -163,7 +166,13 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         report_url = f"/api/report/{project_id}"
     except Exception:
         # Report is best-effort: missing WeasyPrint system libs must not break
-        # scaffold generation or the ZIP. The button is simply hidden.
+        # scaffold generation or the ZIP. The button is simply hidden — but log
+        # the failure (with traceback) so a silently-missing report is
+        # diagnosable in the Docker/deployment logs instead of vanishing.
+        logger.warning(
+            "PDF report generation failed for project %s; hiding report link.",
+            project_id, exc_info=True,
+        )
         report_url = None
 
     create_project_zip(project_dir)
