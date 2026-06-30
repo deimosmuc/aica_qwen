@@ -6,7 +6,7 @@ raises clarification questions or records explicit assumptions instead.
 """
 from __future__ import annotations
 
-from app.agents.base import ChatClient, guidance_block
+from app.agents.base import ChatClient, guidance_block, revision_block
 from app.models.schemas import Requirements
 
 NAME = "Requirements Agent"
@@ -52,7 +52,13 @@ class RequirementsAgent:
     role = ROLE
 
     def run(
-        self, client: ChatClient, requirements_text: str, guidance: list[str] | None = None
+        self,
+        client: ChatClient,
+        requirements_text: str,
+        guidance: list[str] | None = None,
+        *,
+        revisions: list[str] | None = None,
     ) -> Requirements:
-        data = client.chat_json(SYSTEM_PROMPT, requirements_text + guidance_block(guidance))
+        user = requirements_text + revision_block(revisions) + guidance_block(guidance)
+        data = client.chat_json(SYSTEM_PROMPT, user)
         return Requirements.model_validate(data)

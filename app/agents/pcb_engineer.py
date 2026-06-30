@@ -6,7 +6,7 @@ strategy, and package hints. Does NOT produce layout or routing.
 """
 from __future__ import annotations
 
-from app.agents.base import ChatClient, guidance_block
+from app.agents.base import ChatClient, guidance_block, original_request_block, revision_block
 from app.models.schemas import (
     Arbitration, Architecture, Candidate, ComponentChoice, ConstraintSet,
     DfxItem, FloorplanZone, NetClass, PackageHint, PcbReadiness, Requirements,
@@ -109,6 +109,9 @@ class PcbEngineerAgent:
         architecture: Architecture,
         arbitration: Arbitration,
         guidance: list[str] | None = None,
+        *,
+        original_request: str | None = None,
+        revisions: list[str] | None = None,
     ) -> PcbReadiness:
         user = (
             "Produce PCB-readiness recommendations for this approved architecture.\n\n"
@@ -118,6 +121,8 @@ class PcbEngineerAgent:
             + architecture.model_dump_json(indent=2)
             + "\n\nARBITRATION TODOs:\n"
             + "\n".join(arbitration.todo)
+            + original_request_block(original_request)
+            + revision_block(revisions)
             + guidance_block(guidance)
         )
         data = client.chat_json(SYSTEM_PROMPT, user)

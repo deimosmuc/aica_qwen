@@ -29,24 +29,24 @@ def _stub_pcb_readiness() -> PcbReadiness:
 
 def _patch_agents(monkeypatch, critic_fn, calls):
     monkeypatch.setattr(orch_mod.RequirementsAgent, "run",
-                        lambda self, c, text, g=None: Requirements(requirements=["r"], confidence=0.5))
+                        lambda self, c, text, g=None, **kw: Requirements(requirements=["r"], confidence=0.5))
 
-    def arch(self, c, requirements, g=None):
+    def arch(self, c, requirements, g=None, **kw):
         calls["arch"] += 1
         return Architecture(blocks=[Block(name="MCU", sheet="mcu.kicad_sch", purpose="core")])
 
-    def crit(self, c, requirements, architecture, g=None):
+    def crit(self, c, requirements, architecture, g=None, **kw):
         calls["crit"] += 1
         return critic_fn(calls["crit"])
 
     monkeypatch.setattr(orch_mod.SystemArchitectAgent, "run", arch)
     monkeypatch.setattr(orch_mod.DesignCriticAgent, "run", crit)
     monkeypatch.setattr(orch_mod.ArbitrationAgent, "run",
-                        lambda self, c, req, arch, crit, g=None: Arbitration(approved_architecture=arch))
+                        lambda self, c, req, arch, crit, g=None, **kw: Arbitration(approved_architecture=arch))
     monkeypatch.setattr(orch_mod.PcbEngineerAgent, "run",
-                        lambda self, c, req, arch, arb, g=None: _stub_pcb_readiness())
+                        lambda self, c, req, arch, arb, g=None, **kw: _stub_pcb_readiness())
     monkeypatch.setattr(orch_mod.PcbCriticAgent, "run",
-                        lambda self, c, req, pcb, g=None: PcbCritique())
+                        lambda self, c, req, pcb, g=None, **kw: PcbCritique())
 
 
 def test_stream_emits_stage_events_then_final(monkeypatch):
@@ -93,7 +93,7 @@ def test_stream_rework_emits_round_two_steps(monkeypatch):
 
 
 def test_stream_error_yields_error_then_mock_final(monkeypatch):
-    def boom(self, c, text, g=None):
+    def boom(self, c, text, g=None, **kw):
         raise GuardBlocked("budget cap")
     monkeypatch.setattr(orch_mod.RequirementsAgent, "run", boom)
     events = list(orch_mod.Orchestrator(Settings(qwen_api_key="sk-test")).run_stream("board"))

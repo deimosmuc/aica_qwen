@@ -6,7 +6,7 @@ Never redesigns — only reports findings.
 """
 from __future__ import annotations
 
-from app.agents.base import ChatClient, guidance_block
+from app.agents.base import ChatClient, guidance_block, original_request_block, revision_block
 from app.models.schemas import PcbCritique, PcbReadiness, Requirements
 
 NAME = "PCB Critic"
@@ -53,6 +53,9 @@ class PcbCriticAgent:
         requirements: Requirements,
         pcb_readiness: PcbReadiness,
         guidance: list[str] | None = None,
+        *,
+        original_request: str | None = None,
+        revisions: list[str] | None = None,
     ) -> PcbCritique:
         user = (
             "Review these PCB-readiness recommendations.\n\n"
@@ -60,6 +63,8 @@ class PcbCriticAgent:
             + requirements.model_dump_json(indent=2)
             + "\n\nPCB READINESS:\n"
             + pcb_readiness.model_dump_json(indent=2)
+            + original_request_block(original_request)
+            + revision_block(revisions)
             + guidance_block(guidance)
         )
         data = client.chat_json(SYSTEM_PROMPT, user)

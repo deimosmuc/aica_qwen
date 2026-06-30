@@ -77,7 +77,8 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
     try:
         if req.stage == "requirements":
             t = perf_counter()
-            out: Requirements = RequirementsAgent().run(client, req.requirements_text, req.guidance)
+            out: Requirements = RequirementsAgent().run(
+                client, req.requirements_text, req.guidance, revisions=req.revisions)
             ms = int((perf_counter() - t) * 1000)
             step = _trace(
                 RequirementsAgent,
@@ -92,7 +93,9 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
             if req.requirements is None:
                 raise ValueError("The architecture stage needs the approved requirements.")
             t = perf_counter()
-            arch: Architecture = SystemArchitectAgent().run(client, req.requirements, req.guidance)
+            arch: Architecture = SystemArchitectAgent().run(
+                client, req.requirements, req.guidance,
+                original_request=req.requirements_text, revisions=req.revisions)
             ms = int((perf_counter() - t) * 1000)
             step = _trace(
                 SystemArchitectAgent,
@@ -108,7 +111,8 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
                 raise ValueError("The critique stage needs the approved requirements and architecture.")
             t = perf_counter()
             crit: Critique = DesignCriticAgent().run(
-                client, req.requirements, req.architecture, req.guidance
+                client, req.requirements, req.architecture, req.guidance,
+                original_request=req.requirements_text, revisions=req.revisions,
             )
             ms = int((perf_counter() - t) * 1000)
             n = len(crit.warnings) + len(crit.risks) + len(crit.missing_blocks)
@@ -128,7 +132,8 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
                 )
             t = perf_counter()
             arb: Arbitration = ArbitrationAgent().run(
-                client, req.requirements, req.architecture, req.critique, req.guidance
+                client, req.requirements, req.architecture, req.critique, req.guidance,
+                original_request=req.requirements_text, revisions=req.revisions,
             )
             ms = int((perf_counter() - t) * 1000)
             step = _trace(
@@ -147,7 +152,8 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
                 )
             t = perf_counter()
             pcb: PcbReadiness = PcbEngineerAgent().run(
-                client, req.requirements, req.architecture, req.arbitration, req.guidance
+                client, req.requirements, req.architecture, req.arbitration, req.guidance,
+                original_request=req.requirements_text, revisions=req.revisions,
             )
             ms = int((perf_counter() - t) * 1000)
             step = _trace(
@@ -164,7 +170,8 @@ def run_stage(req: StepRequest, settings: Settings) -> StepResponse:
                 raise ValueError("The pcb_critic stage needs the approved pcb_readiness.")
             t = perf_counter()
             crit: PcbCritique = PcbCriticAgent().run(
-                client, req.requirements, req.pcb_readiness, req.guidance
+                client, req.requirements, req.pcb_readiness, req.guidance,
+                original_request=req.requirements_text, revisions=req.revisions,
             )
             ms = int((perf_counter() - t) * 1000)
             step = _trace(

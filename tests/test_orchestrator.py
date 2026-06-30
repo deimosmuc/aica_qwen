@@ -55,24 +55,24 @@ def _stub_pcb_readiness() -> PcbReadiness:
 
 def _patch_agents(monkeypatch, critic_fn, calls):
     monkeypatch.setattr(orch_mod.RequirementsAgent, "run",
-                        lambda self, c, text, g=None: Requirements(requirements=["r"], confidence=0.5))
+                        lambda self, c, text, g=None, **kw: Requirements(requirements=["r"], confidence=0.5))
 
-    def arch(self, c, requirements, g=None):
+    def arch(self, c, requirements, g=None, **kw):
         calls["arch"] += 1
         return Architecture(blocks=[Block(name="MCU", sheet="mcu.kicad_sch", purpose="core")])
 
-    def crit(self, c, requirements, architecture, g=None):
+    def crit(self, c, requirements, architecture, g=None, **kw):
         calls["crit"] += 1
         return critic_fn(calls["crit"])
 
     monkeypatch.setattr(orch_mod.SystemArchitectAgent, "run", arch)
     monkeypatch.setattr(orch_mod.DesignCriticAgent, "run", crit)
     monkeypatch.setattr(orch_mod.ArbitrationAgent, "run",
-                        lambda self, c, req, arch, crit, g=None: Arbitration(approved_architecture=arch))
+                        lambda self, c, req, arch, crit, g=None, **kw: Arbitration(approved_architecture=arch))
     monkeypatch.setattr(orch_mod.PcbEngineerAgent, "run",
-                        lambda self, c, req, arch, arb, g=None: _stub_pcb_readiness())
+                        lambda self, c, req, arch, arb, g=None, **kw: _stub_pcb_readiness())
     monkeypatch.setattr(orch_mod.PcbCriticAgent, "run",
-                        lambda self, c, req, pcb, g=None: PcbCritique())
+                        lambda self, c, req, pcb, g=None, **kw: PcbCritique())
 
 
 def test_rework_stops_when_critic_is_clean(monkeypatch):
@@ -104,7 +104,7 @@ def test_no_rework_when_profile_disables_it(monkeypatch):
 def test_validation_error_degrades_to_mock(monkeypatch):
     # A live agent returning malformed JSON (pydantic ValidationError) must not
     # crash the run — it degrades to example data with an honest notice.
-    def boom(self, c, text, g=None):
+    def boom(self, c, text, g=None, **kw):
         Requirements.model_validate({"confidence": "not-a-number"})  # raises ValidationError
 
     monkeypatch.setattr(orch_mod.RequirementsAgent, "run", boom)

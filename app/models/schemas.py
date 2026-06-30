@@ -18,6 +18,11 @@ class RunRequest(BaseModel):
     guidance: list[str] = Field(
         default=[], description="Hard user constraints (e.g. mandated parts) every agent must honor."
     )
+    revisions: list[str] = Field(
+        default=[],
+        description="Soft change requests from a prior result; every agent applies them "
+        "unless they conflict with guidance.",
+    )
     model: str | None = Field(
         default=None, description="Optional Qwen model override; ignored unless allow-listed."
     )
@@ -460,6 +465,7 @@ class StepRequest(BaseModel):
     stage: Stage
     requirements_text: str
     guidance: list[str] = []
+    revisions: list[str] = []
     model: str | None = None
     profile: str | None = None
     requirements: Requirements | None = None

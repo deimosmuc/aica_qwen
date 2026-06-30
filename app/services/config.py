@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # --- API Guard: keeps Qwen calls sensible, sparse and cheap -------------
     guard_enabled: bool = True
-    guard_budget_usd: float = 5.0           # hard total spend cap; then block
+    guard_budget_usd: float = 35.0          # hard total spend cap; then block
     guard_min_input_chars: int = 8          # reject empty / junk input
     # Anti-junk cap on a single call's user prompt. Must comfortably exceed the
     # inter-agent prompts (later agents embed earlier agents' full JSON output,

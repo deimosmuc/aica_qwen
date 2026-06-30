@@ -87,7 +87,7 @@ def run(req: RunRequest) -> RunResponse:
     settings = get_settings()
     profile = profile_for(req.profile, req.model, settings)
     guidance = [persona_instruction(req.persona)] + req.guidance
-    return Orchestrator(settings, profile).run(req.requirements_text, guidance)
+    return Orchestrator(settings, profile).run(req.requirements_text, guidance, req.revisions)
 
 
 @router.post("/run/stream")
@@ -101,7 +101,7 @@ async def run_stream(req: RunRequest) -> StreamingResponse:
     orch = Orchestrator(settings, profile)
 
     async def event_source():
-        gen = orch.run_stream(req.requirements_text, guidance)
+        gen = orch.run_stream(req.requirements_text, guidance, req.revisions)
         done = object()
 
         def _next():

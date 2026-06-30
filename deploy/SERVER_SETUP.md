@@ -98,7 +98,7 @@ git push  ──►  GitHub Action builds image  ──►  GHCR (ghcr.io, priva
     ```
     - `APP_IMAGE=ghcr.io/<user>/<repo>:latest`
     - `QWEN_API_KEY=` your **fresh** Qwen key (see security note below)
-    - leave the `GUARD_*` defaults (keeps the $5 cost cap active)
+    - leave the `GUARD_*` defaults (keeps the $35 cost cap active)
 
 12. **Create `caddy.env`** with the juror login:
     ```bash
@@ -155,7 +155,7 @@ git push  ──►  GitHub Action builds image  ──►  GHCR (ghcr.io, priva
   put it **only** in `app.env` on the server.
 - `app.env` and `caddy.env` live **only on the server** and are gitignored — they
   are never committed.
-- The API Guard stays on (`GUARD_BUDGET_USD=5.0`) as a hard cost brake.
+- The API Guard stays on (`GUARD_BUDGET_USD=35.0`) as a hard cost brake.
 
 ## Troubleshooting
 

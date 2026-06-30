@@ -46,7 +46,7 @@ def test_run_stream_respects_named_profile(monkeypatch):
         def __init__(self, settings, profile=None, client=None):
             captured["profile"] = profile
 
-        def run_stream(self, text, guidance=None):
+        def run_stream(self, text, guidance=None, revisions=None):
             yield StreamEvent(type="final", result=mock_run(text))
 
     monkeypatch.setattr(routes, "Orchestrator", FakeOrch)

@@ -251,6 +251,32 @@
       .rail-live, .rail-stn.active .rail-dot, .rail-stn.addressed .rail-dot, .rail-pkt { animation: none !important; }
       .rail-pkt { display: none !important; }
     }
+    /* Intro / explainer panel (onboarding for non-expert jurors) */
+    .intro { display: flex; gap: 24px; align-items: center; }
+    .intro-text { flex: 1; min-width: 0; }
+    .intro-text h2 { margin-top: 0; }
+    .intro-lead { margin: 0 0 12px; }
+    .intro ul { margin: 0 0 12px; padding-left: 20px; }
+    .intro li { margin: 6px 0; }
+    .intro-mascot { width: 220px; max-width: 40%; height: auto; flex-shrink: 0;
+                    border-radius: var(--radius); }
+    .intro-stat { background: var(--panel-2); border: 1px solid var(--line);
+                  border-left: 3px solid var(--ok); border-radius: var(--radius);
+                  padding: 10px 14px; margin: 0 0 12px; }
+    .intro-stat b { color: var(--ok); }
+    .intro-cta { color: var(--muted); margin: 0 0 10px; }
+    .intro-toggle { margin-left: 12px; }
+    @media (max-width: 760px) {
+      .intro { flex-direction: column-reverse; }
+      .intro-mascot { width: 60%; max-width: 260px; }
+    }
+    /* Pristine empty-state nudge */
+    .empty-hint { text-align: center; color: var(--muted);
+                  border: 1px dashed var(--line); background: transparent; }
+    /* Footer / attribution */
+    footer { max-width: 1100px; margin: 30px auto 20px; padding: 16px 28px 0;
+             border-top: 1px solid var(--line); color: var(--muted);
+             font-size: 12.5px; text-align: center; line-height: 1.7; }
   </style>
 </head>
 <body x-data="architect()" x-init="init()">
@@ -273,9 +299,39 @@
     <span class="status-chip" x-show="streamActive" style="margin-left:10px">
       <span class="rail-live"></span>
       <span x-text="(streamTrace.length) + ' agents done' + (streamStageLabel ? ' · now: ' + streamStageLabel : '')"></span></span>
+    <button class="btn-ghost intro-toggle" @click="toggleIntro(!showIntro)"
+      x-text="showIntro ? 'ℹ︎ Hide intro' : 'ℹ︎ How it works'"></button>
   </header>
 
   <main>
+    <!-- Intro / explainer for first-time (non-expert) visitors -->
+    <section class="panel" x-show="showIntro" x-transition>
+      <div class="intro">
+        <div class="intro-text">
+          <h2>New here? The 30-second tour</h2>
+          <p class="intro-lead">Describe an electronic device in plain English. A team of specialist AI
+            agents turns it into an engineering-ready KiCad project — the same files a hardware engineer
+            would hand to a PCB designer.</p>
+          <ul>
+            <li><b>No electronics knowledge needed</b> — just describe the idea, or load an example below.</li>
+            <li><b>A team, not one model:</b> an Architect proposes, a Critic challenges it, a Chief Engineer
+              resolves the conflicts — then PCB specialists prepare the board.</li>
+            <li><b>You get</b> a live block diagram, a PCB-readiness pack, a PDF report, and downloadable KiCad files.</li>
+            <li><b>Set your Audience</b> (Professional / Student / Maker) and every explanation adapts to you.</li>
+          </ul>
+          <p class="intro-stat">📊 <b>Why a team?</b> In a 5-design benchmark the agents surfaced
+            <b>11.6&#8202;/&#8202;12</b> engineering concerns on average vs <b>8.4&#8202;/&#8202;12</b> for a
+            single AI (<b>+3.2</b>). Reproduce it under “Advanced · compare &amp; benchmark”.</p>
+          <p class="intro-cta">Pick an example → choose your audience → press <b>Run agents</b>, and watch
+            the team collaborate live.</p>
+          <button class="btn-ghost" @click="toggleIntro(false)">Got it — hide this</button>
+        </div>
+        <img class="intro-mascot" src="/static/mascot.png"
+          alt="AI Circuit Architect mascot explaining PCB design guidelines"
+          onerror="this.style.display='none'">
+      </div>
+    </section>
+
     <!-- Input -->
     <section class="panel">
       <h2>1 · Describe your hardware</h2>
@@ -289,16 +345,18 @@
             <template x-for="ex in EXAMPLES" :key="ex[0]"><option :value="ex[0]" x-text="ex[0]"></option></template>
           </select>
         </label>
-        <label class="model-pick">Profile:
-          <select x-model="selectedProfile" :disabled="loading || stepBusy || comparing">
+        <label class="model-pick" title="Which AI team runs the job. 'Senior Review Team' adds a senior reviewer that demands rework — the multi-agent story.">Profile:
+          <select x-model="selectedProfile" :disabled="loading || stepBusy || comparing"
+            title="Which AI team runs the job. 'Senior Review Team' adds a senior reviewer that demands rework — the multi-agent story.">
             <option value="Uniform qwen-plus">Uniform qwen-plus</option>
             <option value="Uniform qwen-max">Uniform qwen-max</option>
             <option value="Budget Turbo">Budget Turbo</option>
             <option value="Senior Review Team">Senior Review Team</option>
           </select>
         </label>
-        <label class="model-pick">Audience:
-          <select x-model="persona" :disabled="loading || stepBusy || comparing">
+        <label class="model-pick" title="Who's this for? Re-tones the depth and language of every answer (Professional / Student / Maker).">Audience:
+          <select x-model="persona" :disabled="loading || stepBusy || comparing"
+            title="Who's this for? Re-tones the depth and language of every answer (Professional / Student / Maker).">
             <template x-for="p in PERSONAS" :key="p[0]"><option :value="p[0]" x-text="p[1]"></option></template>
           </select>
         </label>
@@ -387,6 +445,12 @@
           </div>
         </template>
       </div>
+    </section>
+
+    <!-- Pristine empty state: nudge a first-time user toward the happy path -->
+    <section class="panel empty-hint"
+      x-show="!result && !acc && !pending && !streamActive && stepIdx < 0 && !loading && !cmp && !bench">
+      👋 Nothing here yet — load an example above and press <b>Run agents</b> to watch the team design your board live.
     </section>
 
     <template x-if="cmp">
@@ -598,12 +662,17 @@
                 <b>Active constraints (honored by every agent)</b>
                 <ul><template x-for="g in acc.guidance" :key="g"><li x-text="g"></li></template></ul>
               </div>
+              <div x-show="acc?.revisions?.length" class="active-cons">
+                <b>Your change requests (applied by every agent)</b>
+                <ul><template x-for="r in acc.revisions" :key="r"><li x-text="r"></li></template></ul>
+              </div>
+              <label style="display:block;margin:10px 0 4px"><b>Request changes</b> <span class="muted">— tell the agents what to adjust, then Re-run. Carries forward to every later step.</span></label>
               <textarea class="correct" x-model="correctText" rows="2"
-                placeholder="Course-correct (optional): e.g. 'Wrong track — we must use part XYZ by company policy.' Then Re-run."></textarea>
+                placeholder="e.g. 'Use USB-C instead of micro-USB', 'add a battery option', or 'we must use part XYZ by company policy'."></textarea>
               <div class="row" style="margin-top:12px">
                 <button class="approve" @click="approveStep()"
                   x-text="(pending.requirements && pending.requirements.clarifications && pending.requirements.clarifications.length) ? 'Continue with my answers →' : 'Approve & continue'"></button>
-                <button @click="redoStep()" x-text="correctText.trim() ? 'Re-run with my correction' : 'Re-run step'"></button>
+                <button @click="redoStep()" x-text="correctText.trim() ? 'Re-run with my changes' : 'Re-run step'"></button>
                 <button @click="stopStep()">Stop</button>
               </div>
             </div>
@@ -910,6 +979,26 @@
           <p class="muted" x-show="genError" style="margin-top:10px; color: var(--warn)" x-text="genError"></p>
         </section>
 
+        <!-- Refine & re-run (auto mode): list change requests, run the whole pipeline again -->
+        <template x-if="auto && !gen">
+          <section class="panel">
+            <h2>Not quite right? Refine &amp; run again</h2>
+            <p class="muted">List the changes you want — one per line. A second full run feeds them
+              (plus your original request) to every agent. This uses the Qwen API again; the
+              <span x-text="guard ? ('$' + guard.budget_usd.toFixed(0)) : ''"></span> cost guard still applies.</p>
+            <div x-show="revisions.length" class="active-cons">
+              <b>Change requests queued for the next run</b>
+              <ul><template x-for="r in revisions" :key="r"><li x-text="r"></li></template></ul>
+            </div>
+            <textarea class="correct" x-model="refineText" rows="3"
+              placeholder="e.g. Use USB-C instead of micro-USB&#10;Add a battery-powered option&#10;Keep the BOM under $15"></textarea>
+            <div class="row" style="margin-top:12px">
+              <button class="primary" @click="refineRun()" :disabled="loading || !refineText.trim()"
+                x-text="loading ? 'Running…' : 'Run again with my changes'"></button>
+            </div>
+          </section>
+        </template>
+
         <!-- Generated scaffold: validation + preview + download -->
         <template x-if="gen">
           <section class="panel">
@@ -963,6 +1052,11 @@
     </template>
   </main>
 
+  <footer>
+    AI Circuit Architect · Built for the Qwen Hackathon (Agent Society track) · Powered by Qwen ·
+    Schematics generated &amp; validated with KiCad (GPL-3.0)
+  </footer>
+
   <script>
     function architect() {
       return {
@@ -982,6 +1076,8 @@
         auto: true, STAGES: ["requirements", "architecture", "critique", "arbitration", "pcb_engineer", "pcb_critic"],
         acc: null, pending: null, stepIdx: -1, stepBusy: false, stepNotice: "", stepStopped: false,
         diagramSvg: null, exportSvg: null, constraintsText: "", correctText: "", projectName: "",
+        revisions: [], refineText: "",   // auto-mode: change requests fed into a second run
+        showIntro: true,                  // onboarding panel; dismissed state remembered in localStorage
         clarifyAnswers: {},   // { [questionId]: { picked: [labels], text: "" } }
         playedSteps: 0, societyTab: 'trace', _pipelineTimers: [],
         streamTrace: [], streamActive: false, streamStageLabel: "", streamNotice: "", streamTyping: null,
@@ -997,8 +1093,13 @@
         PROFILES: ["Uniform qwen-plus", "Uniform qwen-max", "Budget Turbo", "Senior Review Team"], selectedProfile: "Senior Review Team",
         PERSONAS: [["professional","Professional"],["student","Student"],["maker","Maker"]], persona: "professional",
         async init() {
+          try { if (localStorage.getItem('aca_intro_hidden') === '1') this.showIntro = false; } catch (e) {}
           try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
           await this.fetchGuard();
+        },
+        toggleIntro(show) {
+          this.showIntro = show;
+          try { localStorage.setItem('aca_intro_hidden', show ? '0' : '1'); } catch (e) {}
         },
         async fetchGuard() {
           try { this.guard = await (await fetch("/api/guard")).json(); } catch (e) {}
@@ -1007,7 +1108,20 @@
           const e = this.EXAMPLES.find(x => x[0] === this.exampleIdx);
           if (e) this.input = e[1];
         },
-        run() { return this.auto ? this.runAuto() : this.runStep(); },
+        run() {
+          // Top "Run" button = a fresh start: drop any queued change requests.
+          this.revisions = []; this.refineText = "";
+          return this.auto ? this.runAuto() : this.runStep();
+        },
+        refineRun() {
+          // Auto-mode: queue the listed changes and start a second full run that
+          // feeds them (plus the original request) to every agent.
+          const lines = this.refineText.split("\n").map(s => s.trim()).filter(Boolean);
+          if (!lines.length) return;
+          this.revisions.push(...lines);
+          this.refineText = "";
+          return this.runAuto();   // _resetRun keeps this.revisions intact
+        },
         _resetRun() {
           this.result = null; this.approved = false; this.gen = null; this.genError = "";
           this.acc = null; this.pending = null; this.stepIdx = -1;
@@ -1021,7 +1135,7 @@
           try {
             const res = await fetch("/api/run/stream", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ requirements_text: this.input, guidance: this.parseConstraints(), profile: this.selectedProfile, persona: this.persona })
+              body: JSON.stringify({ requirements_text: this.input, guidance: this.parseConstraints(), revisions: this.revisions, profile: this.selectedProfile, persona: this.persona })
             });
             if (!res.ok || !res.body) throw new Error("Stream failed (" + res.status + ")");
             const reader = res.body.getReader();
@@ -1072,7 +1186,8 @@
         async runStep() {
           this._resetRun();
           this.acc = { mode: "mock", requirements: null, architecture: null,
-            critique: null, arbitration: null, pcb_readiness: null, pcb_critique: null, trace: [], guidance: this.parseConstraints() };
+            critique: null, arbitration: null, pcb_readiness: null, pcb_critique: null, trace: [],
+            guidance: this.parseConstraints(), revisions: [] };
           await this.loadStage(0);
         },
         async loadStage(i) {
@@ -1084,6 +1199,7 @@
                 stage: this.STAGES[i],
                 requirements_text: this.input,
                 guidance: this.acc.guidance,
+                revisions: this.acc.revisions,
                 requirements: this.acc.requirements,
                 architecture: this.acc.architecture,
                 critique: this.acc.critique,
@@ -1373,7 +1489,9 @@
         redoStep() {
           if (this.stepIdx < 0 || this.stepBusy) return;
           const note = this.correctText.trim();
-          if (note) { this.acc.guidance.push(note); this.correctText = ""; }
+          // A course-correction is a soft change request, not a hard constraint —
+          // route it to revisions so agents treat it as "apply unless it conflicts".
+          if (note) { this.acc.revisions.push(note); this.correctText = ""; }
           this.loadStage(this.stepIdx);
         },
         stopStep() { this.acc = null; this.pending = null; this.stepIdx = -1; this.stepStopped = true; },

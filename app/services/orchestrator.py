@@ -132,12 +132,16 @@ class Orchestrator:
         steps: list[TraceStep] = []
         yield self._stage_start(SystemArchitectAgent)
         t = perf_counter()
-        architecture = SystemArchitectAgent().run(self._client_for("architecture"), requirements, guidance)
+        architecture = SystemArchitectAgent().run(
+            self._client_for("architecture"), requirements, guidance,
+            original_request=self._orig, revisions=self._rev)
         step = self._arch_step(architecture, 1, int((perf_counter() - t) * 1000))
         steps.append(step); yield StreamEvent(type="stage", step=step)
         yield self._stage_start(DesignCriticAgent)
         t = perf_counter()
-        critique = DesignCriticAgent().run(self._client_for("critique"), requirements, architecture, guidance)
+        critique = DesignCriticAgent().run(
+            self._client_for("critique"), requirements, architecture, guidance,
+            original_request=self._orig, revisions=self._rev)
         step = self._critic_step(critique, 1, int((perf_counter() - t) * 1000))
         steps.append(step); yield StreamEvent(type="stage", step=step)
 
@@ -151,12 +155,16 @@ class Orchestrator:
             ]
             yield self._stage_start(SystemArchitectAgent)
             t = perf_counter()
-            architecture = SystemArchitectAgent().run(self._client_for("architecture"), requirements, rework_guidance)
+            architecture = SystemArchitectAgent().run(
+                self._client_for("architecture"), requirements, rework_guidance,
+                original_request=self._orig, revisions=self._rev)
             step = self._arch_step(architecture, round_no, int((perf_counter() - t) * 1000))
             steps.append(step); yield StreamEvent(type="stage", step=step)
             yield self._stage_start(DesignCriticAgent)
             t = perf_counter()
-            critique = DesignCriticAgent().run(self._client_for("critique"), requirements, architecture, rework_guidance)
+            critique = DesignCriticAgent().run(
+                self._client_for("critique"), requirements, architecture, rework_guidance,
+                original_request=self._orig, revisions=self._rev)
             step = self._critic_step(critique, round_no, int((perf_counter() - t) * 1000))
             steps.append(step); yield StreamEvent(type="stage", step=step)
 
@@ -171,12 +179,16 @@ class Orchestrator:
         steps: list[TraceStep] = []
         yield self._stage_start(PcbEngineerAgent)
         t = perf_counter()
-        pcb = PcbEngineerAgent().run(self._client_for("pcb_engineer"), requirements, architecture, arbitration, guidance)
+        pcb = PcbEngineerAgent().run(
+            self._client_for("pcb_engineer"), requirements, architecture, arbitration, guidance,
+            original_request=self._orig, revisions=self._rev)
         step = self._pcb_step(pcb, 1, int((perf_counter() - t) * 1000))
         steps.append(step); yield StreamEvent(type="stage", step=step)
         yield self._stage_start(PcbCriticAgent)
         t = perf_counter()
-        pcb_critique = PcbCriticAgent().run(self._client_for("pcb_critique"), requirements, pcb, guidance)
+        pcb_critique = PcbCriticAgent().run(
+            self._client_for("pcb_critique"), requirements, pcb, guidance,
+            original_request=self._orig, revisions=self._rev)
         step = self._pcb_critic_step(pcb_critique, 1, int((perf_counter() - t) * 1000))
         steps.append(step); yield StreamEvent(type="stage", step=step)
 
@@ -189,23 +201,37 @@ class Orchestrator:
             ]
             yield self._stage_start(PcbEngineerAgent)
             t = perf_counter()
-            pcb = PcbEngineerAgent().run(self._client_for("pcb_engineer"), requirements, architecture, arbitration, rework_guidance)
+            pcb = PcbEngineerAgent().run(
+                self._client_for("pcb_engineer"), requirements, architecture, arbitration, rework_guidance,
+                original_request=self._orig, revisions=self._rev)
             step = self._pcb_step(pcb, round_no, int((perf_counter() - t) * 1000))
             steps.append(step); yield StreamEvent(type="stage", step=step)
             yield self._stage_start(PcbCriticAgent)
             t = perf_counter()
-            pcb_critique = PcbCriticAgent().run(self._client_for("pcb_critique"), requirements, pcb, rework_guidance)
+            pcb_critique = PcbCriticAgent().run(
+                self._client_for("pcb_critique"), requirements, pcb, rework_guidance,
+                original_request=self._orig, revisions=self._rev)
             step = self._pcb_critic_step(pcb_critique, round_no, int((perf_counter() - t) * 1000))
             steps.append(step); yield StreamEvent(type="stage", step=step)
 
         return pcb, pcb_critique, steps
 
-    def run_stream(self, requirements_text: str, guidance: list[str] | None = None) -> Iterator[StreamEvent]:
+    def run_stream(
+        self,
+        requirements_text: str,
+        guidance: list[str] | None = None,
+        revisions: list[str] | None = None,
+    ) -> Iterator[StreamEvent]:
         """Stream the pipeline: one `stage` StreamEvent per finished agent, then
         a single `final` event with the full RunResponse. On a guard/Qwen/
         validation failure, emit an `error` event then a `final` with the
         example-data fallback (same honest degradation as the blocking path)."""
         self._meter = RunMeter()
+        # Carried into every agent so the user's own words (and any revision
+        # requests from a prior result) reach the whole pipeline, not just the
+        # Requirements agent. Read by the _*_stream helpers via self.
+        self._orig = requirements_text
+        self._rev = revisions or []
         if self.settings.mock_mode:
             result = mock_run_rework(requirements_text) if self.profile.rework else mock_run(requirements_text)
             for step in result.trace:
@@ -218,7 +244,8 @@ class Orchestrator:
         try:
             yield self._stage_start(RequirementsAgent)
             t = perf_counter()
-            requirements = RequirementsAgent().run(self._client_for("requirements"), requirements_text, guidance)
+            requirements = RequirementsAgent().run(
+                self._client_for("requirements"), requirements_text, guidance, revisions=self._rev)
             req_step = TraceStep(
                 agent=RequirementsAgent.name, role=RequirementsAgent.role, status="ok",
                 duration_ms=int((perf_counter() - t) * 1000),
@@ -236,7 +263,9 @@ class Orchestrator:
 
             yield self._stage_start(ArbitrationAgent)
             t = perf_counter()
-            arbitration = ArbitrationAgent().run(self._client_for("arbitration"), requirements, architecture, critique, guidance)
+            arbitration = ArbitrationAgent().run(
+                self._client_for("arbitration"), requirements, architecture, critique, guidance,
+                original_request=self._orig, revisions=self._rev)
             arb_step = TraceStep(
                 agent=ArbitrationAgent.name, role=ArbitrationAgent.role, status="ok",
                 duration_ms=int((perf_counter() - t) * 1000),
@@ -286,11 +315,16 @@ class Orchestrator:
         yield StreamEvent(type="error", notice=notice)
         yield StreamEvent(type="final", result=result)
 
-    def run(self, requirements_text: str, guidance: list[str] | None = None) -> RunResponse:
+    def run(
+        self,
+        requirements_text: str,
+        guidance: list[str] | None = None,
+        revisions: list[str] | None = None,
+    ) -> RunResponse:
         """Blocking pipeline — drains run_stream() and returns the final result.
         Kept for /api/run, comparison, bench and the existing test-suite."""
         result: RunResponse | None = None
-        for event in self.run_stream(requirements_text, guidance):
+        for event in self.run_stream(requirements_text, guidance, revisions):
             if event.type == "final":
                 result = event.result
         assert result is not None  # run_stream always ends with a final event

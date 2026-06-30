@@ -7,7 +7,7 @@ never makes final component decisions.
 """
 from __future__ import annotations
 
-from app.agents.base import ChatClient, guidance_block
+from app.agents.base import ChatClient, guidance_block, original_request_block, revision_block
 from app.models.schemas import Architecture, Requirements
 
 NAME = "System Architect"
@@ -51,11 +51,19 @@ class SystemArchitectAgent:
     role = ROLE
 
     def run(
-        self, client: ChatClient, requirements: Requirements, guidance: list[str] | None = None
+        self,
+        client: ChatClient,
+        requirements: Requirements,
+        guidance: list[str] | None = None,
+        *,
+        original_request: str | None = None,
+        revisions: list[str] | None = None,
     ) -> Architecture:
         user = (
             "Design the hardware architecture for these structured requirements.\n\n"
             + requirements.model_dump_json(indent=2)
+            + original_request_block(original_request)
+            + revision_block(revisions)
             + guidance_block(guidance)
         )
         data = client.chat_json(SYSTEM_PROMPT, user)

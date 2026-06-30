@@ -11,7 +11,7 @@ def _fake_orch_capturing(captured):
         def __init__(self, settings, profile=None, client=None):
             captured["profile"] = profile
 
-        def run(self, text, guidance=None):
+        def run(self, text, guidance=None, revisions=None):
             return mock_run(text)
 
     return FakeOrch
@@ -86,7 +86,7 @@ def test_run_prepends_persona_instruction_to_guidance(monkeypatch):
         def __init__(self, settings, profile=None, client=None):
             pass
 
-        def run(self, text, guidance=None):
+        def run(self, text, guidance=None, revisions=None):
             captured["guidance"] = guidance
             return mock_run(text)
 
