@@ -9,7 +9,28 @@ on:
   workflow_dispatch: {}   # allows a manual run from the Actions tab
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # KiCad and the WeasyPrint render test self-skip when their native
+      # deps are absent, so no apt/KiCad setup is needed here.
+      - name: Run tests
+        run: python -m pytest
+
   build:
+    needs: test          # a red test suite blocks the image build & push
     runs-on: ubuntu-latest
     permissions:
       contents: read
