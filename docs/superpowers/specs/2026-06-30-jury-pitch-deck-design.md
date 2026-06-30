@@ -62,9 +62,17 @@ Key narrative: **the gap widens with complexity** (Medical +5, Battery IoT +4). 
 - Animations/transitions beyond simple builds (the deck must read statically on Devpost).
 - Speaker notes script for the video narration — separate deliverable if wanted later.
 
-## Showcase design (locked)
+## Showcase design (locked 2026-06-30)
 
-**Bat detector (Wi-Fi / USB)** — the built-in example at `app/static/index.html:1105`: *"Design the electronics for a bat-detection device. The ultrasonic bat calls should be captured with an ultrasonic MEMS microphone and their frequency spectrum streamed to a host PC over Wi-Fi and/or USB."* Memorable for the jury **and** reproducible in the video via the "Load example" button. Drive it in Mock Mode with the **Senior Review Team** profile so a visible rework round renders, and confirm ERC 0 for the slide-7 artifacts.
+**24V industrial sensor board** — input: *"A 24V industrial sensor board with an STM32, USB-C for configuration and an RS485 fieldbus interface."*
+
+Chosen over the bat detector because **Mock Mode plays a fixed scripted scenario regardless of input** (deterministic, guarantees the Critic→Architect rework round — our core story). That script *is* the 24V-industrial scenario: VIN_24V power, STM32 MCU, USB-C service, RS485, Sensor IO, and a Debug/SWD block added during rework. So the showcase input must match it for coherence; the bat detector would produce an industrial dialogue that doesn't fit. Live mode would be bat-coherent but the rework round is not guaranteed — Robert chose mock determinism + a matching example.
+
+Mock scaffold sheets: Power · MCU · USB Service · RS485 · Sensor IO · Debug. Society-chat + schematic assets already captured from this scenario (`deck/assets/society_rework.png`, `deck/assets/schematic.png`). The +3.2 number stays sourced from the live batch (`docs/comparison-batch.md`), independent of the showcase run.
+
+## Honesty (Robert, 2026-06-30) — no overpromising
+
+Claims must match what the app actually does (it is candid about this itself in its generated README/VERIFICATION). Output is an **engineering scaffold, not a finished/PCB-ready design**: hierarchical sheets + power symbols + block diagram that **opens in KiCad and passes structural ERC**, with placeholder blocks a human engineer completes. The PCB-readiness pack is **prep ("AI prepares, human decides")**, not layout/routing. Avoid "PCB-ready", "manufacturable", "production-ready", "complete schematic". Lead with the honest, measured strength (multi-agent coverage + conflict resolution). Tagline updated from "From idea to PCB-ready schematic" → **"From a plain-English idea to a structured KiCad starting point — designed by a society of agents."**
 
 ## Open items to resolve during implementation
 
