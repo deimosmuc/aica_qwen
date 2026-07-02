@@ -54,8 +54,8 @@ New requirement from the Devpost×Qwen email (2026-07-01). Two pieces of evidenc
   (exits non-zero if anything leaks). Checks working tree + full git history for
   keys/PATs/auth-hashes and confirms `.env`, `deploy/app.env`, `deploy/caddy.env`
   are gitignored + untracked. Audit was **PASS** on 2026-07-01.
-- [ ] 🤖 Commit the new submission files (README, `docs/DEVPOST.md`, `deck/assets/*`,
-  `deck/cover.html`, `deck/render_cover.py`, `deck/capture_devpost.py`, this file).
+- [x] ✅ 🤖 Commit the new submission files (README, `docs/DEVPOST.md`, `deck/assets/*`,
+  `deck/cover.html`, `deck/render_cover.py`, `deck/capture_devpost.py`, this file). *(2026-07-02, secret scan PASS before commit)*
 - [ ] 🧑 Make the repo **public** on GitHub (`deimosmuc/aica_qwen`).
 - [ ] 🧑 Enable **GitHub Secret Scanning + Push Protection** (free on public repos) as a second net.
 - [x] ✅ 🤖 **Honesty fix:** intro-tour line in `app/static/index.html` reworded to
