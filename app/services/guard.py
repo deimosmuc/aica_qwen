@@ -113,10 +113,11 @@ class ApiGuard:
                     f"input too long ({len(user)} > {self.s.guard_max_input_chars} chars)"
                 )
 
-            # Cache hit -> free, no network, no cost.
-            cached = self._cache.get(self._key(model, system, user))
-            if cached is not None:
-                return cached
+            # Cache hit -> free, no network, no cost. (Disabled => every call is live.)
+            if self.s.guard_cache_enabled:
+                cached = self._cache.get(self._key(model, system, user))
+                if cached is not None:
+                    return cached
 
             per_min, per_day = self._counts()
             if per_min >= self.s.guard_rate_per_minute:
@@ -149,7 +150,8 @@ class ApiGuard:
             self._ledger["timestamps"].append(self._now())
             # Keep the timestamp list bounded.
             self._ledger["timestamps"] = self._ledger["timestamps"][-1000:]
-            self._cache[self._key(model, system, user)] = response
+            if self.s.guard_cache_enabled:
+                self._cache[self._key(model, system, user)] = response
             self._save()
         return cost
 

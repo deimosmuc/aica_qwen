@@ -35,6 +35,14 @@ def test_cache_returns_without_new_call(tmp_path):
     assert cached == {"ok": True}
 
 
+def test_cache_disabled_does_not_serve_from_cache(tmp_path):
+    # With caching disabled, an identical request is NOT short-circuited:
+    # precheck proceeds (returns None → a real live call) instead of the cached dict.
+    g = make_guard(tmp_path, lambda: 1000.0, guard_cache_enabled=False)
+    g.record("qwen-plus", "sys", "A 24V board with an STM32", 100, 50, {"ok": True})
+    assert g.precheck("sys", "A 24V board with an STM32", "qwen-plus") is None
+
+
 def test_budget_cap_blocks(tmp_path):
     g = make_guard(tmp_path, lambda: 1000.0, guard_budget_usd=0.01,
                    guard_price_in_per_1k=1.0, guard_price_out_per_1k=1.0)

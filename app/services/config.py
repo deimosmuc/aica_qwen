@@ -29,6 +29,11 @@ class Settings(BaseSettings):
 
     # --- API Guard: keeps Qwen calls sensible, sparse and cheap -------------
     guard_enabled: bool = True
+    # Cache identical (model, system, user) calls so a repeat is free — protects the
+    # budget when many users hit the same example. Set GUARD_CACHE_ENABLED=false to
+    # force every run to be a genuine live Qwen call (no instant "cached" replays that
+    # can look canned in a demo). The live demo server runs with this OFF.
+    guard_cache_enabled: bool = True
     guard_budget_usd: float = 35.0          # hard total spend cap; then block
     guard_min_input_chars: int = 8          # reject empty / junk input
     # Anti-junk cap on a single call's user prompt. Must comfortably exceed the
