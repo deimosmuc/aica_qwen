@@ -50,10 +50,10 @@ New requirement from the Devpost×Qwen email (2026-07-01). Two pieces of evidenc
 
 ## 3. GitHub / Repo  🧑 + 🤖
 
-- [ ] 🤖 **Re-run the secret scan right before pushing:** `bash tools/secret_scan.sh`
+- [x] ✅ 🤖 **Re-run the secret scan right before pushing:** `bash tools/secret_scan.sh`
   (exits non-zero if anything leaks). Checks working tree + full git history for
   keys/PATs/auth-hashes and confirms `.env`, `deploy/app.env`, `deploy/caddy.env`
-  are gitignored + untracked. Audit was **PASS** on 2026-07-01.
+  are gitignored + untracked. Audit was **PASS** on 2026-07-01, re-run **PASS 2026-07-04** right before the push.
 - [x] ✅ 🤖 Commit the new submission files (README, `docs/DEVPOST.md`, `deck/assets/*`,
   `deck/cover.html`, `deck/render_cover.py`, `deck/capture_devpost.py`, this file). *(2026-07-02, secret scan PASS before commit)*
 - [ ] 🧑 Make the repo **public** on GitHub (`deimosmuc/aica_qwen`).

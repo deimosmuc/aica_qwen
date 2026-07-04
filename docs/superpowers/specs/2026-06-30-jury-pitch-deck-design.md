@@ -46,7 +46,7 @@ Key narrative: **the gap widens with complexity** (Medical +5, Battery IoT +4). 
 
 ## Slide-by-slide
 
-1. **Title** — Logo, "AI Circuit Architect", tagline *"From idea to PCB-ready schematic — a society of agents"*, Track: Agent Society. Vector hero on dark bg.
+1. **Title** — Logo, "AI Circuit Architect", tagline *"From a plain-English idea to a structured KiCad starting point — designed by a society of agents"*, Track: Agent Society. Vector hero on dark bg.
 2. **Problem** — Schematic design is slow and expert-only; a *single* LLM systematically omits safety/review items. Vector.
 3. **The number (front-loaded)** — **Multi 11.6/12 vs Single 8.4/12 = +3.2**, gap *widens* with complexity. Large vector bar + the 5-design mini-table. (Belongs in the video's first 60s.)
 4. **Criterion 1 — Roles & decomposition** — 6 agents as a team: Requirements · Architect · Design Critic · Arbitration · PCB Engineer · PCB Critic, each with its model tier (juniors on qwen-plus, senior Critic on qwen-max). Vector role diagram.

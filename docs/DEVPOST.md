@@ -28,7 +28,7 @@ than a single agent (+3.2 / 12 coverage).
 ## Links
 - **Live demo:** https://qwen.rocu.de  *(Basic-Auth login: `juror` / <password shared privately with judges>)*
 - **GitHub:** https://github.com/deimosmuc/aica_qwen  *(set to public before submission)*
-- **Demo video:** <YouTube link — ≤ 5 min>
+- **Demo video:** <YouTube link — ≤ 3 min>
 
 ---
 
@@ -138,7 +138,7 @@ The three things the Agent-Society track asks for, and where each lives:
 
 ## Submission checklist
 - [ ] GitHub repo set to **public**, README polished
-- [ ] Demo video (≤5 min) recorded, +3.2 number in the first 60 s, uploaded & linked
+- [ ] Demo video (≤3 min) recorded, +3.2 number in the first 60 s, uploaded & linked
 - [ ] Live-demo URL + juror login entered in Devpost
 - [ ] Cover image + gallery screenshots uploaded (in `deck/assets/`):
   - `devpost_cover.png` (1280×720) — gallery thumbnail / hero

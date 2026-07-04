@@ -139,8 +139,8 @@ def slide_title(prs):
     T.fill_background(s)
     # logo hero (centered-left), big title, tagline, track chip
     T.add_text(s, ..., "AI Circuit Architect", size=54, bold=True, color=T.TEXT)
-    T.add_text(s, ..., "From idea to PCB-ready schematic — a society of agents",
-               size=22, color=T.MUTED)
+    T.add_text(s, ..., "From a plain-English idea to a structured KiCad starting "
+               "point — designed by a society of agents", size=22, color=T.MUTED)
     T.add_text(s, ..., "Qwen Hackathon · Track: Agent Society", size=16, color=T.ACCENT)
     return s
 
