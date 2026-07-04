@@ -23,7 +23,8 @@ New requirement from the Devpost×Qwen email (2026-07-01). Two pieces of evidenc
   2. Go to **ECS → Instances**, pick the region where the server runs.
   3. Instance must show status **"Running"** — screenshot so **name/ID, region,
      status** are visible. Save it for the Devpost upload.
-- [ ] 🧑 **Confirm the plan/URL match.** We use the standard `dashscope-intl` URL.
+- [x] ✅ 🧑 **Confirm the plan/URL match.** *(2026-07-04 — live server returns real,
+  non-mock answers, so the standard `dashscope-intl` URL is correct.)* We use the standard `dashscope-intl` URL.
   Only if your Qwen key is a **"Token Plan"** key would we need the
   `token-plan.ap-southeast-1.maas.aliyuncs.com` URL instead. If the live server
   returns real (non-mock) answers, we're correct as-is.
@@ -124,8 +125,10 @@ Source text is ready in [`docs/DEVPOST.md`](docs/DEVPOST.md).
 ## 6. Pitch Deck  🤖 + 🧑
 
 - [x] ✅ 9-slide deck built (`deck/AI_Circuit_Architect.pptx`)
-- [ ] 🧑 Re-check all deck claims for honesty (no "PCB-ready" / "manufacturable")
-- [ ] 🧑 Export to PDF for the Devpost attachment
+- [x] ✅ 🤖 Re-check all deck claims for honesty (no "PCB-ready" / "manufacturable")
+  *(2026-07-04 — audited build_deck.py + extracted the built pptx text: 9 slides, no
+  un-negated overpromise. Honest "scaffold / starting point / structural ERC clean".)*
+- [x] ✅ 🤖 Export to PDF for the Devpost attachment *(`deck/AI_Circuit_Architect.pdf`, 9pp, LibreOffice)*
 
 ---
 
