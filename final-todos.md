@@ -15,7 +15,10 @@ New requirement from the Devpost×Qwen email (2026-07-01). Two pieces of evidenc
   → `qwen_base_url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"`
   (also in `.env.example:6`, `deploy/app.env.example:10`). This is the accepted
   standard DashScope-International URL.
-- [ ] 🧑 **Screenshot of running resources in the Alibaba Cloud Workbench.**
+- [x] ✅ 🧑 **Screenshot of running resources in the Alibaba Cloud Workbench.**
+  *(done 2026-07-04 — instance `i-gw8eiydjod7emy4zs7uq`, region Germany (Frankfurt),
+  status Running; DNS-confirmed public IP 43.114.8.16 = `qwen.rocu.de`. Console kept
+  in Chinese deliberately — Qwen/Alibaba jury reads it; all required fields legible.)*
   1. Log in to the [Alibaba Cloud ECS Console](https://ecs.console.aliyun.com).
   2. Go to **ECS → Instances**, pick the region where the server runs.
   3. Instance must show status **"Running"** — screenshot so **name/ID, region,
@@ -29,9 +32,9 @@ New requirement from the Devpost×Qwen email (2026-07-01). Two pieces of evidenc
 
 ## ✅ 1. Devpost Submission Checklist (from the email)
 
-- [ ] 🧑 Public, open-source code repo (make it public — see §3)
+- [x] ✅ 🧑 Public, open-source code repo (public since 2026-07-04, verified live)
 - [x] ✅ Code file with Qwen Cloud Base URL clearly visible (`app/services/config.py`)
-- [ ] 🧑 Screenshot: proof of deployment on Alibaba Cloud (see §0)
+- [x] ✅ 🧑 Screenshot: proof of deployment on Alibaba Cloud (see §0) *(2026-07-04)*
 - [ ] **3-minute** demo video — real working app, **not** a Figma mockup (see §4)
   - ⚠️ Note: the email says **3 min** (earlier we assumed 5). Plan for **3 min**.
 - [x] ✅ Track identified: **Agent Society**
@@ -41,9 +44,11 @@ New requirement from the Devpost×Qwen email (2026-07-01). Two pieces of evidenc
 ## 2. Server / Deployment  🧑 (with 🤖 support)
 
 - [x] ✅ Server limits (API-Guard) adjusted in `app.env` ($35 budget, 6000 output tokens, 15/min, 250/day)
-- [ ] 🧑 Take the Alibaba Workbench "Running" screenshot (§0)
-- [ ] 🧑 **Rotate the Qwen API key before the public demo** (it was once plaintext
-  on local disk — never leaked/committed, but rotating is cheap insurance):
+- [x] ✅ 🧑 Take the Alibaba Workbench "Running" screenshot (§0) *(2026-07-04)*
+- [ ] ⏭️ 🧑 **Rotate the Qwen API key — SKIPPED deliberately (2026-07-04).** Key was
+  never leaked/committed (secret scan green: not in working tree or git history), so
+  making the repo public did NOT expose it. Rotate only IF the key appears on screen
+  during video capture, or the local `.env` is ever suspected exposed. If needed:
   generate a fresh key in the Alibaba console → update **only** `deploy/app.env`
   on the server → `docker compose up -d --force-recreate app`.
 - [ ] 🧑 Verify the live demo still works end-to-end after any change (real Qwen run, not Mock)
@@ -56,8 +61,8 @@ New requirement from the Devpost×Qwen email (2026-07-01). Two pieces of evidenc
   are gitignored + untracked. Audit was **PASS** on 2026-07-01, re-run **PASS 2026-07-04** right before the push.
 - [x] ✅ 🤖 Commit the new submission files (README, `docs/DEVPOST.md`, `deck/assets/*`,
   `deck/cover.html`, `deck/render_cover.py`, `deck/capture_devpost.py`, this file). *(2026-07-02, secret scan PASS before commit)*
-- [ ] 🧑 Make the repo **public** on GitHub (`deimosmuc/aica_qwen`).
-- [ ] 🧑 Enable **GitHub Secret Scanning + Push Protection** (free on public repos) as a second net.
+- [x] ✅ 🧑 Make the repo **public** on GitHub (`deimosmuc/aica_qwen`). *(2026-07-04)*
+- [x] ✅ 🧑 Enable **GitHub Secret Scanning + Push Protection** (free on public repos) as a second net. *(both ON, 2026-07-04)*
 - [x] ✅ 🤖 **Honesty fix:** intro-tour line in `app/static/index.html` reworded to
   "structured KiCad starting point — an architecture scaffold ... review and build on";
   full scan of user-facing strings found no other overpromise (all remaining
