@@ -14,8 +14,9 @@ OUT = HERE / "assets"
 OUT.mkdir(parents=True, exist_ok=True)
 
 TARGETS = {
-    "#cover": "devpost_cover.png",     # 1280x720 (16:9 gallery / thumbnail)
+    "#cover": "devpost_cover.png",     # 1280x720 (16:9 gallery / hero)
     "#square": "devpost_thumb.png",    # 1000x1000 (square tile / social)
+    "#thumb": "devpost_thumbnail.png", # 1200x800 (3:2 Devpost card — condensed)
 }
 
 

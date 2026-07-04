@@ -62,6 +62,22 @@
   #square .agents{justify-content:center}
   #square .stat{text-align:center}
   #square .stat .big{font-size:80px}
+
+  /* ---------- 3:2 DEVPOST THUMBNAIL (condensed; big elements only) ---------- */
+  #thumb{width:1200px;height:800px;padding:70px 72px;display:flex;flex-direction:column;
+    justify-content:space-between;align-items:center;text-align:center}
+  #thumb .brandrow{flex-direction:column;gap:16px}
+  #thumb .brandrow img{height:104px}
+  #thumb .wordmark{font-size:40px;letter-spacing:.3px}
+  #thumb .eyebrow{font-size:19px;letter-spacing:5px;margin:0}
+  #thumb .agents{justify-content:center;gap:20px}
+  #thumb .badge{width:86px;height:86px;font-size:27px}
+  #thumb .badge.line{width:38px;font-size:34px}
+  #thumb .stat{border:none;background:none;box-shadow:none;padding:0}
+  #thumb .stat .big{font-size:150px;line-height:.95}
+  #thumb .stat .big span{font-size:58px}
+  #thumb .stat .cmp{font-size:27px;margin-top:8px}
+  #thumb .stat .cmp em{color:var(--accent)}
 </style>
 
 <!-- ================= 16:9 COVER ================= -->
@@ -156,5 +172,38 @@
     <span class="pill">Powered by Qwen</span>
     <span class="pill">Alibaba Cloud</span>
     <span class="pill">KiCad</span>
+  </div>
+</div>
+
+<!-- ================= 3:2 DEVPOST THUMBNAIL ================= -->
+<div id="thumb" class="card">
+  <svg class="grid" viewBox="0 0 1200 800" preserveAspectRatio="none">
+    <defs><pattern id="p3" width="50" height="50" patternUnits="userSpaceOnUse">
+      <path d="M50 0H0V50" fill="none" stroke="#2D3A48" stroke-width="1" opacity=".25"/>
+    </pattern></defs>
+    <rect width="1200" height="800" fill="url(#p3)"/>
+    <circle cx="1060" cy="120" r="4" fill="#4F9CF9" opacity=".6"/>
+    <circle cx="150" cy="700" r="3" fill="#0D9488" opacity=".5"/>
+  </svg>
+
+  <div class="brandrow">
+    <img src="assets/logo_transparent.png" alt="logo">
+    <div class="wordmark">AI Circuit Architect</div>
+    <div class="eyebrow">Agent Society · Qwen</div>
+  </div>
+
+  <div class="agents">
+    <div class="badge" style="background:#4F9CF9">RQ</div>
+    <div class="badge" style="background:#4F9CF9">AR</div>
+    <div class="badge line">⇄</div>
+    <div class="badge" style="background:#F778BA">CR</div>
+    <div class="badge" style="background:#E6EDF3">AB</div>
+    <div class="badge" style="background:#0D9488;color:#e6fffb">PE</div>
+    <div class="badge" style="background:#D29922">PC</div>
+  </div>
+
+  <div class="stat">
+    <div class="big">+3.2<span> / 12</span></div>
+    <div class="cmp">Team <em>11.6</em> vs single <em>8.4</em> — concerns a single model skips</div>
   </div>
 </div>

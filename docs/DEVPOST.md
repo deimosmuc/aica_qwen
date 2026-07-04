@@ -141,10 +141,11 @@ The three things the Agent-Society track asks for, and where each lives:
 - [ ] Demo video (≤3 min) recorded, +3.2 number in the first 60 s, uploaded & linked
 - [ ] Live-demo URL + juror login entered in Devpost
 - [ ] Cover image + gallery screenshots uploaded (in `deck/assets/`):
-  - `devpost_cover.png` (1280×720) — gallery thumbnail / hero
+  - `devpost_thumbnail.png` (1200×800, **3:2**) — **the Devpost card thumbnail** (condensed: title, agent dots, big +3.2; reads when small)
+  - `devpost_cover.png` (1280×720, 16:9) — hero / gallery banner
   - `devpost_thumb.png` (1000×1000) — square tile / social
   - `metro_rail.png`, `architecture.png`, `society_rework.png`, `compare_panel.png` — product shots
-  - Regenerate anytime: `python deck/render_cover.py` (cover/thumb) · `python deck/capture_devpost.py` (product, needs mock app on :8011)
+  - Regenerate anytime: `python deck/render_cover.py` (thumbnail/cover/square) · `python deck/capture_devpost.py` (product, needs mock app on :8011)
 - [ ] PowerPoint deck attached (PDF export)
 - [ ] Alibaba Cloud deployment + Qwen API usage mentioned in the text (mandatory tech)
 - [ ] Team members added
