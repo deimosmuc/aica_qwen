@@ -15,6 +15,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.models.schemas import RunResponse
 from app.services.persona import persona_label
+from app.services.team import AGENT_REGISTRY
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 _jinja_env = Environment(
@@ -196,6 +197,39 @@ def _dfx_groups(result: RunResponse) -> list[dict]:
     return groups
 
 
+def _design_team(result: RunResponse) -> list[dict]:
+    """Template rows for the "Design team" section: the pipeline agents (no
+    baseline) with their role/mission plus per-agent evidence from this run's
+    trace — how often each agent ran (> 1 = it was pulled back in for rework)
+    and its summed wall-clock time (None in Mock Mode: no real timings).
+
+    Deliberately counts trace steps per agent rather than using ``step.round``:
+    ``round`` is the pipeline-wide round context, so a downstream agent that ran
+    once can still carry round=2."""
+    by_agent: dict[str, dict] = {}
+    for step in result.trace:
+        info = by_agent.setdefault(step.agent, {"runs": 0, "ms": 0, "timed": False})
+        info["runs"] += 1
+        if step.duration_ms:
+            info["ms"] += step.duration_ms
+            info["timed"] = True
+
+    team = []
+    for entry in AGENT_REGISTRY:
+        if entry["key"] == "baseline":
+            continue
+        name = entry["module"].NAME
+        stats = by_agent.get(name)
+        team.append({
+            "name": name,
+            "role": entry["module"].ROLE,
+            "description": entry["description"],
+            "runs": stats["runs"] if stats else None,
+            "time": f"{stats['ms'] / 1000:.1f} s" if stats and stats["timed"] else "—",
+        })
+    return team
+
+
 def _report_context(result: RunResponse, requirements_text: str, project_name: str,
                     title: str | None = None, persona: str | None = None) -> dict:
     """Flatten a RunResponse into a flat, template-ready dict.
@@ -278,6 +312,7 @@ def _report_context(result: RunResponse, requirements_text: str, project_name: s
         "component_choices": _candidate_cards(result),
         "legend": _legend_entries(result),
         "dfx_groups": _dfx_groups(result),
+        "design_team": _design_team(result),
         "persona_label": persona_label(persona) if persona else "",
         "via_drill_mm": via_drill_mm,
         "via_annular_ring_mm": via_annular_ring_mm,

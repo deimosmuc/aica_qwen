@@ -28,6 +28,40 @@ def test_derive_title_strips_instruction_preamble():
     assert _derive_title("create a circuit") == "Circuit"
 
 
+from app.generators.report import _design_team
+
+
+def test_design_team_lists_pipeline_agents_without_baseline():
+    result = mock_run("x")
+    team = _design_team(result)
+    names = [t["name"] for t in team]
+    assert "Single-Agent Baseline" not in names
+    assert names[0] == "Requirements Agent" and "System Architect" in names
+    assert all(t["role"] and t["description"] for t in team)
+
+
+def test_design_team_counts_runs_and_time_from_trace():
+    from app.models.schemas import TraceStep
+    result = mock_run("x")
+    result.trace = [
+        TraceStep(agent="System Architect", role="r", summary="s", round=1, duration_ms=800),
+        TraceStep(agent="System Architect", role="r", summary="s", round=2, duration_ms=700),
+        # Downstream agent that ran ONCE but in round-2 context: must count as 1 run.
+        TraceStep(agent="Design Critic", role="r", summary="s", round=2),
+    ]
+    team = {t["name"]: t for t in _design_team(result)}
+    assert team["System Architect"]["runs"] == 2
+    assert team["System Architect"]["time"] == "1.5 s"
+    assert team["Design Critic"]["runs"] == 1
+    assert team["Design Critic"]["time"] == "—"     # no timing in mock mode
+    assert team["Arbitration"]["runs"] is None      # not in this trace
+
+
+def test_report_context_carries_design_team():
+    ctx = _report_context(mock_run("x"), "board", "project")
+    assert len(ctx["design_team"]) == 6
+
+
 from app.generators.report import CATEGORY_STYLE, _category_style, _legend_entries
 
 

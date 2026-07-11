@@ -104,6 +104,23 @@
     {% for b in summary_bullets %}<li>{{ b }}</li>{% endfor %}
   </ul>
 
+  {% if design_team %}
+  <div class="section"><div class="bar"></div><div class="t">The Design Team</div></div>
+  <p class="rule-lead">This brief was produced by {{ design_team|length }} specialist AI agents:
+    a proposal is challenged by a reviewer, conflicts are arbitrated, and the design is reworked
+    before it reaches you. More than one run means a reviewer sent the design back.</p>
+  <table>
+    <thead><tr><th>Agent</th><th>Role</th><th>Focus</th><th>Runs</th><th>Time</th></tr></thead>
+    <tbody>
+      {% for dt in design_team %}
+      <tr><td><b>{{ dt.name }}</b></td><td>{{ dt.role }}</td><td>{{ dt.description }}</td>
+          <td>{% if dt.runs %}{{ dt.runs }}{% if dt.runs > 1 %} (rework){% endif %}{% else %}—{% endif %}</td>
+          <td>{{ dt.time }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
   <div class="section"><div class="bar"></div><div class="t">System Architecture</div></div>
   <div class="diagram">{{ architecture_svg|safe }}</div>
   {% if legend and not diagram_has_legend %}
