@@ -162,6 +162,29 @@
     .active-cons b { font-size: 12px; text-transform: uppercase; letter-spacing: .3px; color: var(--warn); }
     .active-cons ul { margin-top: 4px; }
     textarea.correct { width: 100%; margin-top: 8px; min-height: 0; }
+    /* --- Meet your AI engineers ------------------------------------------- */
+    details.constraints > summary.team-summary { font-size: 14px; text-transform: uppercase;
+      letter-spacing: .5px; font-weight: 700; }
+    .team-sub { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted);
+      font-size: 13px; }
+    .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 12px; margin-top: 12px; }
+    .team-card { background: var(--panel-2); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 14px; }
+    .team-card.focused { box-shadow: 0 0 0 2px var(--accent); }
+    .team-card.rival { border-style: dashed; }
+    .team-head { display: flex; gap: 10px; align-items: center; }
+    .team-role { font-size: 12px; color: var(--muted); }
+    .team-desc { font-size: 13px; margin: 10px 0 8px; }
+    .team-io { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+    .team-io b { text-transform: uppercase; font-size: 11px; letter-spacing: .4px; color: var(--muted); }
+    .rival-badge { font-size: 10px; color: var(--muted); border: 1px solid var(--line);
+      border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 1px; }
+    .prompt-view { margin: 8px 0 0; padding: 10px 12px; background: var(--bg);
+      border: 1px solid var(--line); border-radius: 8px;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre-wrap; max-height: 260px; overflow: auto; }
+    .rail-stn, .society-chat .bubble-avatar { cursor: pointer; }
     /* --- Agent Society tab ------------------------------------------------ */
     .tab-row { display: flex; border: 1px solid var(--line); border-radius: 8px;
       overflow: hidden; margin-bottom: 14px; }
@@ -359,6 +382,38 @@
       </div>
     </section>
 
+    <!-- Meet the team: who each agent is, what it reads/delivers, and the exact
+         system prompt it works from. Opened via the summary or by clicking any
+         rail station / chat avatar. -->
+    <section class="panel" x-show="team.length">
+      <details class="constraints" x-ref="teamPanel" style="margin-top:0">
+        <summary class="team-summary">👥 Meet your AI engineers <span class="team-sub">— who does what, and the exact instructions each one works from</span></summary>
+        <div class="team-grid">
+          <template x-for="a in team" :key="a.key">
+            <div class="team-card" :class="{ focused: teamFocus === a.key, rival: a.key === 'baseline' }"
+                 :id="'agent-card-' + a.key">
+              <div class="team-head">
+                <div class="bubble-avatar" :style="avatarColor(a.name)" x-text="a.name.slice(0,3).toUpperCase()"></div>
+                <div>
+                  <b x-text="a.name"></b><span class="rival-badge" x-show="a.key === 'baseline'">the rival</span>
+                  <div class="team-role" x-text="a.role"></div>
+                </div>
+              </div>
+              <p class="team-desc" x-text="a.description"></p>
+              <div class="team-io">
+                <span><b>Reads</b> <span x-text="a.reads"></span></span>
+                <span><b>Delivers</b> <span x-text="a.delivers"></span></span>
+              </div>
+              <details class="agent-out">
+                <summary>View system prompt</summary>
+                <pre class="prompt-view" x-text="a.prompt"></pre>
+              </details>
+            </div>
+          </template>
+        </div>
+      </details>
+    </section>
+
     <!-- Input -->
     <section class="panel">
       <h2>1 · Describe your hardware</h2>
@@ -426,7 +481,7 @@
           </template>
           <div class="rail-stns">
             <template x-for="st in railView().stations" :key="st.key">
-              <div class="rail-stn" :class="st.addressed ? 'addressed' : st.state">
+              <div class="rail-stn" :class="st.addressed ? 'addressed' : st.state" @click="openAgentCard(st.key)" title="Meet this agent">
                 <div class="rail-dot" :style="`background:${st.state==='upcoming' ? '#3a4a5a' : st.color}`"></div>
                 <div class="rail-lbl" x-text="st.label"></div>
               </div>
@@ -445,7 +500,8 @@
         <div class="live-feed-head"><span class="live-dot"></span> Agents collaborating live</div>
         <template x-for="(s, i) in streamTrace" :key="i">
           <div :class="['Design Critic','PCB Critic'].includes(s.agent) ? 'bubble-right' : 'bubble-left'">
-            <div class="bubble-avatar" :style="avatarColor(s.agent)" x-text="s.agent.slice(0,3).toUpperCase()"></div>
+            <div class="bubble-avatar" :style="avatarColor(s.agent)" x-text="s.agent.slice(0,3).toUpperCase()"
+                 @click="openAgentCard(s.agent)" title="Meet this agent"></div>
             <div class="bubble-body">
               <div class="bubble-meta">
                 <span x-text="s.agent"></span>
@@ -464,7 +520,8 @@
         </template>
         <template x-if="streamTyping">
           <div :class="['Design Critic','PCB Critic'].includes(streamTyping.agent) ? 'bubble-right' : 'bubble-left'">
-            <div class="bubble-avatar" :style="avatarColor(streamTyping.agent)" x-text="streamTyping.agent.slice(0,3).toUpperCase()"></div>
+            <div class="bubble-avatar" :style="avatarColor(streamTyping.agent)" x-text="streamTyping.agent.slice(0,3).toUpperCase()"
+                 @click="openAgentCard(streamTyping.agent)" title="Meet this agent"></div>
             <div class="bubble-body">
               <div class="bubble-meta"><span x-text="streamTyping.agent"></span><span x-text="'· ' + streamTyping.role"></span></div>
               <div class="bubble-text typing-dots" aria-label="typing"><span>●</span><span>●</span><span>●</span></div>
@@ -566,7 +623,7 @@
             </template>
             <div class="rail-stns">
               <template x-for="st in railView().stations" :key="st.key">
-                <div class="rail-stn" :class="st.addressed ? 'addressed' : st.state">
+                <div class="rail-stn" :class="st.addressed ? 'addressed' : st.state" @click="openAgentCard(st.key)" title="Meet this agent">
                   <div class="rail-dot" :style="`background:${st.state==='upcoming' ? '#3a4a5a' : st.color}`"></div>
                   <div class="rail-lbl" x-text="st.label"></div>
                 </div>
@@ -734,7 +791,8 @@
             </template>
             <div :class="['Design Critic','PCB Critic'].includes(s.agent) ? 'bubble-right' : 'bubble-left'">
               <div class="bubble-avatar" :style="avatarColor(s.agent)"
-                   x-text="s.agent.slice(0,3).toUpperCase()"></div>
+                   x-text="s.agent.slice(0,3).toUpperCase()"
+                   @click="openAgentCard(s.agent)" title="Meet this agent"></div>
               <div class="bubble-body">
                 <div class="bubble-meta">
                   <span x-text="s.agent"></span>
@@ -784,7 +842,7 @@
               </template>
               <div class="rail-stns">
                 <template x-for="st in railView().stations" :key="st.key">
-                  <div class="rail-stn" :class="st.addressed ? 'addressed' : st.state">
+                  <div class="rail-stn" :class="st.addressed ? 'addressed' : st.state" @click="openAgentCard(st.key)" title="Meet this agent">
                     <div class="rail-dot" :style="`background:${st.state==='upcoming' ? '#3a4a5a' : st.color}`"></div>
                     <div class="rail-lbl" x-text="st.label"></div>
                   </div>
@@ -842,7 +900,8 @@
               </template>
               <div :class="['Design Critic','PCB Critic'].includes(s.agent) ? 'bubble-right' : 'bubble-left'">
                 <div class="bubble-avatar" :style="avatarColor(s.agent)"
-                     x-text="s.agent.slice(0,3).toUpperCase()"></div>
+                     x-text="s.agent.slice(0,3).toUpperCase()"
+                     @click="openAgentCard(s.agent)" title="Meet this agent"></div>
                 <div class="bubble-body">
                   <div class="bubble-meta">
                     <span x-text="s.agent"></span>
@@ -1119,6 +1178,7 @@
         diagramSvg: null, exportSvg: null, constraintsText: "", correctText: "", projectName: "",
         revisions: [], refineText: "",   // auto-mode: change requests fed into a second run
         showIntro: true,                  // onboarding panel; dismissed state remembered in localStorage
+        team: [], teamFocus: null,        // "Meet your AI engineers" panel (GET /api/agents)
         clarifyAnswers: {},   // { [questionId]: { picked: [labels], text: "" } }
         playedSteps: 0, societyTab: 'trace', _pipelineTimers: [],
         streamTrace: [], streamActive: false, streamStageLabel: "", streamNotice: "", streamTyping: null,
@@ -1136,6 +1196,7 @@
         async init() {
           try { if (localStorage.getItem('aca_intro_hidden') === '1') this.showIntro = false; } catch (e) {}
           try { const h = await (await fetch("/api/health")).json(); this.mode = h.mode; } catch (e) {}
+          try { this.team = (await (await fetch("/api/agents")).json()).agents; } catch (e) {}
           await this.fetchGuard();
           // Drive the focused-station elapsed timer off any running busy state.
           ['comparing', 'benching', 'stepBusy'].forEach(f => this.$watch(f, () => this._focusTick()));
@@ -1171,6 +1232,20 @@
         toggleIntro(show) {
           this.showIntro = show;
           try { localStorage.setItem('aca_intro_hidden', show ? '0' : '1'); } catch (e) {}
+        },
+        // Open the team panel and scroll to one engineer's card. Accepts the
+        // stage key (rail stations) or the display name (chat avatars).
+        openAgentCard(keyOrName) {
+          const a = this.team.find(t => t.key === keyOrName || t.name === keyOrName);
+          if (!a) return;
+          this.teamFocus = a.key;
+          if (this.$refs.teamPanel) this.$refs.teamPanel.open = true;
+          this.$nextTick(() => {
+            const el = document.getElementById('agent-card-' + a.key);
+            if (!el) return;
+            const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+            el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+          });
         },
         async fetchGuard() {
           try { this.guard = await (await fetch("/api/guard")).json(); } catch (e) {}

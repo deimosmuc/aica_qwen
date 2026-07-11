@@ -40,6 +40,7 @@ from app.services.packaging import ZIP_NAME, create_project_zip
 from app.services.persona import persona_instruction
 from app.services.profiles import profile_for
 from app.services.stepwise import run_stage
+from app.services.team import agents_payload
 from app.services.validation import validate_project
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,12 @@ def health() -> dict:
 def guard_status() -> dict:
     """Current spend / rate status from the API Guard ledger."""
     return ApiGuard(get_settings()).status()
+
+
+@router.get("/agents")
+def agents() -> dict:
+    """The AI engineering team: static per-agent metadata incl. system prompts."""
+    return {"agents": agents_payload()}
 
 
 @router.post("/run", response_model=RunResponse)
