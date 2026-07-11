@@ -31,10 +31,32 @@ _IMPEDANCE_RULES: list[tuple[str, str]] = [
 ]
 
 
+# Supply / auxiliary nets that are NEVER impedance-controlled, no matter which
+# class they end up in: USB power+config (VBUS, CC, VCONN, ID), shields, ground
+# and generic supply rails. Used to keep e.g. a "USB" class honest — only the
+# actual differential data pair carries the 90 Ω requirement.
+_AUX_NET_PATTERN = re.compile(
+    r"vbus|vconn|\bcc\d?\b|usb_?id|\bid\b|shield|shld|\bgnd\b|agnd|dgnd"
+    r"|\bvin\b|\bvcc\b|\bvdd\b|\bvbat\b|\+?\d+v\d*\b|v\d+_\d+\b",
+    re.IGNORECASE,
+)
+
+
+def aux_nets(nets: list[str] | None) -> list[str]:
+    """Subset of ``nets`` that are supply/auxiliary nets (never impedance-controlled)."""
+    return [n for n in (nets or []) if _AUX_NET_PATTERN.search(n)]
+
+
 def impedance_for(name: str, nets: list[str] | None = None) -> str | None:
     """Target controlled impedance for a net class, or ``None`` when it is not a
-    known controlled-impedance interface (e.g. power or generic signal nets)."""
-    haystack = " ".join([name or "", *(nets or [])]).lower()
+    known controlled-impedance interface (e.g. power or generic signal nets).
+
+    Guardrail: a class whose nets are ALL supply/aux (e.g. a "USB Power" class
+    holding only VBUS/CC) is not impedance-controlled even if its name matches."""
+    net_list = nets or []
+    if net_list and len(aux_nets(net_list)) == len(net_list):
+        return None
+    haystack = " ".join([name or "", *net_list]).lower()
     for pattern, z in _IMPEDANCE_RULES:
         if re.search(pattern, haystack):
             return z
@@ -51,3 +73,23 @@ def fill_impedance(netclasses: list) -> list:
             if z:
                 nc.impedance = z
     return netclasses
+
+
+def impedance_review(netclasses: list) -> list[str]:
+    """Deterministic hygiene check: supply/aux nets inside an impedance-controlled
+    class are a classic spec error (USB CC/VBUS "inheriting" 90 Ω diff). Returns
+    one finding string per offending class, empty when everything is clean."""
+    findings = []
+    for nc in netclasses:
+        z = getattr(nc, "impedance", None)
+        if not z:
+            continue
+        offending = aux_nets(getattr(nc, "nets", None))
+        if offending:
+            findings.append(
+                f'Net class "{nc.name}" is impedance-controlled ({z}) but contains '
+                f"supply/auxiliary nets: {', '.join(offending)}. Only the actual "
+                "high-speed data pair belongs in an impedance-controlled class — "
+                "move these nets to PWR or Signal."
+            )
+    return findings

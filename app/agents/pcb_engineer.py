@@ -34,6 +34,10 @@ Analyse the architecture and produce:
    - Add: HV (>50V), RF (RF/antenna), USB, CAN, RS485 if present in architecture
    - Calculate min_width_mm from current: I(A) * 0.6 for internal layers (rough rule)
    - clearance_mm: 0.2mm minimum; 0.5mm for >50V; 1.0mm for >150V
+   - An impedance-controlled class (USB, CAN, RS485, Ethernet, ...) must contain
+     ONLY the actual high-speed data nets (USB: D+/D- only). Supply and auxiliary
+     nets — VBUS, CC1/CC2, VCONN, ID, shields — belong in PWR or Signal, NEVER in
+     an impedance-controlled class.
 
 3. CONSTRAINTS: board-level design rules (these become the .kicad_dru file).
    - min_clearance_mm: driven by highest voltage net class

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from app.agents.base import ChatClient, guidance_block, original_request_block, revision_block
 from app.models.schemas import PcbCritique, PcbReadiness, Requirements
+from app.services.impedance import impedance_review
 
 NAME = "PCB Critic"
 ROLE = "Senior PCB Reviewer"
@@ -24,6 +25,10 @@ Review for:
 - Clearance vs. voltage (>50V needs >=0.5mm; >150V needs >=1.0mm)
 - Missing critical net class (is GND in PWR netclass? is there a netclass for every interface?)
 - Layerstack vs. design complexity (RF on 2-layer is a risk)
+- Impedance hygiene: an impedance-controlled net class must contain ONLY the actual
+  high-speed data pair(s). VBUS, CC/CC1/CC2, VCONN, ID, shields, GND or any supply
+  net inside an impedance-controlled class is a must-fix (missing_blocks) — those
+  nets belong in PWR or Signal.
 - Package hints: any component type from the architecture missing a hint?
 - Floorplan: obvious conflicts (e.g. RF and switching power supply adjacent)?
 - Design-for-X: review the dfx_checklist — missing test points on power rails / critical
@@ -68,8 +73,21 @@ class PcbCriticAgent:
             + guidance_block(guidance)
         )
         data = client.chat_json(SYSTEM_PROMPT, user)
+        missing_blocks = list(data.get("missing_blocks", []))
+        warnings = list(data.get("warnings", []))
+
+        # Deterministic guardrail on top of the LLM review: supply/aux nets
+        # (VBUS, CC, VCONN, ID, shields, rails) inside an impedance-controlled
+        # net class are always a must-fix, even if the model missed them.
+        llm_findings = " ".join(missing_blocks + warnings).lower()
+        for finding in impedance_review(pcb_readiness.netclasses):
+            class_name = finding.split('"')[1].lower()
+            if class_name in llm_findings and "impedance" in llm_findings:
+                continue  # the model already called this class out
+            missing_blocks.append(finding)
+
         return PcbCritique(
-            missing_blocks=list(data.get("missing_blocks", [])),
-            warnings=list(data.get("warnings", [])),
+            missing_blocks=missing_blocks,
+            warnings=warnings,
             risks=list(data.get("risks", [])),
         )

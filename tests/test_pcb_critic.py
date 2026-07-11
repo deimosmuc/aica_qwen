@@ -68,6 +68,41 @@ def test_pcb_critic_prompt_covers_dfx():
     assert "test point" in low and "fiducial" in low and "dfx_checklist" in low
 
 
+def test_pcb_critic_injects_deterministic_impedance_finding():
+    # LLM misses the misplaced VBUS/CC nets → the deterministic guard adds a must-fix.
+    client = MagicMock()
+    client.chat_json.return_value = {"missing_blocks": [], "warnings": [], "risks": []}
+    pcb = _pcb_readiness()
+    pcb.netclasses.append(NetClass(
+        name="USB", min_width_mm=0.15, clearance_mm=0.15,
+        nets=["USB_D+", "USB_D-", "VBUS", "CC1"], impedance="90 Ω diff",
+    ))
+    result = PcbCriticAgent().run(client, _requirements(), pcb)
+    assert len(result.missing_blocks) == 1
+    assert "VBUS" in result.missing_blocks[0] and "CC1" in result.missing_blocks[0]
+
+
+def test_pcb_critic_skips_injection_when_llm_already_flagged_it():
+    client = MagicMock()
+    client.chat_json.return_value = {
+        "missing_blocks": ['Net class "USB" impedance class wrongly contains VBUS/CC1 — move to PWR.'],
+        "warnings": [], "risks": [],
+    }
+    pcb = _pcb_readiness()
+    pcb.netclasses.append(NetClass(
+        name="USB", min_width_mm=0.15, clearance_mm=0.15,
+        nets=["USB_D+", "USB_D-", "VBUS", "CC1"], impedance="90 Ω diff",
+    ))
+    result = PcbCriticAgent().run(client, _requirements(), pcb)
+    assert len(result.missing_blocks) == 1  # no duplicate
+
+
+def test_pcb_critic_prompt_covers_impedance_hygiene():
+    from app.agents.pcb_critic import SYSTEM_PROMPT
+    low = SYSTEM_PROMPT.lower()
+    assert "vbus" in low and "impedance-controlled" in low
+
+
 def test_pcb_critic_flags_dfx_gap_in_missing_blocks():
     from app.agents.pcb_critic import PcbCriticAgent
     from app.models.schemas import PcbReadiness, ConstraintSet, Requirements
