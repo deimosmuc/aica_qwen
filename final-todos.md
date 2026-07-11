@@ -73,15 +73,18 @@ New requirement from the Devpost×Qwen email (2026-07-01). Two pieces of evidenc
 
 - [x] ✅ **3-minute storyboard/script written** (below) + clean **teleprompter
   read-aloud version** in [`deck/video_teleprompter.md`](deck/video_teleprompter.md).
-- [ ] 🧑 Record the **real app** — screen-record the **live deployed site**
-  `https://qwen.rocu.de` (reinforces "deployed on Alibaba Cloud"). A live Qwen run
-  with the **Senior Review Team** profile is the most convincing; the SpongeBob
-  "5 minutes later" cut covers the ~30–60 s the full run takes. If a live run is
-  too risky to record cleanly, fall back to **Mock Mode** — it's the same real
-  app/UI with prepared data (still NOT a Figma mockup).
-- [ ] 🧑 Record a clean voice-over of the narration lines (English — international jury).
-- [ ] 🧑 Insert the **SpongeBob "5 minutes later"** meme card at the marked cut.
-- [ ] 🧑 Upload to YouTube/Vimeo (≤3 min) and paste the link into Devpost.
+- [x] ✅ 🤖 Picture track DONE — recorded scripted via Playwright against the keyed
+  local server (`deck/capture_video.py` + `deck/produce_video.py`), real Qwen data
+  from the warm cache (bat-detector run incl. rework + fair compare). NOT Mock
+  (Mock would show the wrong industrial board), not a Figma mockup.
+- [x] ✅ 🤖 Voice-over DONE via edge-tts (en-US-GuyNeural, Robert's pick) — clips in
+  `deck/video/audio/`, muxed automatically by `deck/produce_video.py`.
+- [x] ✅ 🤖 Time-jump cut REMOVED entirely (2026-07-05, Robert's call): the warm
+  guard cache streams the run in immediately, so a "minutes later" card was
+  dishonest and jarring. One continuous ride; "I hit Run agents" dropped from S3
+  (the click happens uncommented on screen). No SpongeBob, no card, no manual edit.
+- [ ] 🧑 Listen through `deck/video/walkthrough_final.mp4` once (esp. "KiCad"/"Qwen"
+  pronunciation), then upload to YouTube/Vimeo (≤3 min) and paste the link into Devpost.
 
 ### 📹 3-Minute Video Script — Live App Walkthrough
 
@@ -93,17 +96,16 @@ quick ride. Stage notes in German for Robert; the *"You say"* lines are what you
 |------|----------------------|--------------|
 | **0:00–0:18** · Hook | App landing page at `qwen.rocu.de`, cursor idle | "If you've ever designed a circuit board, you know the trap: you ask an AI for a schematic, and it gives you something that *looks* right — but quietly skips reverse-polarity protection, a fuse, ESD, a reset line. The boring stuff that a design review exists to catch." |
 | **0:18–0:33** · Idea + number | Scroll to the intro line showing **11.6 vs 8.4 / +3.2** | "So we didn't build one AI. We built a *society* of six agents that argue with each other. Across five hard designs they surfaced **+3.2 more engineering concerns** than a single model — and the gap widens the harder the design gets." |
-| **0:33–0:58** · Set up the run | Load the **Bat detector** example; pick **Senior Review Team** + **Audience: Professional**; hover the agent roles | "Let's design a real device — a Wi-Fi bat detector. I pick the *Senior Review Team*: an Architect proposes, a senior Critic on the stronger model challenges it, a Chief Engineer resolves the conflict, then PCB specialists prepare the board. I hit **Run agents**." |
-| **0:58–1:12** · Live collaboration | The **metro rail** lights up; the **Agent Society** chat streams; Critic flags a gap → Architect reworks | "And here's the part that matters — they don't just run in a line. Watch: the Critic flags a **missing block**, sends it *back*, and the Architect reworks it. That's a real disagreement being resolved, live." |
-| **1:12–1:18** · 😉 CUT | **SpongeBob "5 minutes later"** meme card (full screen, ~4 s) | *(no narration — let the meme breathe / small chuckle)* |
-| **1:18–1:48** · The result | Back to the app: the **block diagram**, **Review & open items**, **PCB-Readiness pack** | "…and it's done. A clean architecture with typed power and data connections. Look what the team caught that a single pass missed — surge protection, decoupling, a reset circuit, a clock source. Plus a PCB-readiness pack: net classes, candidate parts, a floorplan, and a design-for-test checklist." |
+| **0:33–0:58** · Set up the run | Load the **Bat detector** example; pick **Senior Review Team** + **Audience: Professional**; hover the agent roles | "Let's design a real device — a Wi-Fi bat detector. I pick the *Senior Review Team*: an Architect proposes, a senior Critic on the stronger model challenges it, a Chief Engineer resolves the conflict, then PCB specialists prepare the board." *(Run agents wird unkommentiert geklickt)* |
+| **0:55–1:10** · Live collaboration | Right after the click the **Agent Society** chat streams in (warm cache — immediate); Critic flags a gap → Architect reworks. **No time-jump cut** — continuous ride. | "And here's the part that matters — they don't just run in a line. Watch: the Critic flags a **missing block**, sends it *back*, and the Architect reworks it. That's a real disagreement being resolved, live." |
+| **1:18–1:48** · The result | Back to the app: the **block diagram**, **Review & open items**, **PCB-Readiness pack** | "…and it's done. A clean architecture with typed power and data connections. And it's honest: open TODOs — a real-time clock for precise timestamping, documented surge and reverse-polarity ratings — and items flagged for human review, like RF compliance. Plus a PCB-readiness pack: net classes, candidate parts, a floorplan, and a design-for-test checklist." |
 | **1:48–2:18** · Real output | Click **Approve architecture** → **Generate**; show the **verification badge**, schematic preview, **PDF report**, **ZIP** | "I approve the architecture — the human stays in control — and it generates a real **KiCad project**. This badge means it actually *opened in KiCad and passed structural checks*. You get a PDF report and a downloadable project. It's a structured **starting point**, not a finished schematic — AI prepares, the engineer decides." |
-| **2:18–2:42** · Proof | Open **Advanced → 🏆 Architecture beats tier**; show the **Multi vs Single** table | "And the claim isn't a vibe — it's measured. Same request, team versus a single strong model: **11.6 out of 12 concerns, versus 8.4**. A reproducible **+3.2**. That's the efficiency gain the Agent Society track is about." |
+| **2:18–2:42** · Proof | Open **Advanced → Compare: fair (same model)**; show the **Multi vs Single** table | "And the claim isn't a vibe — it's measured, live and in-app. Same request, the *same model* on both sides — so this is the collaboration itself, not a bigger model. The team surfaces **12 of 12** concerns; a single agent, **6**. Across our five-design benchmark that gap averages a reproducible **+3.2**. That's the efficiency gain the Agent Society track is about." |
 | **2:42–3:00** · Close | Slow zoom on the running app / footer "Powered by Qwen · Alibaba Cloud · KiCad" | "It runs on **Qwen Cloud**, deployed on **Alibaba Cloud**, and every schematic is validated with **KiCad**. Six agents that argue — so you catch the mistakes *before* the board is made. Thanks for watching." |
 
 **Tips**
-- Put the **+3.2** on screen twice (intro at 0:18 *and* the compare table at 2:18) — it's the strongest, most track-specific argument.
-- Keep the SpongeBob cut short (~4 s) so it stays a wink, not a gag that eats your runtime.
+- Two honest numbers on screen: the reproducible 5-design average **+3.2** (intro, 0:18) *and* the **fair live compare 12 vs 6** for this design (2:18). The narration ties them together. Do **not** show the "🏆 Architecture beats tier" result (12 vs 0) — a single agent scoring ~0 looks broken and oversells the honest +3.2.
+- No time-jump cut: the warm cache streams the run in immediately — the video is one continuous ride.
 - If you narrate live while clicking, record **video and audio separately** and lay the voice-over on top — much cleaner than talking while hunting for buttons.
 - Honesty guardrails for the voice-over: say "scaffold / starting point / structural checks", never "PCB-ready", "manufacturable", or "hand it to a PCB designer".
 

@@ -1,0 +1,199 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  :root{
+    --bg:#0F1419; --panel:#1A212B; --panel2:#222C38; --line:#2D3A48;
+    --text:#E6EDF3; --muted:#8B98A5; --accent:#4F9CF9;
+    --ok:#3FB950; --warn:#D29922; --review:#F778BA; --pcb:#0D9488;
+    --font:"Segoe UI",Calibri,system-ui,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:var(--font)}
+  body{background:#000}
+  #arch{position:relative;width:1600px;background:var(--bg);color:var(--text);
+    padding:56px 60px 44px;overflow:hidden}
+  #arch::before{content:"";position:absolute;inset:0;background:
+    radial-gradient(1200px 560px at 92% -12%, rgba(79,156,249,.16), transparent 60%),
+    radial-gradient(900px 560px at -6% 118%, rgba(13,148,136,.13), transparent 60%);
+    pointer-events:none}
+  .grid{position:absolute;inset:0;opacity:.5;pointer-events:none}
+  .content{position:relative}
+
+  /* header */
+  .head{display:flex;align-items:center;gap:18px;margin-bottom:30px}
+  .head img{height:46px}
+  .head .ttl{font-size:30px;font-weight:800;letter-spacing:-.3px}
+  .head .ttl span{color:var(--accent)}
+  .head .tag{margin-left:auto;font-size:14px;letter-spacing:3px;text-transform:uppercase;
+    color:var(--accent);font-weight:700}
+
+  /* zone */
+  .zone{margin-bottom:14px}
+  .zlabel{font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);
+    font-weight:700;margin:0 0 10px 2px}
+  .row{display:flex;align-items:stretch;gap:16px}
+  .row.center{justify-content:center}
+
+  /* boxes */
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px 20px;box-shadow:0 6px 18px rgba(0,0,0,.28)}
+  .box .t{font-size:18px;font-weight:700;line-height:1.15}
+  .box .d{font-size:13.5px;color:var(--muted);margin-top:5px;line-height:1.35}
+  .box.grow{flex:1}
+  .box.accent{border-color:var(--accent)}
+  .box .t .k{color:var(--accent)}
+
+  .arrow{display:flex;align-items:center;justify-content:center;color:var(--muted);
+    font-size:26px;min-width:26px}
+  .vflow{display:flex;justify-content:center;color:var(--muted);font-size:22px;
+    line-height:1;margin:6px 0}
+
+  /* agent society band */
+  .society{border:1.5px solid var(--accent);border-radius:16px;padding:20px 22px 16px;
+    background:linear-gradient(180deg, rgba(79,156,249,.06), rgba(79,156,249,.02))}
+  .agents{display:flex;align-items:center;justify-content:center;gap:12px}
+  .ag{display:flex;flex-direction:column;align-items:center;gap:8px;width:120px}
+  .badge{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-weight:800;font-size:19px;color:#0b0f14;
+    box-shadow:0 4px 12px rgba(0,0,0,.4)}
+  .ag .nm{font-size:13px;color:var(--text);font-weight:600;text-align:center;line-height:1.15}
+  .ag .tier{font-size:11px;color:var(--muted)}
+  .conn{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-width:34px;color:var(--muted)}
+  .conn .g{font-size:24px;line-height:1}
+  .conn.loop .g{color:var(--review);font-size:26px}
+  .conn .lbl{font-size:10px;color:var(--review);letter-spacing:.3px;margin-top:2px;
+    text-transform:uppercase;font-weight:700}
+  .soc-cap{text-align:center;font-size:13px;color:var(--muted);margin-top:14px}
+  .soc-cap b{color:var(--text);font-weight:600}
+
+  /* qwen backbone */
+  .backbone .box{display:flex;flex-direction:column;justify-content:center}
+  .pill-in{font-size:12px;color:var(--muted)}
+
+  /* infra strip */
+  .infra{display:flex;align-items:center;gap:0;border:1px dashed var(--line);
+    border-radius:12px;padding:14px 18px;background:rgba(34,44,56,.4);flex-wrap:wrap}
+  .infra .it{font-size:14.5px;color:#cfd8e2;font-weight:600;padding:0 16px}
+  .infra .it span{color:var(--muted);font-weight:400;font-size:12.5px;display:block;margin-top:2px}
+  .infra .sep{color:var(--line);font-size:18px}
+
+  /* footer criteria */
+  .crit{display:flex;gap:14px;margin-top:16px}
+  .crit .c{flex:1;border:1px solid var(--line);border-radius:12px;padding:12px 16px;
+    background:var(--panel2)}
+  .crit .c .n{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--accent);
+    font-weight:700}
+  .crit .c .x{font-size:14px;color:var(--text);margin-top:4px;line-height:1.3}
+  .crit .c .x b{color:var(--ok)}
+</style>
+
+<div id="arch">
+  <svg class="grid" viewBox="0 0 1600 1000" preserveAspectRatio="none">
+    <defs><pattern id="p" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#2D3A48" stroke-width="1" opacity=".22"/>
+    </pattern></defs>
+    <rect width="1600" height="1000" fill="url(#p)"/>
+  </svg>
+
+  <div class="content">
+    <div class="head">
+      <img src="assets/logo_transparent.png" alt="logo">
+      <div class="ttl">AI Circuit <span>Architect</span> — System Architecture</div>
+      <div class="tag">Qwen · Agent Society</div>
+    </div>
+
+    <!-- CLIENT -->
+    <div class="zone">
+      <div class="zlabel">Client</div>
+      <div class="row">
+        <div class="box grow"><div class="t">👤 User</div>
+          <div class="d">Writes a plain-English hardware brief · approves the architecture before generation (human-in-the-loop)</div></div>
+        <div class="arrow">⇄</div>
+        <div class="box grow"><div class="t">Web UI <span class="k">·</span> single page</div>
+          <div class="d">FastAPI-served, Alpine.js · live “metro-rail” pipeline view + Agent-Society chat</div></div>
+      </div>
+    </div>
+    <div class="vflow">↓</div>
+
+    <!-- APPLICATION CORE -->
+    <div class="zone">
+      <div class="zlabel">Application core</div>
+      <div class="row">
+        <div class="box grow"><div class="t">Orchestrator <span class="k">(FastAPI)</span></div>
+          <div class="d">Runs the pipeline stage by stage · one-click auto-run or step-by-step sign-off · threads guidance &amp; rework between agents</div></div>
+      </div>
+    </div>
+    <div class="vflow">↓</div>
+
+    <!-- AGENT SOCIETY -->
+    <div class="zone">
+      <div class="zlabel">Agent society &nbsp;·&nbsp; six roles, model tier per agent</div>
+      <div class="society">
+        <div class="agents">
+          <div class="ag"><div class="badge" style="background:#4F9CF9">RQ</div><div class="nm">Requirements</div><div class="tier">qwen-plus</div></div>
+          <div class="conn"><div class="g">→</div></div>
+          <div class="ag"><div class="badge" style="background:#4F9CF9">AR</div><div class="nm">Architect</div><div class="tier">qwen-plus</div></div>
+          <div class="conn loop"><div class="g">⇄</div><div class="lbl">rework</div></div>
+          <div class="ag"><div class="badge" style="background:#F778BA">CR</div><div class="nm">Design Critic</div><div class="tier">qwen-max</div></div>
+          <div class="conn"><div class="g">→</div></div>
+          <div class="ag"><div class="badge" style="background:#E6EDF3">AB</div><div class="nm">Arbitration</div><div class="tier">qwen-max</div></div>
+          <div class="conn"><div class="g">→</div></div>
+          <div class="ag"><div class="badge" style="background:#0D9488;color:#e6fffb">PE</div><div class="nm">PCB Engineer</div><div class="tier">qwen-plus</div></div>
+          <div class="conn loop"><div class="g">⇄</div><div class="lbl">rework</div></div>
+          <div class="ag"><div class="badge" style="background:#D29922">PC</div><div class="nm">PCB Critic</div><div class="tier">qwen-max</div></div>
+        </div>
+        <div class="soc-cap"><b>Task decomposition</b> across roles · <b>conflict resolution</b> via Critic→Architect &amp; PCB-Critic→PCB-Engineer rework loops + arbitration</div>
+      </div>
+    </div>
+
+    <div class="row" style="align-items:center;margin:8px 0 6px">
+      <div class="arrow" style="font-size:20px">↕ every agent call</div>
+      <div class="box grow backbone" style="border-color:var(--accent)">
+        <div class="t">API Cost Guard <span class="k">— one chokepoint</span></div>
+        <div class="d">Hard USD budget · per-call token caps · rate limits · response cache · scripted <b>Mock-Mode</b> fallback on any limit/error</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="box grow" style="border-color:var(--accent)">
+        <div class="t">Qwen Cloud API</div>
+        <div class="d">OpenAI-compatible endpoint · qwen-plus / qwen-max / qwen-turbo (tier chosen per role)</div>
+      </div>
+    </div>
+    <div class="vflow">↓ &nbsp; final approved design</div>
+
+    <!-- GENERATE & VERIFY -->
+    <div class="zone">
+      <div class="zlabel">Generate &amp; verify</div>
+      <div class="row">
+        <div class="box grow"><div class="t">KiCad Generator</div>
+          <div class="d">Hierarchical sheets, block diagram, power-port symbols, sheet pins, title blocks</div></div>
+        <div class="arrow">→</div>
+        <div class="box grow"><div class="t">kicad-cli <span class="k">(KiCad 10)</span></div>
+          <div class="d">Opens the project · structural ERC · renders SVG/PDF — real validation, not a claim</div></div>
+        <div class="arrow">→</div>
+        <div class="box grow"><div class="t">Outputs</div>
+          <div class="d">KiCad project ZIP · PDF report (WeasyPrint) · 3-state verification badge</div></div>
+      </div>
+    </div>
+    <div class="vflow">↓</div>
+
+    <!-- INFRA -->
+    <div class="zone">
+      <div class="zlabel">Infrastructure</div>
+      <div class="infra">
+        <div class="it">Docker <span>one image incl. KiCad runtime</span></div>
+        <div class="sep">·</div>
+        <div class="it">GitHub Actions → GHCR <span>CI build &amp; registry</span></div>
+        <div class="sep">·</div>
+        <div class="it">Alibaba Cloud ECS <span>Linux VM, runs the containers</span></div>
+        <div class="sep">·</div>
+        <div class="it">Caddy <span>reverse proxy · HTTPS (Let’s Encrypt)</span></div>
+      </div>
+    </div>
+
+    <div class="crit">
+      <div class="c"><div class="n">① Decomposition</div><div class="x">Six specialist agents, each a distinct role and model tier</div></div>
+      <div class="c"><div class="n">② Conflict resolution</div><div class="x">Two live Critic→worker rework loops + an arbitration step</div></div>
+      <div class="c"><div class="n">③ Measurable gain</div><div class="x"><b>+3.2 / 12</b> coverage over a single-agent baseline (deterministic rubric)</div></div>
+    </div>
+  </div>
+</div>

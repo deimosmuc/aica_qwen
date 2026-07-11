@@ -1,0 +1,42 @@
+[
+  {
+    "beat": "hook",
+    "segment": "S1",
+    "t": 4.806
+  },
+  {
+    "beat": "number",
+    "segment": "S2",
+    "t": 22.609
+  },
+  {
+    "beat": "setup",
+    "segment": "S3",
+    "t": 40.17
+  },
+  {
+    "beat": "collab",
+    "segment": "S4",
+    "t": 62.328
+  },
+  {
+    "beat": "result",
+    "segment": "S5",
+    "t": 77.201
+  },
+  {
+    "beat": "output",
+    "segment": "S6",
+    "t": 105.466
+  },
+  {
+    "beat": "compare",
+    "segment": "S7",
+    "t": 136.249
+  },
+  {
+    "beat": "close",
+    "segment": "S8",
+    "t": 167.475
+  }
+]

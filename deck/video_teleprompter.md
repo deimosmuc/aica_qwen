@@ -25,23 +25,18 @@ Let's design a real device: a Wi-Fi bat detector.
 
 I pick the Senior Review Team. An Architect proposes, a senior Critic on the stronger model challenges it, a Chief Engineer resolves the conflict, and PCB specialists prepare the board.
 
-I hit **Run agents**.
-
-**[0:58 — metro rail lights up · Agent Society chat · rework]**
+**[~0:55 — Run agents wird (unkommentiert) geklickt · Society-Chat streamt sofort
+(warmer Cache) · KEIN Zeitsprung-Cut — durchgehende Fahrt]**
 
 And here's the part that matters — they don't just run in a line.
 
 Watch: the Critic flags a *missing block*, sends it back, and the Architect reworks it. A real disagreement, resolved live.
 
-**[1:12 — 🧽 SpongeBob "5 minutes later" card — STOP TALKING ~4 s]**
-
-*(silence — let the meme land)*
-
 **[1:18 — results: block diagram · Review & open items · PCB-Readiness pack]**
 
 …and it's done. A clean architecture, with typed power and data connections.
 
-Look what the team caught that a single pass missed: surge protection, decoupling, a reset circuit, a clock source.
+And it's honest: open TODOs — a real-time clock for precise timestamping, documented surge and reverse-polarity ratings — and items flagged for human review, like RF compliance.
 
 Plus a PCB-readiness pack — net classes, candidate parts, a floorplan, and a design-for-test checklist.
 
@@ -53,11 +48,13 @@ This badge means it actually *opened in KiCad and passed structural checks*. You
 
 It's a structured *starting point*, not a finished schematic. AI prepares; the engineer decides.
 
-**[2:18 — Advanced → 🏆 Architecture beats tier → Multi vs Single table]**
+**[2:18 — Advanced → Compare: fair (same model) → Multi vs Single table]**
 
 And the claim isn't a vibe — it's measured.
 
-Same request, the team versus a single strong model: **eleven-point-six** concerns out of twelve, versus **eight-point-four**. A reproducible **plus three-point-two**.
+Same request, the *same model* on both sides — so what you see is the collaboration, not a bigger model. The team surfaces **twelve** of twelve concerns; a single agent, **six** — missing exactly the traps from the start: reverse polarity, the fuse, the reset line.
+
+And across our five-design benchmark, that gap averages a reproducible **plus three-point-two**.
 
 That's the efficiency gain the Agent Society track is about.
 
@@ -71,5 +68,6 @@ Thanks for watching.
 
 ---
 
-*Runtime budget: ~370 spoken words + a ~4 s silent meme cut ≈ 3:00. If you run long,
-trim the PCB-pack sentence at 1:18 and the roles list at 0:33 first.*
+*Runtime budget: ~380 spoken words, one continuous ride (kein Zeitsprung-Cut —
+der gecachte Lauf streamt sofort). If you run long, trim the PCB-pack sentence
+at 1:18 and the roles list at 0:33 first.*

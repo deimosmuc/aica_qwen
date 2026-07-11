@@ -58,15 +58,17 @@ Steuerelemente sind die echten Controls in der App (verifiziert):
 | **0:00–0:18** Hook | Landing-Page, Cursor ruhig. Nicht klicken. | **S1** |
 | **0:18–0:33** Die Zahl | Langsam zur Intro-Zeile **„+3.2 / 11.6 vs 8.4"** scrollen. | **S2** |
 | **0:33–0:58** Setup | **Load example** → „**Bat detector (Wi-Fi / USB)**". **Profile** = „**Senior Review Team**" (Default). **Audience** = „**Professional**" (Default). Kurz über die Rollen/Profile hovern. Dann **Run agents** klicken. | **S3** |
-| **0:58–1:12** Kollaboration | Tab **„🤝 Agent Society"** zeigen: Metro-Rail leuchtet auf, Chat streamt; **Rework**: Critic → Architect (amber packet). | **S4** |
-| **1:12–1:18** 😉 Cut | (Aufnahme läuft weiter / hier später SpongeBob-Karte einsetzen) | *(Stille ~4 s)* |
+| **0:55–1:10** Kollaboration | Direkt nach dem (unkommentierten) **Run-agents-Klick** streamt der Society-Chat sofort (warmer Cache); **Rework**: Critic → Architect erscheint im S4-Fenster. **KEIN Zeitsprung-Cut** — durchgehende Fahrt. | **S4** |
 | **1:18–1:48** Ergebnis | Zum **Block-Diagramm** scrollen; **„Review & open items"** aufklappen; **PCB-Readiness-Pack** (Net-Klassen, Kandidaten, Floorplan, DFX) zeigen. | **S5** |
 | **1:48–2:18** Echte Ausgabe | **Approve architecture** → **Generate**. Warten bis fertig; **Verification-Badge** (✓ Opens in KiCad), **Schematic-Preview**, **PDF-Report**, **ZIP-Download** zeigen. | **S6** |
-| **2:18–2:42** Beweis | Zur Eingabe hochscrollen → Sekundär-Button-Reihe → **„🏆 Architecture beats tier"** klicken; **Multi-vs-Single-Tabelle** (11.6 vs 8.4) zeigen. | **S7** |
+| **2:18–2:42** Beweis | Zur Eingabe hochscrollen → **Advanced** öffnen → **„Compare: fair (same model)"** klicken; **Multi-vs-Single-Tabelle** (12 vs 6, gleiches Modell) zeigen. | **S7** |
 | **2:42–3:00** Abschluss | Langsamer Zoom auf die laufende App / Footer „Powered by Qwen · Alibaba Cloud · KiCad". | **S8** |
 
-> **+3.2 zweimal im Bild:** einmal 0:18 (Intro), einmal 2:18 (Compare-Tabelle) —
-> das ist das stärkste, track-spezifischste Argument.
+> **Zwei ehrliche Zahlen im Bild:** 0:18 zeigt den reproduzierbaren 5-Design-Schnitt
+> **+3.2** (Intro-Zeile); 2:18 zeigt die *faire* Live-Messung für dieses Design
+> **12 vs 6** (gleiches Modell beidseitig). Der Ton verbindet beides: Live-Ergebnis +
+> Benchmark-Schnitt. Das „🏆 Architecture beats tier"-Ergebnis (12 vs 0) bewusst NICHT
+> zeigen — sieht unglaubwürdig aus und widerspricht dem ehrlichen +3.2.
 
 ---
 
@@ -82,21 +84,25 @@ Pace ~normal. Alternativ Azure TTS „en-US-GuyNeural" / „en-US-AriaNeural".
 > So we didn't build one AI. We built a *society* of six agents that argue with each other. Across five hard designs, they surfaced three-point-two more engineering concerns than a single model — and the gap widens the harder the design gets.
 
 **S3 (Setup)**
-> Let's design a real device: a Wi-Fi bat detector. I pick the Senior Review Team. An Architect proposes, a senior Critic on the stronger model challenges it, a Chief Engineer resolves the conflict, and PCB specialists prepare the board. I hit Run agents.
+> Let's design a real device: a Wi-Fi bat detector. I pick the Senior Review Team. An Architect proposes, a senior Critic on the stronger model challenges it, a Chief Engineer resolves the conflict, and PCB specialists prepare the board.
 
 **S4 (Kollaboration)**
 > And here's the part that matters — they don't just run in a line. Watch: the Critic flags a *missing block*, sends it back, and the Architect reworks it. A real disagreement, resolved live.
 
 *(1:12–1:18 — SpongeBob-Cut, kein Ton)*
 
-**S5 (Ergebnis)**
-> …and it's done. A clean architecture, with typed power and data connections. Look what the team caught that a single pass missed: surge protection, decoupling, a reset circuit, a clock source. Plus a PCB-readiness pack — net classes, candidate parts, a floorplan, and a design-for-test checklist.
+**S5 (Ergebnis)** — *gegründet auf das echte „Review & open items"-Panel im Bild
+(RTC/Timestamping-TODO, ESD/Surge/Reverse-Polarity-Ratings, RF-Compliance-Review).*
+> …and it's done. A clean architecture, with typed power and data connections. And it's honest: open TODOs — a real-time clock for precise timestamping, documented surge and reverse-polarity ratings — and items flagged for human review, like RF compliance. Plus a PCB-readiness pack — net classes, candidate parts, a floorplan, and a design-for-test checklist.
 
 **S6 (Echte Ausgabe)**
 > I approve the architecture — the human stays in control — and it generates a real KiCad project. This badge means it actually *opened in KiCad and passed structural checks*. You get a PDF report and a downloadable project. It's a structured *starting point*, not a finished schematic. AI prepares; the engineer decides.
 
-**S7 (Beweis)**
-> And the claim isn't a vibe — it's measured. Same request, the team versus a single strong model: eleven-point-six concerns out of twelve, versus eight-point-four. A reproducible plus three-point-two. That's the efficiency gain the Agent Society track is about.
+**S7 (Beweis)** — *live, fair (same-model) compare: on this bat design the team
+scores 12/12, a single agent 6/12; the +3.2 is cited as the 5-design average.
+Payoff zum Hook: der Single verfehlt in der Tabelle GENAU die S1-Traps
+(reverse polarity ✗, fuse/overcurrent ✗, reset ✗ — im Frame verifiziert).*
+> And the claim isn't a vibe — it's measured. Same request, the *same model* on both sides — so what you see is the collaboration, not a bigger model. The team surfaces twelve of twelve concerns; a single agent, six — missing exactly the traps from the start: reverse polarity, the fuse, the reset line. And across our five-design benchmark, that gap averages a reproducible plus three-point-two. That's the efficiency gain the Agent Society track is about.
 
 **S8 (Abschluss)**
 > It runs on Qwen Cloud, deployed on Alibaba Cloud, and every schematic is validated with KiCad. Six agents that argue — so you catch the mistakes *before* the board is made. Thanks for watching.
@@ -108,15 +114,17 @@ Pace ~normal. Alternativ Azure TTS „en-US-GuyNeural" / „en-US-AriaNeural".
 
 ---
 
-## 5. ✂️ Schnitt
-1. TTS-Segmente **S1–S8** hintereinander auf die Tonspur; Pausen so, dass jedes
-   Segment zu seiner Szene passt (siehe Zeiten §3).
-2. **SpongeBob „5 minutes later"**-Karte bei **1:12–1:18** einsetzen (~4 s, Vollbild).
-   Kurz halten — Augenzwinkern, kein Gag der Zeit frisst.
-3. Bild-Take unter die Tonspur legen; wo der (cached) Run zu schnell ist, Szene
-   leicht dehnen/Standbild, damit Ton & Bild synchron bleiben.
-4. Export **1080p, ≤3:00**, hochladen (YouTube/Vimeo, „unlisted" reicht) → Link ins
-   Devpost.
+## 5. ✂️ Schnitt — AUTOMATISIERT (Stand 2026-07-05)
+Der komplette Schnitt läuft jetzt skriptgesteuert über **`deck/produce_video.py`**
+(TTS-Mux an den Cue-Offsets + eingebackene Zeitsprung-Karte + Speed-Fit ≤3:00).
+Deliverable: **`deck/video/walkthrough_final.mp4`** — nur noch anhören & hochladen.
+- **Zeitsprung-Cut ENTFERNT (2026-07-05):** mit dem warmen Guard-Cache streamt
+  der Lauf sofort — eine „minutes later"-Karte wäre unehrlich und wirkte holprig
+  (Robert's Feedback). Auch „I hit Run agents" ist aus S3 raus; der Klick passiert
+  unkommentiert im Bild. (`deck/video/cut_card.png` bleibt ungenutzt im Repo.)
+- Manueller Fallback (falls doch von Hand geschnitten wird): TTS-Segmente S1–S8
+  an die §3-Zeiten legen, Export 1080p ≤3:00, Upload YouTube/Vimeo
+  („unlisted" reicht) → Link ins Devpost.
 
 ---
 
