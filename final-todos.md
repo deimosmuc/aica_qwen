@@ -1,6 +1,6 @@
 # Final To-Dos — Hackathon Submission
 
-> **DEADLINE: July 9, 2026 · 5:00 PM EDT** (= 23:00 Uhr MESZ / German time).
+> **DEADLINE: July 20, 2026** (extended from July 9 — confirmed by Robert 2026-07-11).
 > Track: **Agent Society**. Submission via Devpost.
 > Legend: 🧑 = only Robert can do · 🤖 = Claude can prepare/do · ✅ = done
 
@@ -147,7 +147,7 @@ Source text is ready in [`docs/DEVPOST.md`](docs/DEVPOST.md).
 
 ## Key facts / gotchas to remember
 
-- **Deadline:** July 9, 2026, 5:00 PM EDT (23:00 German time). Don't cut it close.
+- **Deadline:** July 20, 2026 (extended from July 9). Don't cut it close.
 - **Video = 3 minutes** (email), not 5.
 - **No proof of deployment = disqualified.** The Workbench screenshot is the one
   irreplaceable thing only Robert can produce.
